@@ -20,7 +20,7 @@ _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [D
 
 | ID | Priority | Type | Status | Topic |
 |---|---|---|---|---|
-| ELLIE-001 | P0 | Bug / navigation | PREVIEW / MOCK | Jungle vines and occasional leaves stall paths |
+| ELLIE-001 | P0 | Bug / navigation | PREVIEW / MOCK | No-vine traversal policy and safe obstacle recovery |
 | ELLIE-002 | P0 | Regression / UI | OBSERVED | Teleport-to-Ellie button disappeared |
 | ELLIE-003 | P1 | Feature / autonomy | PROPOSED | Stone-or-better tool preflight |
 | ELLIE-004 | P1 | Feature / navigation | PROPOSED | Bridge decision shared by all movement tasks |
@@ -41,7 +41,7 @@ _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [D
 | ELLIE-019 | P2 | Permissions | PROPOSED | Optional owner-controlled native-command bridge |
 | ELLIE-020 | P0 | Invariant | KEEP | Preserve retaliation, player control and teleport extension |
 | ELLIE-021 | P1 | Feature / crafting | PREVIEW / MOCK | Remember verified crafting tables in EllieGPS and avoid deep detours |
-| ELLIE-022 | P1 | Bug / bridge | OBSERVED | Bridge helper throws IllegalAccessException during gathering |
+| ELLIE-022 | P1 | Bug / bridge | PREVIEW / MOCK | Bridge reflection-access repair; live crossing still unverified |
 
 ### ELLIE-001 — Vines and leaves obstruct navigation
 **Evidence:** User reports Ellie stands in jungle vine clusters until specific vines are broken; leaves occasionally behave similarly. The 2026-11-02 20:01 Observatory snapshot did not include collision/block coordinates. **The owner intentionally set a tree on fire**, explaining later survival-chain interventions and burning death; do not attribute that death to vines.
@@ -169,6 +169,19 @@ For ELLIE-022, Baritone 1.21.1 exposes supported typed `IPathingBehavior.getCurr
 
 
 **Architecture decision:** User explicitly rejected vine climbing as a capability because Ellie can build support pillars. This is a navigation policy, **not** a mandate to erase all vine blocks or disable ladders. Keep native Baritone/Automatone single-source path planning. Related agreed priorities remain ELLIE-022 (bridge reflection fix), ELLIE-004 (shared navigation bridges), ELLIE-021 (crafting-table routing/waypoints), and ELLIE-003 (stone tools).
+
+### Backlog implementation Batch 1 — 2026-11-02
+
+**Code produced, not merged into the old GitHub source tree.** Built `PlayerEngine-Fabric-1.21.1-1.4.0-BACKLOG-BATCH1-PREVIEW.jar` from the previous `WORKBENCH-VINE-PREVIEW` binary.
+
+- **ELLIE-001:** Add `VineRoutePolicy` to the general navigation tick: persist `Blocks.VINE` in the NPC-specific Automatone `blocksToAvoid` setting, preserve ladders and other avoidance entries, and log `VINE_POLICY` or an error. Patch native `MovementHelper.canWalkOn` to reject vines as walking supports and `MovementPillar.cost` to reject climbing/pillaring from a vine. Retain conservative safe normal block-breaking and diagnostic stall recovery. This does *not* establish that every special fall/climb interaction is eliminated.
+- **ELLIE-022:** Patch `WaterBridgeCoordinator.blockId` cached world-method reflection and general `invoke` to set Java reflective accessibility. Mock test reproduced `IllegalAccessException` on a non-public world implementation and demonstrated the patched helper reads the block. The real bridge planner may have other access failures; no live bridge success claimed.
+- **Tests:** Java 21 compile; mock route and safe-clear test suite; non-public-world reflection regression; bytecode inspection, JAR CRC, Fabric metadata and internal reference audit. **PASS** for these checks. **NOT RUN:** live Minecraft jungle, bridge construction, long-run, save/reload.
+- **Binary audit:** 1,780 classes, 11,158 internal class refs, zero unresolved; four existing classes changed and one new policy class. No combat, teleport, builder, crafting table or Player2NPC classes altered.
+- **SHA-256:** `f02aa1bacd2e462f5f4775608f03184e0722853b84a9671757293e414f102d25`
+- **Download artifact:** `PlayerEngine-Ellie-Backlog-Batch1-No-Vines-Bridge-Fix-PREVIEW.zip` in project conversation; includes Java helper sources, bytecode patch tool, package audit, and mock tests. The current GitHub branch still targets Minecraft 1.20.1 Quilt and has **not** gained this binary-only fix.
+
+**Next gates:** Verify T-07, T-09, T-27, T-33 through T-37 in actual survival Minecraft; check `VINE_POLICY` in Observatory, a safe jungle-log collection route without vine climbing, normal ladder behavior, and real bridge placement without reflection errors. Work on shared bridging (ELLIE-004) and crafting station route cost (ELLIE-021) after that evidence.
 
 ## Triage rules
 
