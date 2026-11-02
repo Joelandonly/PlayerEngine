@@ -40,6 +40,8 @@ _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [D
 | ELLIE-018 | P2 | Telemetry / performance | INVESTIGATE | Lag warnings, skin/data-fixer noise |
 | ELLIE-019 | P2 | Permissions | PROPOSED | Optional owner-controlled native-command bridge |
 | ELLIE-020 | P0 | Invariant | KEEP | Preserve retaliation, player control and teleport extension |
+| ELLIE-021 | P1 | Feature / crafting | PREVIEW / MOCK | Remember verified crafting tables in EllieGPS and avoid deep detours |
+| ELLIE-022 | P1 | Bug / bridge | OBSERVED | Bridge helper throws IllegalAccessException during gathering |
 
 ### ELLIE-001 — Vines and leaves obstruct navigation
 **Evidence:** User reports Ellie stands in jungle vine clusters until specific vines are broken; leaves occasionally behave similarly. The 2026-11-02 20:01 Observatory snapshot did not include collision/block coordinates. **The owner intentionally set a tree on fire**, explaining later survival-chain interventions and burning death; do not attribute that death to vines.
@@ -66,7 +68,7 @@ _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [D
 **Exit test:** All movement task families can use the same policy; no unwanted structure modification; no persistent routing loops.
 
 ### ELLIE-005 — Verify short water bridging
-**Evidence:** The old bridge preview never emitted a `WATER_BRIDGE_PLAN` in the 2026-11-02 lake test. A subsequent preview claimed short straight crossing scans and alternative shore probing, but actual water placement is **not** verified in-game.
+**Evidence:** The old bridge preview never emitted a `WATER_BRIDGE_PLAN` in the 2026-11-02 lake test. A newer jungle run showed explicit `BRIDGE_SKIP: Bridge planner unavailable: IllegalAccessException` (see ELLIE-022). A subsequent preview claimed short straight crossing scans and alternative shore probing, but actual water placement is **not** verified in-game.
 
 **Action:** Live cases for 4–20-block crossings, path detour around lake, curved banks, sparse materials, unsupported water placement and long-lake rejection. Report `BRIDGE_CANDIDATE`, `BRIDGE_SKIP`, `BRIDGE_PLAN`, `BRIDGE_RESULT`. Never report success before a walkable bridge exists.
 
@@ -140,6 +142,23 @@ _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [D
 
 ### ELLIE-020 — Behavioral invariants
 **Do not change without explicit request:** NPC combat retaliation toward attackers (including owner), existing teleport extension, F8/F7 Observatory, layer-aware verified house construction, unrelated NPC features. Ensure these survive JAR replacements and source merges.
+
+
+### ELLIE-021 — Local crafting-table memory and anti-detour policy
+**Observation:** User saw Ellie go to a trial-chamber crafting table rather than use/create one locally. Existing task logs previously showed crafting-table targets near (-185,63,-248) and (-181,14,-247); these do not conclusively identify the trial chamber. Existing `CraftingTableLocator` defaults to a 48-block reuse radius and consults a separate block scanner instead of EllieGPS.
+
+**Preview (2026-11-02):** Binary patch from the previous navigation preview. It stores actually verified reachable tables as `crafting_table` in existing per-world EllieGPS, rejects distant candidates (>16 horizontal or >5 vertical blocks, or a smaller configured radius), checks the table still exists in a loaded chunk, and selects nearby remembered vs scanner candidates. It records **observed** tables, including self-placed ones after use, without falsely tagging them as bot-placed. New diagnostics: `CRAFT_TABLE_REMEMBER`, `CRAFT_TABLE_CHOICE`.
+
+**Validation:** Java compilation, policy tests, mock GPS record persistence, deduplication, stale block rejection, and mock test preferring a nearby surface table over a deep table passed; internal JAR audit passed. **Minecraft live and cross-restart persistence have not been tested.** Package: `PlayerEngine-Ellie-Workbench-Memory-Vine-Recovery-1.21.1-PREVIEW.zip` (delivered in chat). SHA-256 JAR: `1f0bc6603ff788a6736387cbe08e773fd21c107b99f980d65e0da985e0263b0c`.
+
+**Acceptance:** Owner-placed or Ellie-verified tables reused locally after reload; no trial chamber detours for local crafting; correct dimension and stale checks; no repeated pathing loops. The patch is **binary-only** and not checked into the 1.20.1 source tree.
+
+### ELLIE-022 — Water bridge planner reflection access error
+**Observation:** On 2026-11-02 during a jungle-house run, Observatory repeatedly logged `BRIDGE_SKIP: Bridge planner unavailable: IllegalAccessException` (e.g. 20:31:21 and 20:34:10) along with `No active Baritone path`. This is positive evidence of bridge helper runtime failure, not merely cost-based avoidance.
+
+**Action:** Locate the reflective call throwing `IllegalAccessException` in the bridge coordinator, make mapped method access safe, and add per-failure method/class diagnostics without leaking sensitive data. Confirm live bridge creation/traversal and ensure no repeated errors or expensive scans.
+
+**Status:** OBSERVED, **not fixed** by the workbench/vine preview. Priority high.
 
 ## Triage rules
 
