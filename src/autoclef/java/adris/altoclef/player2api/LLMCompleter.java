@@ -13,9 +13,15 @@ import adris.altoclef.player2api.manager.ConversationManager;
 import adris.altoclef.player2api.utils.Utils.ThrowingFunction;
 
 public class LLMCompleter {
-    private boolean isProcessing = false; // probably don't need this anymore but can keep to be safe
+    private volatile boolean isProcessing = false; // probably don't need this anymore but can keep to be safe
 
-    private final ExecutorService llmThread = Executors.newSingleThreadExecutor();
+    // Reuse a bounded worker pool; individual building requests must not leak a thread each.
+    private static final ExecutorService LLM_THREADS = Executors.newFixedThreadPool(4, task -> {
+        Thread worker = new Thread(task, "PlayerEngine LLM worker");
+        worker.setDaemon(true);
+        return worker;
+    });
+    private final ExecutorService llmThread = LLM_THREADS;
     private static final Logger LOGGER = LogManager.getLogger();
 
     private <T> void process(
