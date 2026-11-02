@@ -160,6 +160,13 @@ _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [D
 
 **Status:** OBSERVED, **not fixed** by the workbench/vine preview. Priority high.
 
+
+## Upstream navigation research: Baritone 1.21.1
+
+2026-11-02 code and issue review: [Baritone research and implementation priorities](BARITONE_RESEARCH_2026-11-02.md). **No code changes.** Significant new evidence for ELLIE-001: Baritone [issue #1773](https://github.com/cabaletta/baritone/issues/1773) reports jungle-log mining stalls on hanging vines until manually broken; [issue #392](https://github.com/cabaletta/baritone/issues/392) reports vine stalls with `allowVines=false`. The advanced `allowVines` setting itself warns of indefinite traps and defaults off, so do not claim one setting is the solution.
+
+For ELLIE-022, Baritone 1.21.1 exposes supported typed `IPathingBehavior.getCurrent/getPath` and `IPath.positions` APIs. Investigate whether the embedded Automatone fork has equivalent public access before fixing the existing bridge `IllegalAccessException`. For ELLIE-004/005, Baritone already considers block placement/bridging in individual movement costs, but custom materials/route policy still needs work. For ELLIE-021, Baritone has unreachable-target blacklisting; remembered crafting-table location is not a guarantee of efficient reachability.
+
 ## Triage rules
 
 1. Every newly observed behavior gets an ID, evidence date/build, clear **observed vs inferred** separation and priority.
