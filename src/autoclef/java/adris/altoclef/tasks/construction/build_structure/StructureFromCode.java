@@ -57,6 +57,8 @@ public class StructureFromCode {
         private final Interpreter interp;
         private final Queue<SetBlockCommand> queue = new ArrayDeque<>();
         private boolean done = false;
+        private int interpreterSteps = 0;
+        private static final int MAX_INTERPRETER_STEPS = 100_000;
 
         public Runner(Program program) {
             this.interp = new Interpreter(program, queue::add);
@@ -69,6 +71,8 @@ public class StructureFromCode {
             if (!queue.isEmpty())
                 return Optional.of(queue.poll());
             while (queue.isEmpty() && !done) {
+                if (++interpreterSteps > MAX_INTERPRETER_STEPS)
+                    throw new IllegalArgumentException("Building script exceeded instruction budget");
                 done = !interp.step(); // step returns false when finished
             }
             return queue.isEmpty() ? Optional.empty() : Optional.of(queue.poll());
@@ -86,6 +90,8 @@ public class StructureFromCode {
 
     public static void runCode(String code, Consumer<SetBlockCommand> onSetBlock, AltoClefController mod)
             throws Exception {
+        if (code == null || code.length() > 100_000)
+            throw new IllegalArgumentException("Building script exceeds source size limit");
         Program program = compile(code);
         Runner runner = new Runner(program);
         Optional<SetBlockCommand> cmd;
