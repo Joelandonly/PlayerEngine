@@ -112,3 +112,13 @@ User decision: **vines are not a navigation asset**. Ellie should favor walking 
 | T-37 | No nearby pillar materials, dangerous drop or insufficient support | Reject unsafe move; report blockage instead of falling or destroying terrain blindly |
 
 Do not mark done from compilation/mock tests alone. Existing bridging, crafting-table reachability and stone-tool preflight priorities remain unchanged.
+
+## Batch 1 test gate and provenance (2026-11-02)
+
+Binary: `PlayerEngine-Fabric-1.21.1-1.4.0-BACKLOG-BATCH1-PREVIEW.jar`, SHA-256 `f02aa1bacd2e462f5f4775608f03184e0722853b84a9671757293e414f102d25`.
+
+**Passed (mock/static):** policy-setting retention after navigation resumes; stationary/stalled/moving and vine/leaf obstacle behaviors; no self-vine break; reflected block read from a non-public world class; JAR integrity and class-reference audit.
+
+**Not run:** actual Minecraft 1.21.1 Fabric, jungle and ladder regression, physical bridging, per-world persistence, long-duration stress. **Do not close ELLIE-001 or ELLIE-022.**
+
+Live acceptance checkpoints: `T-07`, `T-09`, `T-27`, `T-33`–`T-37`. If a native route still chooses climbing vines, capture the current movement type/position and adjust that specific movement generator rather than disabling all climbing or assuming `allowVines=false` is adequate.
