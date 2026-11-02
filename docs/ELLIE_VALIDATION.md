@@ -73,3 +73,16 @@ Rollback JAR:
 ## Security and scope
 
 Public tracking may contain sanitized symptoms and decisions. Never commit raw game/LLM logs, user tokens, UUIDs, account identifiers, local absolute paths or private-world data. Testing should not overwrite the independent Player2NPC extension, change retaliation, or remove existing builder functions by accident.
+
+## Additional scenarios, 2026-11-02
+
+| ID | Scenario | Expected result | Evidence / current status |
+|---|---|---|---|
+| T-23 | Workbench visible near surface; different workbench directly below in trial chamber | Reuse surface workbench or create a local one; never take deep detour | Mock selection passed; live test pending |
+| T-24 | Crafting table verified, then save/reload world | Table is recorded in per-world EllieGPS and reused if still present and close | Mock persistence passed; live restart pending |
+| T-25 | Remembered crafting table destroyed or unloaded | Reject stale/unloaded target and craft/place locally | Mock invalidation passed; live pending |
+| T-26 | Jungle vine stall while Ellie is pursuing a `Destroying block` target | Monitor progress, log stall and recover safely without breaking support vine | Updated mock recovery passed; live pending |
+| T-27 | Construction bridge planner encounters water | No `IllegalAccessException`, actionable diagnostics and real supported crossing | Runtime error observed; not fixed |
+
+The `WORKBENCH-VINE-PREVIEW` binary hash is `1f0bc6603ff788a6736387cbe08e773fd21c107b99f980d65e0da985e0263b0c`. The code exists in an experimental downloadable ZIP, **not in this repository's 1.20.1/Quilt source**. Live success remains unverified.
+
