@@ -59,3 +59,12 @@ This framework was created for the **Player2 AI Game Jam** and is designed to in
 
 ### Author
 PlayerEngine is a solo project developed by **Goodbird**.
+## Experimental Ellie / Minecraft 1.21.1 tracking
+
+Recent Ellie companion experiments use separately distributed **Minecraft 1.21.1 Fabric / PlayerEngine 1.4.0 preview JARs**. They are **not yet represented by the source code on this branch** (which still advertises Minecraft 1.20.1 / Quilt). For open bugs, feature proposals, previews, live observations and test requirements, use:
+
+- [Ellie backlog and issue IDs](docs/ELLIE_BACKLOG.md)
+- [Chronological development log](DEVELOPMENT_LOG.md)
+- [Live-survival validation matrix](docs/ELLIE_VALIDATION.md)
+
+The register lives in Markdown because GitHub Issues were disabled for this repository when tracking was initialized. **A preview JAR is not a verified source implementation.**
