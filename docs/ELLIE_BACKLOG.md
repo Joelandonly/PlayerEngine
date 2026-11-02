@@ -1,0 +1,151 @@
+# Ellie / PlayerEngine development backlog
+
+_Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [Development Log](../DEVELOPMENT_LOG.md) and [Validation Matrix](ELLIE_VALIDATION.md)._
+
+> **Source-of-truth warning:** The default branch here currently advertises Minecraft **1.20.1 / Quilt** in `gradle.properties`. Recent Ellie experiments used separately packaged **Minecraft 1.21.1 / Fabric, PlayerEngine 1.4.0** JAR patches. A downloadable preview is **not** a checked-in, reproducible source change. Do not infer that the current main branch includes any of the features below.
+
+> **GitHub Issues are disabled in this repository** (issue creation returned HTTP 410 on 2026-11-02). This is the issue register until Issues are enabled; preserve IDs during any migration.
+
+## Status language
+
+- **OBSERVED**: reproduced or reported symptom, without a verified fix.
+- **PROPOSED**: design agreed or suggested; not implemented.
+- **PREVIEW / MOCK**: generated preview artifact and/or test-harness claim; no proof of successful in-game execution.
+- **LIVE / PARTIAL**: logs or user observations confirm a specific sub-feature, not the complete acceptance criteria.
+- **LIVE / PASS**: reproducible in Minecraft with logged evidence and meaningful regression coverage.
+- **SOURCE / VERIFIED**: source committed in the correct target branch, can rebuild and passes tests. Only then consider closure.
+- **INVESTIGATE**: competing causes or inadequate diagnostics; no confirmed bug diagnosis.
+
+## Register
+
+| ID | Priority | Type | Status | Topic |
+|---|---|---|---|---|
+| ELLIE-001 | P0 | Bug / navigation | PREVIEW / MOCK | Jungle vines and occasional leaves stall paths |
+| ELLIE-002 | P0 | Regression / UI | OBSERVED | Teleport-to-Ellie button disappeared |
+| ELLIE-003 | P1 | Feature / autonomy | PROPOSED | Stone-or-better tool preflight |
+| ELLIE-004 | P1 | Feature / navigation | PROPOSED | Bridge decision shared by all movement tasks |
+| ELLIE-005 | P1 | Validation / navigation | PREVIEW / MOCK | Verify short water bridges and rejection reasons |
+| ELLIE-006 | P1 | Resource planning | LIVE / PARTIAL | Local wood choice instead of forced oak |
+| ELLIE-007 | P1 | Craft / travel | PREVIEW / MOCK | Craft local doors instead of far-away salvage |
+| ELLIE-008 | P1 | Autonomy / goals | PROPOSED | Persistent compound goal planner and verification |
+| ELLIE-009 | P1 | Reliability | INVESTIGATE | Door/crafting preflight stalls and interruptions |
+| ELLIE-010 | P2 | Safety / placement | INVESTIGATE | Underground house build-site selection |
+| ELLIE-011 | P2 | Feature / construction | PROPOSED | Visual blueprint picker and saved designs |
+| ELLIE-012 | P2 | Feature / navigation | PROPOSED | Boat strategy for wide lakes |
+| ELLIE-013 | P1 | Observability | PREVIEW / MOCK | Path stall and resource decision instrumentation |
+| ELLIE-014 | P1 | Reliability | INVESTIGATE | Competing survival chains preempt user work |
+| ELLIE-015 | P0 | Build / source | OBSERVED | Source parity with 1.21.1 Fabric preview JARs |
+| ELLIE-016 | P1 | Testing | PROPOSED | Reproducible live and long-run test suite |
+| ELLIE-017 | P1 | Construction | LIVE / PARTIAL | House builder: completion and interruption recovery |
+| ELLIE-018 | P2 | Telemetry / performance | INVESTIGATE | Lag warnings, skin/data-fixer noise |
+| ELLIE-019 | P2 | Permissions | PROPOSED | Optional owner-controlled native-command bridge |
+| ELLIE-020 | P0 | Invariant | KEEP | Preserve retaliation, player control and teleport extension |
+
+### ELLIE-001 — Vines and leaves obstruct navigation
+**Evidence:** User reports Ellie stands in jungle vine clusters until specific vines are broken; leaves occasionally behave similarly. The 2026-11-02 20:01 Observatory snapshot did not include collision/block coordinates. **The owner intentionally set a tree on fire**, explaining later survival-chain interventions and burning death; do not attribute that death to vines.
+
+**Design:** Navigation-level movement watchdog only while a route/target exists; detect persistent lack of progress; inspect next path nodes for vines/leaves; invalidate and retry with a temporary avoided position; optionally perform normal survival block breaking for a safe, verified obstruction. Never cut the vine the bot is hanging from. Bound retries and cooldowns.
+
+**Exit test:** Real jungle reproduction, recovery without manual edits, neither falls nor replan storm, `PATH_STALL` and `PATH_RECOVERY` evidence. **Status:** preview navigation recovery described as mock-tested, not live-verified.
+
+### ELLIE-002 — Missing TP-to-Ellie button
+**Evidence:** User reported the button missing after a recent preview upgrade. The startup log still showed a `Player2NPC-...-TELEPORT-TO-BUDDY-PREVIEW.jar` rendering class.
+
+**Action:** Compare working vs current UI registration, ownership, GUI state and extension compatibility; verify in single-player, rejoin and after respawn. A vanilla `/tp` workaround is not a fix. **Do not rewrite or remove the independent Player2NPC extension without explicit request.**
+
+### ELLIE-003 — Stone tool preflight
+**Proposal:** On substantial build/mining/gathering tasks, check existing equipment. Require a **stone axe or better** for major log work; a **stone pickaxe or better** for stone work; respect ore harvest tiers. Bootstrap a wooden pickaxe only when stone is needed and unavailable. Equip the tool, retain it across jobs, replace on breakage and use bounded fallback. Tiny jobs need no unnecessary provisioning.
+
+**Exit test:** No fist-mining of large wood/stone workloads; no perpetual tool loops; appropriate harvest levels; no downgrade of good gear. Not yet implemented.
+
+### ELLIE-004 — Shared bridge/navigation capability
+**Problem:** Existing bridge logic is called from construction resource collection, not normal follow, travel or exploration.
+
+**Proposal:** Reusable traversal service compares walk, detour, swim, construct short safe bridge, later boat. Reuse completed crossings and respect ownership, terrain, placement support and route costs.
+
+**Exit test:** All movement task families can use the same policy; no unwanted structure modification; no persistent routing loops.
+
+### ELLIE-005 — Verify short water bridging
+**Evidence:** The old bridge preview never emitted a `WATER_BRIDGE_PLAN` in the 2026-11-02 lake test. A subsequent preview claimed short straight crossing scans and alternative shore probing, but actual water placement is **not** verified in-game.
+
+**Action:** Live cases for 4–20-block crossings, path detour around lake, curved banks, sparse materials, unsupported water placement and long-lake rejection. Report `BRIDGE_CANDIDATE`, `BRIDGE_SKIP`, `BRIDGE_PLAN`, `BRIDGE_RESULT`. Never report success before a walkable bridge exists.
+
+### ELLIE-006 — Prefer locally available wood
+**Evidence:** At 19:29:16 the resolver chose oak for a generic house, although a jungle-wood crafting table was made immediately afterward. At 19:58:04 a later preview selected `jungle` and logged **98 wood substitutions** for the same 5×5 type of house.
+
+**Status:** LIVE / PARTIAL: species selection corrected in one later test; **house completion did not occur in that later test**. Robustness, exact local stock estimation, multiple species and source-reproducibility remain unverified.
+
+### ELLIE-007 — Prefer local door crafting to distant item acquisition
+**Evidence:** Early door preflight handed `oak_door` to general acquisition and sent Ellie a long distance; a jungle-wood preview later planned `jungle_door`, built a table and collected matching wood. No later log proves the door was fully crafted and placed.
+
+**Design:** Before salvage, compare nearby material crafting against travel for existing door; craft with available species; cap travel/delay and report `RESOURCE_CHOICE`.
+
+**Exit test:** Start beside jungle trees, produce and place local jungle door without visiting a distant village.
+
+### ELLIE-008 — Persistent, verifiable goals
+**Evidence:** An explicit diamond pickaxe request worked, but equipping a full diamond kit required repeated prompts. User deliberately omitted boots from the individual item list to test whether `full diamond armour` implied all four pieces. Boots were not observed in available session logs.
+
+**Design:** Turn high-level intents into tracked required outputs; acquire/craft/equip/verify every component, including implicit boots; keep goals through subtasks/interruptions, respect cancellation, report incomplete requirements.
+
+**Exit test:** One full-armour order equips helmet/chestplate/leggings/boots and verifies slots without repeated user prompts.
+
+### ELLIE-009 — Crafting preflight stalls
+**Evidence:** One snapshot showed `0/124` while preparing an oak door, and another showed `0/124` while preparing a jungle door, with crafting-table production completed. Interrupted operations may be unfinished rather than failed. Distinguish waiting from deadlock.
+
+**Action:** Trace inventory deltas, recipe planning, tool possession and task hierarchy; add bounded progress test and resume semantics. Confirm door and house complete under survival conditions.
+
+### ELLIE-010 — Build-site validation
+**Evidence:** A house plan was seen at Y=-19, but the user left the world while Ellie fetched materials. **Do not label this a proven failure.**
+
+**Proposal:** Before committing to surface-house intent, assess ground support, ceiling, hazards, cave context, clearance and user-specified placement. Avoid surprising automatic relocation when the user requests an exact site.
+
+### ELLIE-011 — Visual blueprint selection
+**Proposal:** Saved building designs with names, preview, footprints, material estimates, anchor/orientation and reproducible blueprint IDs. Keep original layer-aware physical build behavior.
+
+### ELLIE-012 — Long-water traversal by boat
+**Proposal:** For crossings too wide or complex to bridge, evaluate safe boating with acquisition, embark, steer, disembark and recovery. Do not deploy until a live navigation test proves it.
+
+### ELLIE-013 — Observatory diagnostics
+**Evidence:** Existing HUD accessible with F8/F7 and logs resource/build chain details. New preview claimed `PATH_STALL`/`PATH_RECOVERY`; older bridge candidates rejected silently.
+
+**Requirement:** Include target, position, elapsed stagnant ticks, local obstacle sample, candidate reason, attempted recovery and success/failure. Rate-limit logging. Keep reports free of account IDs, access tokens and full unredacted game prompts.
+
+### ELLIE-014 — Survival-chain preemption
+**Evidence:** At 21:00:46, 21:01:00 and 21:01:17, `Misc World Survival Chain` preempted house crafting and routed toward (-1,49,21); Ellie later burned. **Owner confirmed setting the tree on fire**, confounding attribution.
+
+**Action:** Reproduce without fire or manual intervention; only then assess whether priority/hysteresis is defective. Keep safety overrides but prevent unnecessary repeated task churn.
+
+### ELLIE-015 — Source reproducibility
+**Evidence:** GitHub `gradle.properties` targets Minecraft 1.20.1 and Quilt, whereas downloadable experimental JARs are 1.21.1 Fabric / PlayerEngine 1.4.0 with bytecode patches.
+
+**Action:** Identify exact 1.21.1 source revision, import reviewed changes as readable source, record build instructions and checksum and compile from clean checkout. **Never claim source updated merely because binary previews were issued.**
+
+### ELLIE-016 — Real-world validation
+**Proposal:** Maintain the [Validation Matrix](ELLIE_VALIDATION.md). Require compile, unit and class-reference audits, actual Minecraft traversal/build/crafting tests, repeated-world tests, interrupts and long runs. Tag each result separately; no `PASS` from an unobserved preview alone.
+
+### ELLIE-017 — House construction reliability
+**Evidence:** An earlier log recorded **two completed 5×5 houses** with verified all structure blocks placed. Construction sometimes progressed 123/124 before a final door. Later jungle runs did not yet complete. Existing layer-aware builder, persistent plans and structure verification should not be casually replaced.
+
+**Exit test:** Repeated houses with mixed terrain/species, door/window finalization and recoverable interruptions; avoid regressing those two observed successes.
+
+### ELLIE-018 — Performance and noisy diagnostics
+**Evidence:** Logs include server tick-delay warnings and nonfatal skin/data-fixer messages. These do not independently prove a PlayerEngine performance bug.
+
+**Action:** Isolate path recompute and local-scan overhead, test sustained follow/build at normal and fast tick loads. Separate known benign warnings from actionable exceptions.
+
+### ELLIE-019 — Optional trusted command bridge
+**Background:** AI chat can invoke registered PlayerEngine actions but not arbitrary native Minecraft slash commands. A prior discussion considered an owner-approved allowlisted native-command interface.
+
+**Rule:** Off by default, no blanket operator privileges, no escalation through user-authored text, audit actions. Deferred / low priority.
+
+### ELLIE-020 — Behavioral invariants
+**Do not change without explicit request:** NPC combat retaliation toward attackers (including owner), existing teleport extension, F8/F7 Observatory, layer-aware verified house construction, unrelated NPC features. Ensure these survive JAR replacements and source merges.
+
+## Triage rules
+
+1. Every newly observed behavior gets an ID, evidence date/build, clear **observed vs inferred** separation and priority.
+2. Every proposed idea gets explicit status; discussing it is not implementation.
+3. A generated artifact is recorded as **PREVIEW / MOCK**, not **SOURCE / VERIFIED**. In-game tests are separately evidenced.
+4. Before closing, record source commit, test seed/world, actual result, regressions checked and user observation.
+5. Prefer minimal patches; do not remove unrelated features. Never publish raw logs, authentication information, UUIDs or local paths in this public repo.
+6. If GitHub Issues are enabled, migrate by stable `ELLIE-###` ID and cross-link back here. Do not create duplicate entries.
