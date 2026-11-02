@@ -86,3 +86,15 @@ Public tracking may contain sanitized symptoms and decisions. Never commit raw g
 
 The `WORKBENCH-VINE-PREVIEW` binary hash is `1f0bc6603ff788a6736387cbe08e773fd21c107b99f980d65e0da985e0263b0c`. The code exists in an experimental downloadable ZIP, **not in this repository's 1.20.1/Quilt source**. Live success remains unverified.
 
+
+## Upstream Baritone comparison regression cases
+
+| ID | Case | Required outcome |
+|---|---|---|
+| T-28 | Jungle-log mining with vines below logs (Baritone issue #1773) | Ellie doesn't stall indefinitely; mine/repath around specific obstruction without unsafe vine removal |
+| T-29 | `allowVines=false` vs `true` under the same terrain | Measure exact behavior rather than assume false solves every vine snag |
+| T-30 | Movement timeout followed by repeated identical replan | Detect identical-failure cycle, record path index/position and bounded local avoidance |
+| T-31 | Native movement placement and custom bridge logic with water | Avoid duplicate path owners; verify allowed throwaway blocks and physical support |
+| T-32 | Embedded Automatone path API compatibility | Enumerate supported public interfaces; no IllegalAccessException before shipping |
+
+Source analysis and evidence: [Baritone research](BARITONE_RESEARCH_2026-11-02.md). These scenarios are **not run**.
