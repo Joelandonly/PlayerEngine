@@ -26,6 +26,8 @@ public class HTTPUtils {
         URL url = new URI(baseUrl + endpoint).toURL();
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod(postRequest ? "POST" : "GET");
+        connection.setConnectTimeout(10_000);
+        connection.setReadTimeout(30_000);
         connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         connection.setRequestProperty("Accept", "application/json; charset=utf-8");
         if (extraHeaders != null) {
@@ -40,11 +42,18 @@ public class HTTPUtils {
             try (OutputStream os = connection.getOutputStream()) {
                 byte[] input = requestBody.toString().getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
-            } catch (Throwable v) {
+            } catch (IOException e) {
+                connection.disconnect();
+                throw e;
             }
         }
 
-        JsonObject jsonResponse = getJsonObject(connection);
+        JsonObject jsonResponse;
+        try {
+            jsonResponse = getJsonObject(connection);
+        } finally {
+            connection.disconnect();
+        }
         Map<String, JsonElement> responseMap = new HashMap<>();
 
         for (Entry<String, JsonElement> entry : jsonResponse.entrySet()) {
@@ -58,6 +67,9 @@ public class HTTPUtils {
         int responseCode = connection.getResponseCode();
 
         if (responseCode >= 400) {
+            if (connection.getErrorStream() == null) {
+                throw new HttpApiException("HTTP " + responseCode + ": " + connection.getResponseMessage(), responseCode);
+            }
             BufferedReader errorReader = new BufferedReader(new InputStreamReader(connection.getErrorStream(), StandardCharsets.UTF_8));
             StringBuilder errorResponse = new StringBuilder();
             String line;
