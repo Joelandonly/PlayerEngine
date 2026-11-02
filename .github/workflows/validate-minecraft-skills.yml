@@ -1,0 +1,46 @@
+name: Validate Minecraft development skills
+on:
+  push:
+    branches: ['feature/autonomous-goals']
+    paths:
+      - '.agents/skills/**'
+      - 'AGENTS.md'
+      - 'docs/MINECRAFT_AGENT_SKILLS.md'
+      - 'docs/third_party/LICENSE-minecraft-agent-skills.txt'
+      - 'tools/check-playerengine-abi.sh'
+      - '.github/workflows/validate-minecraft-skills.yml'
+  pull_request:
+    paths:
+      - '.agents/skills/**'
+      - 'AGENTS.md'
+      - 'docs/MINECRAFT_AGENT_SKILLS.md'
+      - 'tools/check-playerengine-abi.sh'
+      - '.github/workflows/validate-minecraft-skills.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify skill structure and shell syntax
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for name in ('minecraft-modding','minecraft-testing','minecraft-ci-release','minecraft-multiloader'):
+              path=Path('.agents/skills')/name/'SKILL.md'
+              content=path.read_text(encoding='utf-8')
+              assert content.startswith('---\n'), f'{path}: frontmatter missing'
+              assert f'name: {name}' in content[:600], f'{path}: skill name mismatched'
+              print('PASS',path)
+          assert Path('docs/third_party/LICENSE-minecraft-agent-skills.txt').is_file()
+          assert Path('tools/check-playerengine-abi.sh').is_file()
+          PY
+          while IFS= read -r -d '' file; do
+            bash -n "$file"
+            echo "PASS syntax: $file"
+          done < <(find .agents/skills -type f -name '*.sh' -print0)
+          bash -n tools/check-playerengine-abi.sh
+          echo 'PASS static ABI helper syntax'
