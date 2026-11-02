@@ -86,3 +86,7 @@ A chronological record of **observations, decisions, preview artifacts and verif
 
 **CONFIRMED BRIDGE BUG:** Latest jungle run emitted `BRIDGE_SKIP: Bridge planner unavailable: IllegalAccessException` (20:31:21 and 20:34:10). This error is **not fixed** in the preview; tracked separately as ELLIE-022.
 
+
+## 2026-11-02 — upstream Baritone 1.21.1 architecture review
+
+**Research only; no executable patch.** Compared [cabaletta/baritone 1.21.1](https://github.com/cabaletta/baritone/tree/1.21.1) and [upstream source/issue findings](docs/BARITONE_RESEARCH_2026-11-02.md) against Ellie's present observations. Native Baritone already has explicit movement timeout (original estimated cost + 100 ticks), route path accessors, supported block-placement bridging and per-target blacklisting. Its `allowVines` advanced option warns that climbing manoeuvres can trap indefinitely, but issue #392 reports stalls even with the option off. The still-open issue #1773 closely reproduces the owner's report of getting stuck under jungle logs with vines until manually removed. The 1.21.1 API offers a possible replacement for bridge-path reflection, but the Automatone-derived runtime needs interface compatibility verification. Do not install standalone Baritone over PlayerEngine. No live tests conducted for this research.
