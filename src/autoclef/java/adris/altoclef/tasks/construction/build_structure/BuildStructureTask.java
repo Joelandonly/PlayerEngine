@@ -28,6 +28,7 @@ import net.minecraft.world.item.Items;
 
 public class BuildStructureTask extends Task {
     private static final int maxNumErrors = 2;
+    private static final int MAX_MATERIAL_BATCH = 64;
     private static final Logger LOGGER = LogManager.getLogger();
 
     private boolean isDone = false;
@@ -133,6 +134,7 @@ public class BuildStructureTask extends Task {
         private boolean finished;
         private boolean building;
         private int restarts;
+        private int materialRefills;
         private int stalledTicks;
         private int gatheringTicks;
         private int previousInventoryCount = -1;
@@ -162,8 +164,9 @@ public class BuildStructureTask extends Task {
                 if (mod.isStopping) throw new IllegalStateException("Construction cancelled");
                 blueprint = new Blueprint(requested);
                 // Fail before the first build if the model specifies materials no NPC can collect.
-                for (Map.Entry<Item, Integer> entry : requiredMaterials().entrySet()) {
-                    if (!TaskCatalogue.taskExists(entry.getKey()))
+                for (Map.Entry<Item, Integer> entry : materialBatchRequirements().entrySet()) {
+                    if (mod.getItemStorage().getItemCount(entry.getKey()) < entry.getValue()
+                            && !TaskCatalogue.taskExists(entry.getKey()))
                         throw new IllegalArgumentException("Cannot obtain " +
                                 BuiltInRegistries.ITEM.getKey(entry.getKey()) +
                                 " using current resource tasks. Generate a simpler survival build.");
@@ -201,6 +204,14 @@ public class BuildStructureTask extends Task {
             return required;
         }
 
+        /** Request a manageable quantity of each material, then replenish after building. */
+        private Map<Item, Integer> materialBatchRequirements() {
+            Map<Item, Integer> batch = new HashMap<>();
+            requiredMaterials().forEach((item, amount) ->
+                    batch.put(item, Math.min(MAX_MATERIAL_BATCH, amount)));
+            return batch;
+        }
+
         private int countMissing() {
             int count = 0;
             for (Map.Entry<BlockPos, BlockState> entry : blueprint.blocks.entrySet()) {
@@ -231,12 +242,23 @@ public class BuildStructureTask extends Task {
                             mod.log("Finished physically constructing the requested building.");
                             return null;
                         }
-                        if (++restarts > 3) {
-                            failBuild("Builder stopped or paused repeatedly with " + stillMissing + " blocks incomplete.");
-                            return null;
+                        // Running out of materials is expected when the structure exceeds inventory space.
+                        Map<Item, Integer> nextBatch = materialBatchRequirements();
+                        boolean needsRefill = !ConstructionMaterialPlanner.missing(
+                                nextBatch, item -> mod.getItemStorage().getItemCount(item)).isEmpty();
+                        if (needsRefill) {
+                            if (++materialRefills > 128) {
+                                failBuild("Exceeded safe material-refill limit with " + stillMissing + " blocks remaining.");
+                                return null;
+                            }
+                            setDebugState("Refilling materials for " + stillMissing + " remaining blocks");
+                        } else {
+                            if (++restarts > 3) {
+                                failBuild("Builder stopped or paused repeatedly with " + stillMissing + " blocks incomplete.");
+                                return null;
+                            }
+                            setDebugState("Replanning remaining " + stillMissing + " blocks");
                         }
-                        // Do not request another blueprint: reuse the original and its completed blocks.
-                        setDebugState("Replanning remaining " + stillMissing + " blocks");
                         return null;
                     }
                     if (++stalledTicks % 20 == 0) {
@@ -259,15 +281,15 @@ public class BuildStructureTask extends Task {
                     return null;
                 }
 
-                Map<Item, Integer> required = requiredMaterials();
+                Map<Item, Integer> required = materialBatchRequirements();
                 if (required.isEmpty() && countMissing() == 0) {
                     finished = true;
                     mod.log("Building already matches the requested blueprint.");
                     return null;
                 }
 
-                // Gather and craft the TOTAL remaining requirement, not merely the
-                // difference, because TaskCatalogue expects a final inventory target.
+                // Keep batch targets within practical inventory space.
+                // TaskCatalogue expects a final inventory target, not the amount short.
                 Map<Item, Integer> missingMaterials = ConstructionMaterialPlanner.missing(
                         required, item -> mod.getItemStorage().getItemCount(item));
                 for (Map.Entry<Item, Integer> entry : missingMaterials.entrySet()) {
