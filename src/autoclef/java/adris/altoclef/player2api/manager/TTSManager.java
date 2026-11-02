@@ -32,11 +32,14 @@ import net.minecraft.server.MinecraftServer;
 public class TTSManager {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final int TTScharactersPerSecond = 25; // approx how fast (characters/sec) does the TTS talk
-    private static boolean TTSLocked = false;
-    private static long estimatedEndTime = 0;
+    private static volatile boolean TTSLocked = false;
+    private static volatile long estimatedEndTime = 0;
+    private static final long REQUEST_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(45);
+    private static final java.util.concurrent.atomic.AtomicLong generation = new java.util.concurrent.atomic.AtomicLong();
     private static final ExecutorService ttsThread = Executors.newSingleThreadExecutor();
 
-    private static void setEstimatedEndTime(String message) {
+    private static void setEstimatedEndTime(String message, long requestGeneration) {
+        if (generation.get() != requestGeneration) return;
         int waitTimeSec = (int) Math.ceil(message.length() / (double) TTScharactersPerSecond) + 1;
 
         LOGGER.info("TTSManager/ waiting time={} (sec) for message={}", waitTimeSec, message);
@@ -48,13 +51,26 @@ public class TTSManager {
     public static void TTS(String message, Character character, Player2APIService player2apiService) {
         TTSLocked = true;
         LOGGER.info("Locking TTS based on msg={}", message);
-        estimatedEndTime = Long.MAX_VALUE;
+        long requestGeneration = generation.incrementAndGet();
+        estimatedEndTime = System.nanoTime() + REQUEST_TIMEOUT_NANOS;
 
-        ttsThread.submit(() -> {
-            player2apiService.textToSpeech(message, character, (_unusedMap) -> {
-                setEstimatedEndTime(message);
+        try {
+            ttsThread.submit(() -> {
+                try {
+                    player2apiService.textToSpeech(message, character, (_unusedMap) -> {
+                        setEstimatedEndTime(message, requestGeneration);
+                    });
+                } catch (Exception e) {
+                    LOGGER.error("TTS request failed", e);
+                    if (generation.get() == requestGeneration) {
+                        estimatedEndTime = System.nanoTime();
+                    }
+                }
             });
-        });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            TTSLocked = false;
+            throw e;
+        }
     }
 
     public static boolean isLocked() {
