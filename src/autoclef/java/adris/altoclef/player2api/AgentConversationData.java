@@ -23,7 +23,7 @@ import net.minecraft.world.entity.LivingEntity;
 
 public class AgentConversationData {
 
-    private static short MAX_EVENT_QUEUE_SIZE = 10;
+    private static final int MAX_EVENT_QUEUE_SIZE = 10;
 
     public static final Logger LOGGER = LogManager.getLogger();
 
@@ -132,8 +132,8 @@ public class AgentConversationData {
         if (isEventDuplicateOfLastMessage(event)) {
             return; // skip
         }
-        if (eventQueue.size() > MAX_EVENT_QUEUE_SIZE) {
-            eventQueue.removeFirst();
+        while (eventQueue.size() >= MAX_EVENT_QUEUE_SIZE) {
+            eventQueue.pollFirst();
         }
         LOGGER.info("queue for UUID={} name={} adding event={} ", getUUID(), getName(), event);
         eventQueue.add(event);
@@ -168,7 +168,7 @@ public class AgentConversationData {
         if (comingFromThisCharacter) {
             return;
         }
-        eventQueue.add(msg);
+        addEventToQueue(msg);
     }
 
     public void onGreeting() {
