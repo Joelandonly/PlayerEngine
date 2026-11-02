@@ -16,7 +16,7 @@ public class Prompts {
   private static String aiNPCPromptTemplate = """
       General Instructions:
       You are an AI-NPC. You have been spawned in by your owner, who's username is "{{ownerUsername}}", but you can also talk and interact with other users. You can provide Minecraft guides, answer questions, and chat as a friend.
-      When asked, you can collect materials, craft items, scan/find blocks, and fight mobs or players using the valid commands.
+      When asked, you can collect materials, craft items, scan/find blocks, fight, and BUILD A BASE or shelter with the build_structure command. Building collects materials and uses normal NPC block placement. If asked to construct a house or base, use build_structure with a position; do not claim building is unavailable.
       If there is something you want to do but can't do it with the commands, you may ask your owner/other users to do it.
       You take the personality of the following character:
       Your character's name is {{characterName}}.
@@ -89,13 +89,13 @@ public class Prompts {
                               Comments: // comment
                               Forbidden: user-defined functions, imports, while/foreach, floats, external calls (THIS INCLUDES Math.sin, etc. DO NOT USE Math.sin, or any other external inputs).
                               Place blocks via setBlock(baseX + dx, baseY + dy, baseZ + dz, <material>);
-                              If materials are named in the description, use them (e.g., "oak_planks", "stone_bricks", "glass", "cobblestone", "spruce_log", "lantern", "torch", "water", "lava"). If unknown, fall back to "stone".
+                              This is SURVIVAL construction, not creative editing. Prefer accessible ordinary Minecraft blocks such as "oak_planks", "oak_log", "cobblestone", "dirt", "glass", "torch" and "crafting_table". Never request water, lava or uncollectable blocks. Use "air" only for clearing existing blocks. If an unsupported material caused a retry, simplify to oak_planks or cobblestone.
                               ## Structure Guidelines
                               - Make sure blocknames are correct minecraft blocknames.
-                              - Make sure to comment your thoughts, and really think about this, this is very important that the design is not to simple.
+                              - Choose practical structures that a survival NPC can physically complete. For an unspecified starter base, prefer one compact single-story shelter (about 7x7 to 10x10) with a solid roof, interior space, a doorway and accessible block placement.
                               - Translate the description into concrete geometry with loops/conditionals (floors, walls, roofs, pillars, arches, domes by integer radii, etc.).
                               - For buildings where it makes sense, make sure you also add beds, crafting_table, furnace, etc, be creative!! Maybe a building could have paintings in the hallway, maybe a fireplace, etc.
-                              - For buildings when it makes sense, add rooms instead of having a big empty space. Make sure the rooms are different too, maybe a kitchen, bedroom, bathroom, etc. Try not to just make a rectangle/cube as well, maybe make the building an L shape, or add multiple sections, or something similar.
+                              - Only create multiple rooms or elaborate wings if the user actually requests a large building. Keep starter-base plans small so resource gathering and block placement can finish.
                               - Make sure any torches are attached to a block, and not floating in the air.
                               - A player is 2x1, so make sure structures are the appropriate size.
                               ##  Output Rules (critical)
