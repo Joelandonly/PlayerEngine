@@ -46,9 +46,9 @@ _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [D
 ### ELLIE-001 — Vines and leaves obstruct navigation
 **Evidence:** User reports Ellie stands in jungle vine clusters until specific vines are broken; leaves occasionally behave similarly. The 2026-11-02 20:01 Observatory snapshot did not include collision/block coordinates. **The owner intentionally set a tree on fire**, explaining later survival-chain interventions and burning death; do not attribute that death to vines.
 
-**Design:** Navigation-level movement watchdog only while a route/target exists; detect persistent lack of progress; inspect next path nodes for vines/leaves; invalidate and retry with a temporary avoided position; optionally perform normal survival block breaking for a safe, verified obstruction. Never cut the vine the bot is hanging from. Bound retries and cooldowns.
+**Approved direction (2026-11-02):** **Do not route Ellie over vines as traversal/climbing infrastructure.** Prefer ordinary terrain and existing solid support-pillar / block-placement movement instead. Mark vines as high-cost / disallowed route nodes in the actual Automatone fork (not just `allowVines=false`, which disables only *advanced* vine moves). When vines obstruct a necessary approach, attempt a safe detour first; only break a verified blocking vine through normal block breaking where doing so cannot drop Ellie, release hazards or destroy a necessary support. Keep leaves handling targeted, not global deforestation. Observe native movement failures/replans and use bounded cooldowns. This replaces the earlier proposal to preserve vine climbing as a route choice; no code is yet changed.
 
-**Exit test:** Real jungle reproduction, recovery without manual edits, neither falls nor replan storm, `PATH_STALL` and `PATH_RECOVERY` evidence. **Status:** preview navigation recovery described as mock-tested, not live-verified.
+**Exit test:** In vine-heavy jungle, Ellie uses valid walking/pillaring instead of climbing vines; never repeatedly targets the same vine traversal; clears only genuinely blocking vines safely; does not regress ordinary vine-free travel, leaves, building or fall safety. Require `PATH_STALL` / `PATH_RECOVERY` and actual in-game evidence. **Status:** earlier navigation preview mock-tested only; new no-vine-traversal policy is **approved, not implemented**.
 
 ### ELLIE-002 — Missing TP-to-Ellie button
 **Evidence:** User reported the button missing after a recent preview upgrade. The startup log still showed a `Player2NPC-...-TELEPORT-TO-BUDDY-PREVIEW.jar` rendering class.
@@ -166,6 +166,9 @@ _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [D
 2026-11-02 code and issue review: [Baritone research and implementation priorities](BARITONE_RESEARCH_2026-11-02.md). **No code changes.** Significant new evidence for ELLIE-001: Baritone [issue #1773](https://github.com/cabaletta/baritone/issues/1773) reports jungle-log mining stalls on hanging vines until manually broken; [issue #392](https://github.com/cabaletta/baritone/issues/392) reports vine stalls with `allowVines=false`. The advanced `allowVines` setting itself warns of indefinite traps and defaults off, so do not claim one setting is the solution.
 
 For ELLIE-022, Baritone 1.21.1 exposes supported typed `IPathingBehavior.getCurrent/getPath` and `IPath.positions` APIs. Investigate whether the embedded Automatone fork has equivalent public access before fixing the existing bridge `IllegalAccessException`. For ELLIE-004/005, Baritone already considers block placement/bridging in individual movement costs, but custom materials/route policy still needs work. For ELLIE-021, Baritone has unreachable-target blacklisting; remembered crafting-table location is not a guarantee of efficient reachability.
+
+
+**Architecture decision:** User explicitly rejected vine climbing as a capability because Ellie can build support pillars. This is a navigation policy, **not** a mandate to erase all vine blocks or disable ladders. Keep native Baritone/Automatone single-source path planning. Related agreed priorities remain ELLIE-022 (bridge reflection fix), ELLIE-004 (shared navigation bridges), ELLIE-021 (crafting-table routing/waypoints), and ELLIE-003 (stone tools).
 
 ## Triage rules
 
