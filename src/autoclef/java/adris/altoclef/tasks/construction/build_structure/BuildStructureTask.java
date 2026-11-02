@@ -13,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 import com.mojang.datafixers.util.Either;
 
 import adris.altoclef.AltoClefController;
+import adris.altoclef.TaskCatalogue;
 import adris.altoclef.player2api.ConversationHistory;
 import adris.altoclef.player2api.LLMCompleter;
 import adris.altoclef.player2api.Player2APIService;
@@ -21,10 +22,13 @@ import adris.altoclef.tasksystem.Task;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Items;
 
 public class BuildStructureTask extends Task {
     private static final int maxNumErrors = 2;
-    private static Logger LOGGER = LogManager.getLogger();
+    private static final Logger LOGGER = LogManager.getLogger();
 
     private boolean isDone = false;
     private String description;
@@ -116,13 +120,24 @@ public class BuildStructureTask extends Task {
         }
     }
 
+    /**
+     * Builds a structure using the same inventory, crafting, movement and placement
+     * mechanics as the NPC's normal tasks. Never places blocks directly.
+     */
     private class BuildFromCode extends Task {
         final String code;
-        private boolean started;
-        private boolean finished;
-        private boolean builderWasActive;
-        private String error;
         private Blueprint blueprint;
+        private String error;
+        private boolean finished;
+        private boolean building;
+        private int restarts;
+        private int stalledTicks;
+        private int gatheringTicks;
+        private int previousMissing = Integer.MAX_VALUE;
+        private int previousInventoryCount = -1;
+        private int observedMissing = Integer.MAX_VALUE;
+        private Item collectingItem;
+        private Task collectingTask;
 
         BuildFromCode(String code) { this.code = code; }
 
@@ -131,50 +146,192 @@ public class BuildStructureTask extends Task {
         }
 
         @Override protected void onStart() {
+            if (blueprint != null || finished) return;
             try {
-                // Parse on the game thread; only the builder modifies the world.
-                // Limiting output prevents enormous AI generated structures.
                 Map<BlockPos, BlockState> requested = new HashMap<>();
                 StructureFromCode.runCode(code, instruction -> {
-                    if (requested.size() >= 4096)
-                        throw new IllegalArgumentException("Building exceeds 4096 blocks");
+                    BlockPos pos = new BlockPos(instruction.x, instruction.y, instruction.z);
+                    if (!requested.containsKey(pos) && requested.size() >= 4096)
+                        throw new IllegalArgumentException("Blueprint exceeds 4096 unique blocks");
                     ResourceLocation id = new ResourceLocation("minecraft", instruction.blockName);
                     if (!BuiltInRegistries.BLOCK.containsKey(id))
-                        throw new IllegalArgumentException("Unknown block: " + id);
-                    requested.put(new BlockPos(instruction.x, instruction.y, instruction.z),
-                            BuiltInRegistries.BLOCK.get(id).defaultBlockState());
+                        throw new IllegalArgumentException("Unknown block in generated plan: " + id);
+                    requested.put(pos, BuiltInRegistries.BLOCK.get(id).defaultBlockState());
                 }, mod);
+                if (mod.isStopping) throw new IllegalStateException("Construction cancelled");
                 blueprint = new Blueprint(requested);
-                mod.getBaritone().getBuilderProcess().build("AI structure", blueprint, blueprint.origin);
-                started = true;
-                builderWasActive = true;
-                LOGGER.info("Started survival construction of {} planned blocks", requested.size());
+                // Fail before the first build if the model specifies materials no NPC can collect.
+                for (Map.Entry<Item, Integer> entry : requiredMaterials().entrySet()) {
+                    if (!TaskCatalogue.taskExists(entry.getKey()))
+                        throw new IllegalArgumentException("Cannot obtain " +
+                                BuiltInRegistries.ITEM.getKey(entry.getKey()) +
+                                " using current resource tasks. Generate a simpler survival build.");
+                }
+                LOGGER.info("Planning physical construction of {} blocks at {}", requested.size(), blueprint.origin);
             } catch (Exception e) {
-                error = e.getMessage() == null ? e.toString() : e.getMessage();
-                LOGGER.warn("Failed to start AI structure: {}", error);
-                finished = true;
+                failBuild("Cannot prepare building: " + e.getMessage());
+            }
+        }
+
+        private void failBuild(String reason) {
+            error = reason;
+            finished = true;
+            if (building) {
+                mod.getBaritone().getBuilderProcess().onLostControl();
+                building = false;
+            }
+            LOGGER.warn("AI construction failed: {}", reason);
+            mod.log("AI construction failed: " + reason);
+        }
+
+        /** Only count desired blocks which are not yet in the world. */
+        private Map<Item, Integer> requiredMaterials() {
+            Map<Item, Integer> required = new HashMap<>();
+            for (Map.Entry<BlockPos, BlockState> entry : blueprint.blocks.entrySet()) {
+                BlockPos position = blueprint.origin.offset(entry.getKey());
+                BlockState desired = entry.getValue();
+                if (mod.getWorld().getBlockState(position).getBlock() == desired.getBlock()) continue;
+                if (desired.isAir()) continue;
+                Item item = desired.getBlock().asItem();
+                if (item == Items.AIR || !(item instanceof BlockItem))
+                    throw new IllegalArgumentException("Cannot physically place " + desired.getBlock());
+                required.merge(item, 1, Integer::sum);
+            }
+            return required;
+        }
+
+        private int countMissing() {
+            int count = 0;
+            for (Map.Entry<BlockPos, BlockState> entry : blueprint.blocks.entrySet()) {
+                BlockPos position = blueprint.origin.offset(entry.getKey());
+                if (mod.getWorld().getBlockState(position).getBlock() != entry.getValue().getBlock()) count++;
+            }
+            return count;
+        }
+
+        private void stopBuilder() {
+            if (building) {
+                mod.getBaritone().getBuilderProcess().onLostControl();
+                building = false;
             }
         }
 
         @Override protected Task onTick() {
-            if (started && !mod.getBaritone().getBuilderProcess().isActive()) {
-                int missing = 0;
-                for (Map.Entry<BlockPos, BlockState> entry : blueprint.blocks.entrySet()) {
-                    BlockPos pos = blueprint.origin.offset(entry.getKey());
-                    if (!mod.getWorld().getBlockState(pos).equals(entry.getValue())) missing++;
+            if (finished || blueprint == null) return null;
+            try {
+                if (building) {
+                    var builder = mod.getBaritone().getBuilderProcess();
+                    if (builder.isPaused() || !builder.isActive()) {
+                        stopBuilder();
+                        int stillMissing = countMissing();
+                        if (stillMissing == 0) {
+                            finished = true;
+                            LOGGER.info("AI survival structure completed successfully");
+                            mod.log("Finished physically constructing the requested building.");
+                            return null;
+                        }
+                        if (++restarts > 3) {
+                            failBuild("Builder stopped or paused repeatedly with " + stillMissing + " blocks incomplete.");
+                            return null;
+                        }
+                        // Do not request another blueprint: reuse the original and its completed blocks.
+                        setDebugState("Replanning remaining " + stillMissing + " blocks");
+                        return null;
+                    }
+                    if (++stalledTicks % 20 == 0) {
+                        int missing = countMissing();
+                        if (missing < observedMissing) {
+                            observedMissing = missing;
+                            stalledTicks = 0;
+                        }
+                        if (missing == 0) {
+                            stopBuilder();
+                            finished = true;
+                            mod.log("Finished physically constructing the requested building.");
+                            return null;
+                        }
+                        if (stalledTicks > 2400) {
+                            stopBuilder();
+                            failBuild("No construction progress for 120 seconds of game ticks.");
+                        }
+                    }
+                    return null;
                 }
-                if (missing > 0) error = "Construction stopped with " + missing + " incomplete or mismatched blocks; materials or reachable positions may be missing";
-                finished = true;
+
+                Map<Item, Integer> required = requiredMaterials();
+                if (required.isEmpty() && countMissing() == 0) {
+                    finished = true;
+                    mod.log("Building already matches the requested blueprint.");
+                    return null;
+                }
+
+                // Gather and craft the TOTAL remaining requirement, not merely the
+                // difference, because TaskCatalogue expects a final inventory target.
+                for (Map.Entry<Item, Integer> entry : required.entrySet()) {
+                    Item item = entry.getKey();
+                    int totalNeeded = entry.getValue();
+                    int owned = mod.getItemStorage().getItemCount(item);
+                    if (owned >= totalNeeded) continue;
+                    if (!TaskCatalogue.taskExists(item)) {
+                        failBuild("No gathering or crafting task exists for " + BuiltInRegistries.ITEM.getKey(item));
+                        return null;
+                    }
+                    if (!item.equals(collectingItem) || collectingTask == null) {
+                        collectingItem = item;
+                        collectingTask = TaskCatalogue.getItemTask(item, totalNeeded);
+                        gatheringTicks = 0;
+                        previousInventoryCount = owned;
+                    }
+                    if (collectingTask == null) {
+                        failBuild("Cannot create resource task for " + BuiltInRegistries.ITEM.getKey(item));
+                        return null;
+                    }
+                    if (owned > previousInventoryCount) {
+                        previousInventoryCount = owned;
+                        gatheringTicks = 0;
+                    }
+                    if (++gatheringTicks > 3600) {
+                        failBuild("Timed out gathering " + BuiltInRegistries.ITEM.getKey(item) + ": " + owned + "/" + totalNeeded);
+                        return null;
+                    }
+                    setDebugState("Gathering " + BuiltInRegistries.ITEM.getKey(item) + " " + owned + "/" + totalNeeded);
+                    return collectingTask;
+                }
+
+                collectingTask = null;
+                collectingItem = null;
+                gatheringTicks = 0;
+                int missing = countMissing();
+                if (missing == 0) {
+                    finished = true;
+                    mod.log("Finished physically constructing the requested building.");
+                    return null;
+                }
+                if (restarts > 3) {
+                    failBuild("Construction could not finish remaining " + missing + " blocks");
+                    return null;
+                }
+                mod.getBaritone().getBuilderProcess().build("AI survival structure", blueprint, blueprint.origin);
+                building = true;
+                observedMissing = missing;
+                stalledTicks = 0;
+                setDebugState("Physically placing " + missing + " blueprint blocks");
+                return null;
+            } catch (Exception e) {
+                failBuild("Construction error: " + e.getMessage());
+                return null;
             }
-            return null;
         }
 
         @Override protected void onStop(Task next) {
-            if (started && !finished) mod.getBaritone().getBuilderProcess().pause();
+            // Never leave a background construction process building after cancellation.
+            stopBuilder();
         }
 
         @Override public boolean isFinished() { return finished; }
-        @Override protected String toDebugString() { return "Building AI structure via Automatone"; }
+        @Override protected String toDebugString() {
+            return "Constructing survival building" + (error == null ? "" : " (failed: " + error + ")");
+        }
     }
 
     public BuildStructureTask(String description, AltoClefController mod) {
@@ -191,7 +348,7 @@ public class BuildStructureTask extends Task {
 
     @Override
     protected void onStart() {
-        actuallyRunningTask = new RequestLLMCode();
+        if (actuallyRunningTask == null && !isDone) actuallyRunningTask = new RequestLLMCode();
     }
 
     @Override
