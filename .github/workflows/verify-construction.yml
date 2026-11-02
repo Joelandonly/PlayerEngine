@@ -14,6 +14,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Run standalone construction planner regression tests
+        run: |
+          mkdir -p build/isolated-tests
+          javac -d build/isolated-tests src/autoclef/java/adris/altoclef/tasks/construction/build_structure/ConstructionMaterialPlanner.java src/test/java/adris/altoclef/tasks/construction/build_structure/ConstructionMaterialPlannerTest.java
+          java -cp build/isolated-tests adris.altoclef.tasks.construction.build_structure.ConstructionMaterialPlannerTest
       - name: Compile mod and run tests
         run: |
           chmod +x gradlew
