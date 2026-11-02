@@ -18,6 +18,11 @@ sourceSets {
         compileClasspath += main.compileClasspath + main.runtimeClasspath + main.output
         runtimeClasspath += main.compileClasspath + main.runtimeClasspath + main.output
     }
+    // Construction planner regression tests need classes in the custom source set.
+    test {
+        compileClasspath += sourceSets.autoclef.output
+        runtimeClasspath += sourceSets.autoclef.output
+    }
 }
 
 repositories {
