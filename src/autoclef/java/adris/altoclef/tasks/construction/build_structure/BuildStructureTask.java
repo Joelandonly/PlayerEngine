@@ -1,8 +1,11 @@
 package adris.altoclef.tasks.construction.build_structure;
 
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import baritone.api.schematic.ISchematic;
+import net.minecraft.world.level.block.state.BlockState;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -75,68 +78,98 @@ public class BuildStructureTask extends Task {
         }
     }
 
+    // A sparse blueprint preserves all blocks outside the LLM's explicit setBlock commands.
+    // Construction itself is performed by Automatone using the NPC's inventory and movement.
+    private static final class Blueprint implements ISchematic {
+        final BlockPos origin;
+        final int width, height, length;
+        final Map<BlockPos, BlockState> blocks;
+
+        Blueprint(Map<BlockPos, BlockState> worldBlocks) {
+            if (worldBlocks.isEmpty()) throw new IllegalArgumentException("Generated structure contains no blocks");
+            int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+            int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+            for (BlockPos pos : worldBlocks.keySet()) {
+                minX = Math.min(minX, pos.getX()); minY = Math.min(minY, pos.getY()); minZ = Math.min(minZ, pos.getZ());
+                maxX = Math.max(maxX, pos.getX()); maxY = Math.max(maxY, pos.getY()); maxZ = Math.max(maxZ, pos.getZ());
+            }
+            this.origin = new BlockPos(minX, minY, minZ);
+            this.width = maxX - minX + 1;
+            this.height = maxY - minY + 1;
+            this.length = maxZ - minZ + 1;
+            if (width > 64 || height > 48 || length > 64 || (long) width * height * length > 131072L)
+                throw new IllegalArgumentException("Generated building exceeds safe schematic dimensions");
+            this.blocks = new HashMap<>();
+            for (Map.Entry<BlockPos, BlockState> entry : worldBlocks.entrySet()) {
+                BlockPos pos = entry.getKey();
+                this.blocks.put(new BlockPos(pos.getX() - minX, pos.getY() - minY, pos.getZ() - minZ), entry.getValue());
+            }
+        }
+
+        @Override public int widthX() { return width; }
+        @Override public int heightY() { return height; }
+        @Override public int lengthZ() { return length; }
+        @Override public boolean inSchematic(int x, int y, int z, BlockState current) {
+            return blocks.containsKey(new BlockPos(x, y, z));
+        }
+        @Override public BlockState desiredState(int x, int y, int z, BlockState current, List<BlockState> approximate) {
+            return blocks.getOrDefault(new BlockPos(x, y, z), current);
+        }
+    }
+
     private class BuildFromCode extends Task {
-        String code;
+        final String code;
+        private boolean started;
+        private boolean finished;
+        private boolean builderWasActive;
+        private String error;
 
-        private ExecutorService buildThread;
-        // outer Option: is done, inner option: is error
-        Optional<Optional<String>> result = Optional.empty();
+        BuildFromCode(String code) { this.code = code; }
 
-        public BuildFromCode(String code) {
-            this.code = code;
-            this.buildThread = Executors.newSingleThreadExecutor();
-            buildThread.submit(() -> {
-                StructureFromCode.buildStructureFromCode(code, setBlockData -> {
-                    LOGGER.info("setBlock(x={}, y={}, z={}, blockName={})",
-                            setBlockData.x, setBlockData.y, setBlockData.z, setBlockData.blockName);
-                    ResourceLocation id = new ResourceLocation("minecraft", setBlockData.blockName);
-                    Block block = BuiltInRegistries.BLOCK.get(id);
-                    // 3 means send to clients (2) and notify neighbors/update block states (1).
-                    // maybe do 2 if you dont want
-                    // redstone/etc updating/torches falling probably
-                    mod.getWorld().setBlock(new BlockPos(setBlockData.x, setBlockData.y, setBlockData.z),
-                            block.defaultBlockState(), 3);
-                }, (errStr) -> {
-                    result = Optional.of(Optional.of(errStr));
-                }, () -> {
-                    result = Optional.of(Optional.empty());
+        @Override protected boolean isEqual(Task other) {
+            return other instanceof BuildFromCode && ((BuildFromCode) other).code.equals(code);
+        }
+
+        @Override protected void onStart() {
+            try {
+                // Parse on the game thread; only the builder modifies the world.
+                // Limiting output prevents enormous AI generated structures.
+                Map<BlockPos, BlockState> requested = new HashMap<>();
+                StructureFromCode.runCode(code, instruction -> {
+                    if (requested.size() >= 4096)
+                        throw new IllegalArgumentException("Building exceeds 4096 blocks");
+                    ResourceLocation id = new ResourceLocation("minecraft", instruction.blockName);
+                    if (!BuiltInRegistries.BLOCK.containsKey(id))
+                        throw new IllegalArgumentException("Unknown block: " + id);
+                    requested.put(new BlockPos(instruction.x, instruction.y, instruction.z),
+                            BuiltInRegistries.BLOCK.get(id).defaultBlockState());
                 }, mod);
-            });
+                Blueprint blueprint = new Blueprint(requested);
+                mod.getBaritone().getBuilderProcess().build("AI structure", blueprint, blueprint.origin);
+                started = true;
+                builderWasActive = true;
+                LOGGER.info("Started survival construction of {} planned blocks", requested.size());
+            } catch (Exception e) {
+                error = e.getMessage() == null ? e.toString() : e.getMessage();
+                LOGGER.warn("Failed to start AI structure: {}", error);
+                finished = true;
+            }
         }
 
-        @Override
-        protected boolean isEqual(Task var1) {
-            // TODO Auto-generated method stub
-            return false;
-        }
-
-        @Override
-        protected void onStart() {
-            // TODO Auto-generated method stub
-
-        }
-
-        @Override
-        protected void onStop(Task var1) {
-            // TODO Auto-generated method stub
-
-        }
-
-        @Override
-        protected Task onTick() {
-            // TODO Auto-generated method stub
+        @Override protected Task onTick() {
+            if (started && !mod.getBaritone().getBuilderProcess().isActive()) {
+                // Inactive does not necessarily imply every placement succeeded.
+                finished = true;
+            }
             return null;
         }
 
-        @Override
-        public boolean isFinished() {
-            return result.isPresent();
+        @Override protected void onStop(Task next) {
+            if (started && !finished) mod.getBaritone().getBuilderProcess().pause();
         }
 
-        @Override
-        protected String toDebugString() {
-            return String.format("Currently building the structure from description (%s)", description);
-        }
+        @Override public boolean isFinished() { return finished; }
+        @Override protected String toDebugString() { return "Building AI structure via Automatone"; }
     }
 
     public BuildStructureTask(String description, AltoClefController mod) {
@@ -191,7 +224,7 @@ public class BuildStructureTask extends Task {
             return actuallyRunningTask;
         }
         if (actuallyRunningTask instanceof BuildFromCode) {
-            Optional<String> result = ((BuildFromCode) actuallyRunningTask).result.get();
+            Optional<String> result = Optional.ofNullable(((BuildFromCode) actuallyRunningTask).error);
             // set actually running task in both cases
             result.ifPresentOrElse(
                     errStr -> {
@@ -223,7 +256,7 @@ public class BuildStructureTask extends Task {
         if (!(other instanceof BuildStructureTask))
             return false;
         BuildStructureTask o = (BuildStructureTask) other;
-        return o.description == this.description;
+        return o.description.equals(this.description);
     }
 
     @Override
