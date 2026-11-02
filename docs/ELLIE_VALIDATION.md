@@ -25,9 +25,9 @@ Experimental runtime: Minecraft 1.21.1, Fabric, PlayerEngine 1.4.0 and the exist
 | T-04 | Short straight water crossing | Check detour vs building; construct supported bridge and traverse | No confirmed live bridge |
 | T-05 | Detour around lake | Candidate scan considers crossing where safe; no futile placement | Mock candidate behavior reported only |
 | T-06 | Wide/irregular lake or unsafe shore | Reject with reason, detour/swim; do not build unsafe bridge | Live untested |
-| T-07 | Vines obstruct route, no fire | Stall logged, controlled replan, eventually moves | Mock recovery reported only |
+| T-07 | Vines obstruct route, no fire | Never select vine climbing; bypass via terrain or safe support pillars, bounded replan; only safe obstruction clearing | New policy approved; not implemented or live-tested |
 | T-08 | Leaves obstruct route | Recover without perpetual oscillation or clearing entire tree | Not live tested |
-| T-09 | Ellie actively climbing a supporting vine | Never destroy support and cause a fall | Mock safety reported only |
+| T-09 | Ellie already climbing a supporting vine (legacy state) | Exit safely to ground/solid footing, never break supporting vine first | Mock safety reported only; new no-vine policy untested |
 | T-10 | House construction interrupted by **real** survival hazard | Suspends safely, resumes progress when safe, does not lose blueprint | Interruptions observed; user-created fire confounded earlier run |
 | T-11 | Building request while underground Y=-19 | Explicit site selection/clear feedback; don't silently infer failure | Incomplete snapshot only |
 | T-12 | Large wood gathering, no axe | Preflight obtains/uses stone-or-better axe if affordable | Feature not implemented |
@@ -91,10 +91,24 @@ The `WORKBENCH-VINE-PREVIEW` binary hash is `1f0bc6603ff788a6736387cbe08e773fd21
 
 | ID | Case | Required outcome |
 |---|---|---|
-| T-28 | Jungle-log mining with vines below logs (Baritone issue #1773) | Ellie doesn't stall indefinitely; mine/repath around specific obstruction without unsafe vine removal |
-| T-29 | `allowVines=false` vs `true` under the same terrain | Measure exact behavior rather than assume false solves every vine snag |
+| T-28 | Jungle-log mining with vines below logs (Baritone issue #1773) | No vine-as-route decision; safely break truly blocking vines or detour using solid supports, no replan loop |
+| T-29 | `allowVines=false` vs `true` in embedded fork | Verify full no-vine movement policy takes effect independently of advanced-vine toggle, without disabling ladders or solid support |
 | T-30 | Movement timeout followed by repeated identical replan | Detect identical-failure cycle, record path index/position and bounded local avoidance |
 | T-31 | Native movement placement and custom bridge logic with water | Avoid duplicate path owners; verify allowed throwaway blocks and physical support |
 | T-32 | Embedded Automatone path API compatibility | Enumerate supported public interfaces; no IllegalAccessException before shipping |
 
 Source analysis and evidence: [Baritone research](BARITONE_RESEARCH_2026-11-02.md). These scenarios are **not run**.
+
+## Approved vine traversal policy tests (2026-11-02)
+
+User decision: **vines are not a navigation asset**. Ellie should favor walking or building stable support pillars; blocking vines can be cleared *only* when safe. Baritone's `allowVines=false` alone does not guarantee this. This is **not implemented** in the existing preview.
+
+| ID | Scenario | Required result |
+|---|---|---|
+| T-33 | Dense jungle vines with parallel solid/pillar route | Never choose vine climbing; reach target via terrain or place safe supports |
+| T-34 | Vines blocking a mined jungle log, Ellie standing on solid ground | Replan around or normally break only the necessary vine(s), without looping |
+| T-35 | Ellie already attached to a vine when navigation policy activates | Move to safe support before any supporting vine is broken |
+| T-36 | Ladders and other climbables encountered outside jungle vines | No accidental blanket ban of functional ladder navigation |
+| T-37 | No nearby pillar materials, dangerous drop or insufficient support | Reject unsafe move; report blockage instead of falling or destroying terrain blindly |
+
+Do not mark done from compilation/mock tests alone. Existing bridging, crafting-table reachability and stone-tool preflight priorities remain unchanged.
