@@ -62,3 +62,9 @@ This is a cleaner way to inspect route/candidate crossings and support Observato
 - Do not touch combat retaliation, independent teleport extension or the existing working house builder. Real Minecraft success is mandatory before marking fixed.
 
 **Conclusion:** Use the embedded navigation engine's path and failure machinery as the *single source of truth*. Ellie-specific additions should manage high-level goals, resources, verified waypoints and bounded recovery, not duplicate Baritone's A* at every layer.
+
+## User architecture decision after review — supersedes vine-climbing suggestions
+
+**Approved 2026-11-02; no executable changes:** Ellie does **not** need vine climbing as a movement capability. She already has solid support-pillar placement. When implementing ELLIE-001, bias navigation toward stable terrain and controlled solid supports, and prevent vine traversal from being selected in the embedded Automatone fork. This must be implemented deeper than simply setting `allowVines=false`: upstream source defines that switch specifically for *advanced* vine manoeuvres and reports exist of stalls even with it off. When vines block the actual required route/mining target, bypass them or break only the necessary vines safely. Do not destroy a vine while hanging from it, and do not globally disable ladders or other legitimate support mechanics.
+
+The upstream findings above remain source research. Their earlier suggestions about maintaining some vine-climbing manoeuvres are **superseded by the user's direction**. Keep planned investigation of supported route APIs, native bridge placement, table target blacklisting and stone-tool preflight. No new JAR shipped or Minecraft test run as part of the decision.
