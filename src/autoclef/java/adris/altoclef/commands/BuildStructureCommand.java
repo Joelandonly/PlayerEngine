@@ -6,6 +6,8 @@ import adris.altoclef.commandsystem.ArgParser;
 import adris.altoclef.commandsystem.Command;
 import adris.altoclef.commandsystem.CommandException;
 import adris.altoclef.tasks.construction.build_structure.BuildStructureTask;
+import adris.altoclef.player2api.Event;
+import adris.altoclef.player2api.manager.ConversationManager;
 
 public class BuildStructureCommand extends Command {
     public BuildStructureCommand() throws CommandException {
@@ -21,7 +23,13 @@ public class BuildStructureCommand extends Command {
     @Override
     protected void call(AltoClefController mod, ArgParser parser) throws CommandException {
         String description = parser.get(String.class);
-        mod.runUserTask(new BuildStructureTask(description, mod), () -> {
+        BuildStructureTask task = new BuildStructureTask(description, mod);
+        mod.runUserTask(task, () -> {
+            if (!task.succeeded()) {
+                ConversationManager.getOrCreateEventQueueData(mod).onEvent(
+                        new Event.InfoMessage("Construction FAILED: " + task.getFailureReason()
+                                + ". Do not tell the owner the building was completed."));
+            }
             this.finish();
         });
     }
