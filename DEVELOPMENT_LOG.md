@@ -98,3 +98,9 @@ A chronological record of **observations, decisions, preview artifacts and verif
 **Other earlier research decisions accepted:** Investigate the existing Baritone path interface as replacement for bridge reflection; use native placement and movement cost first; keep EllieGPS crafting-table memory with reachability checks, and continue stone tool preflight. The upstream research remains recorded for context but its earlier recommendation to preserve vine climbing is now superseded.
 
 **Status:** Documentation/decision committed to GitHub. No new JAR or executable source changes; Minecraft regression testing pending. Tracking: ELLIE-001, ELLIE-004, ELLIE-021, ELLIE-022, ELLIE-003.
+
+## 2026-11-02 — Backlog Batch 1 experimental implementation
+
+**PREVIEW / MOCK, not live verified.** Implemented the no-vine-route decision and one concrete bridge reflection defect in the latest 1.21.1 Fabric preview JAR. Native route settings now disallow `Blocks.VINE`, and two movement-cost hooks stop using vines as walkable/pillar support; ordinary ladders and existing support-pillaring remain. Patched `WaterBridgeCoordinator` reflective access for non-public world classes. Existing User Task builder, EllieGPS workbench memory, Observatory and combat/retaliation logic preserved; Player2NPC unchanged.
+
+**Validation:** Java compile, navigation mock, bridge reflection red/green test, ABI and internal-class reference audit passed (1,780 classes, 0 unresolved). **Not run in Minecraft**, so there is no evidence yet of a completed crossing or a resolved jungle path in the real world. Filename `PlayerEngine-Fabric-1.21.1-1.4.0-BACKLOG-BATCH1-PREVIEW.jar`; SHA-256 `f02aa1bacd2e462f5f4775608f03184e0722853b84a9671757293e414f102d25`. ZIP bundle provided in chat with source helpers/tests. Code is **not** in the GitHub main source tree, still 1.20.1 Quilt. Issue register: ELLIE-001, ELLIE-022.
