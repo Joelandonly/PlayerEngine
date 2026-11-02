@@ -73,3 +73,16 @@ A chronological record of **observations, decisions, preview artifacts and verif
 - **Change:** code paths or artifacts actually modified
 - **Tests:** mock / compile / JAR audit / Minecraft live / long-run, separately
 - **Status and next action:** never infer success from a lack of error logs
+
+## 2026-11-02, crafting-table detour and vine-recovery refinement
+
+**USER REPORT:** Ellie travelled down into a trial chamber to use a crafting table instead of using a convenient local workbench. A separate Observatory history documents workbench task targets near (-185,63,-248) and (-181,14,-247); that log does not establish which table was in the trial chamber.
+
+**SOURCE/BINARY AUDIT:** Current binary has `EllieGPSStore` for persistent per-world waypoint records, but `CraftingTableLocator` uses a block scanner and defaults to a **48-block reuse radius**. The selector's geometric proximity can be misleading in caves. The previous navigation watchdog also exempted tasks described as `Destroying block`, hiding stalls while walking to a block.
+
+**PREVIEW, NOT LIVE:** Issued `PlayerEngine-Ellie-Workbench-Memory-Vine-Recovery-1.21.1-PREVIEW.zip`, containing a patched PlayerEngine JAR (SHA-256 `1f0bc6603ff788a6736387cbe08e773fd21c107b99f980d65e0da985e0263b0c`). Verified tables encountered within interaction reach are saved in EllieGPS, including ones Ellie places and then uses, without claiming proven bot origin. Subsequent table selection checks saved locations and scans, rejecting candidates beyond 16 horizontal/5 vertical blocks or a smaller configured radius. Existing vine recovery now monitors active travel toward a mining target, with longer tolerance when the task reports mining.
+
+**TESTS:** Java compile; geometric policy cases; mocked EllieGPS persistence/reuse/stale-block cases; navigation recovery mock suite; binary CRC and class-reference audit (1,779 classes, zero unresolved internal references). **Real Minecraft behavior and persistence across server restarts not tested.** No code changes in GitHub source tree; binary-only preview. See ELLIE-001, ELLIE-021, ELLIE-015.
+
+**CONFIRMED BRIDGE BUG:** Latest jungle run emitted `BRIDGE_SKIP: Bridge planner unavailable: IllegalAccessException` (20:31:21 and 20:34:10). This error is **not fixed** in the preview; tracked separately as ELLIE-022.
+
