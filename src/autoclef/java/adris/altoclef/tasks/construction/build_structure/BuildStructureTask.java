@@ -21,7 +21,6 @@ import adris.altoclef.tasksystem.Task;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.block.Block;
 
 public class BuildStructureTask extends Task {
     private static final int maxNumErrors = 2;
@@ -123,6 +122,7 @@ public class BuildStructureTask extends Task {
         private boolean finished;
         private boolean builderWasActive;
         private String error;
+        private Blueprint blueprint;
 
         BuildFromCode(String code) { this.code = code; }
 
@@ -144,7 +144,7 @@ public class BuildStructureTask extends Task {
                     requested.put(new BlockPos(instruction.x, instruction.y, instruction.z),
                             BuiltInRegistries.BLOCK.get(id).defaultBlockState());
                 }, mod);
-                Blueprint blueprint = new Blueprint(requested);
+                blueprint = new Blueprint(requested);
                 mod.getBaritone().getBuilderProcess().build("AI structure", blueprint, blueprint.origin);
                 started = true;
                 builderWasActive = true;
@@ -158,7 +158,12 @@ public class BuildStructureTask extends Task {
 
         @Override protected Task onTick() {
             if (started && !mod.getBaritone().getBuilderProcess().isActive()) {
-                // Inactive does not necessarily imply every placement succeeded.
+                int missing = 0;
+                for (Map.Entry<BlockPos, BlockState> entry : blueprint.blocks.entrySet()) {
+                    BlockPos pos = blueprint.origin.offset(entry.getKey());
+                    if (!mod.getWorld().getBlockState(pos).equals(entry.getValue())) missing++;
+                }
+                if (missing > 0) error = "Construction stopped with " + missing + " incomplete or mismatched blocks; materials or reachable positions may be missing";
                 finished = true;
             }
             return null;
