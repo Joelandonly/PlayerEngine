@@ -233,6 +233,7 @@ public class BuildStructureTask extends Task {
             // set actually running task in both cases
             result.ifPresentOrElse(
                     errStr -> {
+                        ++numErrors;
                         String code = ((BuildFromCode) actuallyRunningTask).code;
                         history.addAssistantMessage(code, service);
                         String tryAgainMessage = String.format(
