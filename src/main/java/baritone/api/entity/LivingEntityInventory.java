@@ -377,9 +377,7 @@ public class LivingEntityInventory implements Container, Nameable {
    }
 
    public void readNbt(ListTag nbtList) {
-      this.main.clear();
-      this.armor.clear();
-      this.offHand.clear();
+      this.clearContent();
 
       for (int i = 0; i < nbtList.size(); i++) {
          CompoundTag nbtCompound = nbtList.getCompound(i);
@@ -520,7 +518,9 @@ public class LivingEntityInventory implements Container, Nameable {
 
    public void clearContent() {
       for (List<ItemStack> list : this.combinedInventory) {
-         list.clear();
+         for (int i = 0; i < list.size(); i++) {
+            list.set(i, ItemStack.EMPTY);
+         }
       }
    }
 
