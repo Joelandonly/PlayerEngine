@@ -43,7 +43,7 @@ public class BuildStructureTask extends Task {
 
     private class RequestLLMCode extends Task {
         // outer option: isDone, either: (left=code (success), right=errStr)
-        Optional<Either<String, String>> llmResult = Optional.empty();
+        volatile Optional<Either<String, String>> llmResult = Optional.empty();
 
         @Override
         protected boolean isEqual(Task var1) {
