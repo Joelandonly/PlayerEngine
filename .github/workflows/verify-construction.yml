@@ -1,0 +1,26 @@
+name: Verify PlayerEngine
+on:
+  push:
+    branches: [feature/autonomous-goals]
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Compile mod and run tests
+        run: |
+          chmod +x gradlew
+          ./gradlew build --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: playerengine-development-build
+          path: build/libs/*.jar
+          if-no-files-found: warn
