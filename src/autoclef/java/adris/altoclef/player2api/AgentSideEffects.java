@@ -73,8 +73,9 @@ public class AgentSideEffects {
         } else {
             mod.isStopping = false;
         }
-        if (commandWithPrefix.contains("idle")) {
+        if (commandWithPrefix.trim().equals("@idle")) {
             mod.runUserTask(new LookAtOwnerTask());
+            onStop.accept(new CommandExecutionStopReason.Finished(commandWithPrefix));
             return;
         }
 
