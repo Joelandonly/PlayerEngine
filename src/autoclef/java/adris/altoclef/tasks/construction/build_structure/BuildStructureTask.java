@@ -35,6 +35,8 @@ public class BuildStructureTask extends Task {
     private AltoClefController mod;
     private Player2APIService service;
     private int numErrors;
+    private String failureReason;
+    private String lastFailure;
     private Task actuallyRunningTask;
     private ConversationHistory history;
     private LLMCompleter completer;
@@ -133,7 +135,6 @@ public class BuildStructureTask extends Task {
         private int restarts;
         private int stalledTicks;
         private int gatheringTicks;
-        private int previousMissing = Integer.MAX_VALUE;
         private int previousInventoryCount = -1;
         private int observedMissing = Integer.MAX_VALUE;
         private Item collectingItem;
@@ -267,11 +268,12 @@ public class BuildStructureTask extends Task {
 
                 // Gather and craft the TOTAL remaining requirement, not merely the
                 // difference, because TaskCatalogue expects a final inventory target.
-                for (Map.Entry<Item, Integer> entry : required.entrySet()) {
+                Map<Item, Integer> missingMaterials = ConstructionMaterialPlanner.missing(
+                        required, item -> mod.getItemStorage().getItemCount(item));
+                for (Map.Entry<Item, Integer> entry : missingMaterials.entrySet()) {
                     Item item = entry.getKey();
-                    int totalNeeded = entry.getValue();
+                    int totalNeeded = required.get(item);
                     int owned = mod.getItemStorage().getItemCount(item);
-                    if (owned >= totalNeeded) continue;
                     if (!TaskCatalogue.taskExists(item)) {
                         failBuild("No gathering or crafting task exists for " + BuiltInRegistries.ITEM.getKey(item));
                         return null;
@@ -354,8 +356,9 @@ public class BuildStructureTask extends Task {
     @Override
     protected Task onTick() {
         if (numErrors > maxNumErrors) {
-            LOGGER.info("Too many errors, finishing.");
-            // TODO: change to error from Task
+            failureReason = lastFailure == null ? "Construction failed after multiple attempts" : lastFailure;
+            LOGGER.warn("Could not finish AI construction: {}", failureReason);
+            mod.log("AI construction failed: " + failureReason);
             isDone = true;
             return null;
         }
@@ -375,6 +378,7 @@ public class BuildStructureTask extends Task {
                         return null;
                     }, errStr -> {
                         ++numErrors;
+                        lastFailure = errStr;
                         String tryAgainMessage = String.format(
                                 "When trying to call the llm with the description, got this error: \n(%s)\n. Try again and generate code using the same description:\n(%s)",
                                 errStr, description);
@@ -407,6 +411,16 @@ public class BuildStructureTask extends Task {
         }
         LOGGER.error("actually running task in buildStructureTask set to incorrect type");
         return null;
+    }
+
+    public boolean succeeded() {
+        return isDone && failureReason == null;
+    }
+
+    public String getFailureReason() {
+        if (failureReason != null) return failureReason;
+        if (lastFailure != null) return lastFailure;
+        return "Construction interrupted before completion";
     }
 
     @Override
