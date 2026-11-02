@@ -10,11 +10,11 @@ import adris.altoclef.tasks.construction.build_structure.BuildStructureTask;
 public class BuildStructureCommand extends Command {
     public BuildStructureCommand() throws CommandException {
         super("build_structure",
-                "Agent can build any thing in Minecraft given the description and position. The description should be a string generated to capture a clear and concise summary of the structure the user asked to be built. Agent does not need to collect materials to build the structure when using this function.\\n"
+                "Build a Minecraft survival base, shelter, house or other structure from a description and position. This automatically plans a blueprint, gathers/crafts supported materials, navigates and places blocks physically, and checks for completion. The description should clearly specify the requested structure.\\n"
                         + //
-                        "IMPORTANT: You must put a position into the description. If the player you are talking to doesn't give any hints on where to build it, put in that player's position into the description, or some positional information. You MUST give a coordiante to build at. If you don't know the player's position, then put your own position. \\n"
+                        "IMPORTANT: You must put a position into the description. If the player you are talking to doesn't give any hints on where to build it, put in that player's position into the description, or some positional information. You MUST give a coordinate to build at. If you don't know the player's position, then put your own position. \\n"
                         + //
-                        " Example call would be `build_structure a gray modern house with a garden of roses in front of it. Build at position (-305, 406, 72)`",
+                        " Example call would be `build_structure a compact oak-plank starter shelter with a cobblestone floor. Build near position (-305, 72, 406)`",
                 new Arg<>(String.class, "description"));
     }
 
