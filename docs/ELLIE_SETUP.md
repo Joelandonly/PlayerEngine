@@ -3,8 +3,8 @@
 This preview implements the maintainer's chosen target: a full starter kit plus
 placed workstations/storage. It is not a claim of live Minecraft acceptance.
 Invoke the existing exact `Ellie, setup` route; supplied logs show that this route
-can dispatch without calling the conversation model. Generic `build_structure`
-is a different, LLM-assisted operation.
+can dispatch without calling the conversation model. `build_structure` is separate: it tries supported local templates first and uses
+LLM planning only as a fallback. See the command inventory’s village correction.
 
 ## Required outputs
 

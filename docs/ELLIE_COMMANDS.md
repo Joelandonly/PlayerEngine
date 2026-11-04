@@ -39,7 +39,7 @@ concise guide, not proof that each game operation succeeds.
 | `attack <player-or-mob> [count]` | Attack a named player or mob | Registered; lookup passed; gameplay untested |
 | `audit_waypoint <x> <y> <z>` | Refresh a stored waypoint observation | Registered; lookup passed; gameplay untested |
 | `bodylang <greeting / nod_head / shake_head / victory>` | Perform a gesture | Registered; lookup passed; gameplay untested |
-| `build_structure <x> <y> <z> "search query" "description"` | Generate a blueprint, gather materials and physically construct it; uses LLM code generation | Registered; lookup passed; gameplay untested |
+| `build_structure <x> <y> <z> "search query" "description"` | Select a supported local blueprint, otherwise request LLM code; gather materials and physically construct it | Registered; lookup passed; gameplay untested |
 | `chatclef <on / off>` | User-controlled AI bridge switch | Registered; lookup passed; gameplay untested |
 | `compare_waypoint <x> <y> <z>` | Compare stored and observed waypoint contents | Registered; lookup passed; gameplay untested |
 | `create_waypoint <x> <y> <z>` | Record a storage waypoint | Registered; lookup passed; gameplay untested |
@@ -115,8 +115,8 @@ similarly named low-level Automatone controls or the server's chain-status diagn
 - `harvest_farm`: harvest mature crops once; no perpetual farming guarantee.
 - `get cobblestone 64`: acquire cobblestone, not build a cobblestone structure.
 - `build_structure 100 64 100 "cobblestone shelter" "5 by 5 shelter with walls and roof"`:
-  requests generic blueprint generation and construction. This path calls LLM code generation;
-  direct invocation does **not** make it independent of AI. Use disposable coordinates.
+  selects a matching local blueprint when supported, otherwise falls back to LLM code generation.
+  Direct invocation alone does not guarantee model-free operation. Use disposable coordinates.
 
 There is no canonical `build a huge cobblestone` command in this NPC registry. A specialized
 shortcut in your separate Player2NPC JAR cannot be verified from the supplied PlayerEngine
@@ -194,3 +194,22 @@ Record the exact JAR hash, Player2NPC version, entered text/prefix, accepted/rej
 changes, and final result. Check stop/replacement while running. For farms, verify irrigated
 plot, planted crop counts and mature-only harvest separately. For builds, verify every final
 block and interruption/reload behavior. No command in this report is marked LIVE / PASS.
+
+## Correction: local fortified-village template
+
+A deeper audit found `FastStarterBlueprint.maybeCode` in
+`BuildStructureTask$RequestLLMCode.onStart`: local selection returns before the model
+request. `BlueprintLibrary.choose` recognizes village/settlement/fortified-town
+requests and supplies a fixed 47x47 fortified-village plan. Thus the earlier blanket
+statement that building always needs AI was too broad. Unsupported requests can
+still fall back to model-generated code; chat-to-command interpretation is separate.
+
+Tested directly from the hotfix JAR: local generation and the actual
+`StructureFromCode` compiler/runner produced 5,407 operations: 3,533 cobblestone,
+378 dirt and 1,496 air/clearing cells. This fits the builder's actual 6,144-operation
+and 240,000-character limits (the generated program is 180,038 characters).
+The template includes eight buildings, four corner towers, perimeter walls, roads
+and a central feature. It is a mixed-material template, not arbitrary town planning.
+There is no separate registered `build_village` ID; it is a `build_structure` template.
+Actual survival acquisition, construction, interruption and final world verification
+were not run. These parser checks do not establish that the village completes in-game.
