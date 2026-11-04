@@ -192,3 +192,31 @@ stations and repair changed support before placement, with a finite repair budge
 The new damage regression fails against the previous task implementation. The real
 shipped guard passes footprint/boundary/character/owner-cleanup checks. Native
 Minecraft gathering, placement and full setup still require live acceptance.
+
+## 2026-11-04: Import maintainer's Player2 crafting-recovery revision
+
+Integrated source from `Ellie-Player2-Crafting-Recovery-Source (1).zip` while
+retaining prior repository history. The unmodified recovered source rebuilds the
+supplied craft-recovery JAR byte-for-byte (SHA-256 `f36e4210a31024c113f7be6d2afa97385c878a15b1ab1d9f590a4ea745980b9f`).
+The Acquisition Safety baseline is unchanged. Setup now uses three spaced stations
+with one chest, natural ground first, and an eight-support-cell platform fallback.
+The original Player2 API binary replaces the optional ChatGPT interpreter overlay;
+its source is retained under `ellie/legacy-chatgpt/`. Imported crafting-specific
+table rejection and selector hooks pass seven local checks but do not implement
+shared navigation recovery. Corrected stale release paths and current guidance;
+preserved upload manifest separately. Raw logs and generated artifacts stay ignored.
+
+## 2026-11-04: Deterministic command entry and execution
+
+Extended the owner-verified setup route to all 46 exact command IDs and supported
+local farm/build phrases. Preserved argument case and quotes. Replaced building's
+model orchestrator with local selection and the original physical layer builder;
+typed outcomes reject failed/unverified work. Agentic pickup/storage uses local
+plans even if model planning was enabled. Labels and GPS descriptions keep native
+templates. Fixed no-argument eat_food, absent-food silent returns, uppercase scan
+default/arguments, and command splitting on quoted semicolons. Removed only the
+provable no-op dummy class/task, leaving eight unregistered experimental/legacy
+commands visible in the audit. None are described as proven impossible to implement.
+Player2 API identity and the imported compact setup/table-recovery behavior remain.
+Shared navigation deadlock recovery is a separate pending architectural change;
+this revision does not claim it was implemented or all gameplay handlers tested.

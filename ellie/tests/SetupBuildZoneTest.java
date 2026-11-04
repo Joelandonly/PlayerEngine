@@ -10,17 +10,17 @@ public final class SetupBuildZoneTest {
     static boolean allowed(Object controller,int x,int z){return VillageSiteGuard.allowResourceMining(controller,new Pos(x,z));}
     public static void main(String[] args)throws Exception{
         Object controller=new Object(),other=new Object();
-        SetupBuildZone zone=new SetupBuildZone(controller,-2,-5,9,7);
-        for(int x=-2;x<=6;x++)for(int z=-5;z<=1;z++)check(!allowed(controller,x,z),"foundation/resource source inside zone must be excluded");
-        check(allowed(controller,-3,-5)&&allowed(controller,7,1)&&allowed(controller,-2,-6)&&allowed(controller,6,2),"outside materials remain available");
+        SetupBuildZone zone=new SetupBuildZone(controller,-2,-5,7,3);
+        for(int x=-2;x<=4;x++)for(int z=-5;z<=-3;z++)check(!allowed(controller,x,z),"foundation/resource source inside zone must be excluded");
+        check(allowed(controller,-3,-5)&&allowed(controller,5,-3)&&allowed(controller,-2,-6)&&allowed(controller,4,-2),"outside materials remain available");
         check(allowed(other,0,0),"other characters must remain independent");
-        zone.ensure();check(!allowed(controller,0,0),"repeated updates retain protection");
+        zone.ensure();check(!allowed(controller,0,-4),"repeated updates retain protection");
         // A late stop from a previous goal cannot clear a replacement's claim.
-        SetupBuildZone replacement=new SetupBuildZone(controller,20,30,9,7);
+        SetupBuildZone replacement=new SetupBuildZone(controller,20,30,7,3);
         zone.close();zone.ensure();
-        check(!allowed(controller,20,30)&&allowed(controller,0,0),"stale owner cleanup must preserve replacement footprint");
+        check(!allowed(controller,20,30)&&allowed(controller,0,-4),"stale owner cleanup must preserve replacement footprint");
         replacement.close();check(allowed(controller,20,30),"terminal setup releases its protection");
-        SetupBuildZone lifetime=new SetupBuildZone(controller,9,9,9,7);
+        SetupBuildZone lifetime=new SetupBuildZone(controller,9,9,7,3);
         var environment=new SetupTerraformTest.World(){
             public void protect(List<StarterBaseLayout.Placement> plan){lifetime.ensure();}
             public void releaseProtection(){lifetime.close();}
@@ -34,6 +34,6 @@ public final class SetupBuildZoneTest {
         var completed=EllieSetupTask.class.getDeclaredField("completed");completed.setAccessible(true);completed.setBoolean(root,true);
         var stopRoot=EllieSetupTask.class.getDeclaredMethod("onStop",Task.class);stopRoot.setAccessible(true);stopRoot.invoke(root,new Object[]{null});
         check(allowed(controller,10,10),"whole-goal completion releases protection");
-        System.out.println("SetupBuildZoneTest: 7 passed against original VillageSiteGuard, including all 63 footprint cells");
+        System.out.println("SetupBuildZoneTest: 7 passed against original VillageSiteGuard, including all 21 footprint cells");
     }
 }

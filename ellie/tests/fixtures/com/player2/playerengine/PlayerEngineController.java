@@ -10,6 +10,8 @@ public class PlayerEngineController {
     public IStepExecutorAdapter getStepExecutorAdapter() { return adapter; }
     public PlayerEngineSettings getModSettings() { return new PlayerEngineSettings(); }
     public com.player2.playerengine.trackers.storage.ItemStorageTracker getItemStorage() { return inventory; }
+    private com.player2.playerengine.commands.base.CommandExecutor commands;
+    public com.player2.playerengine.commands.base.CommandExecutor getCommandExecutor(){if(commands==null)commands=new com.player2.playerengine.commands.base.CommandExecutor(this);return commands;}
     public void log(String message) {}
     public Optional<StepExecution> getActiveTrackedStep() { return adapter.getActiveExecution(); }
     public AIPersistantData getAIPersistantData() { throw new IllegalStateException("No game in local harness"); }

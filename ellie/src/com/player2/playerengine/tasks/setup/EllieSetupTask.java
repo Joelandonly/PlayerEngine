@@ -22,7 +22,7 @@ public final class EllieSetupTask
 extends Task
 implements TransientlyResumableTask,
 TrackedTaskOutcomeProvider {
-    private static final Step[] PLAN = new Step[]{new Step("bootstrap", "wooden_pickaxe", 1, true, 1800), new Step("bootstrap", "stone_pickaxe", 2, true, 3600), new Step("bootstrap", "stone_shovel", 1, true, 2400), new Step("bootstrap", "stone_axe", 1, true, 2400), new Step("workshop", "crafting_table", 1, true, 2400), new Step("workshop", "furnace", 1, true, 2400), new Step("storage reserve", "chest", 8, true, 5600), new Step("supplies", "torch", 32, true, 1800), new Step("equipment upgrade", "shield", 1, true, 2400), new Step("equipment upgrade", "bucket", 2, true, 3200), new Step("equipment upgrade", "iron_pickaxe", 1, true, 3000), new Step("equipment upgrade", "iron_shovel", 1, true, 1800), new Step("equipment upgrade", "iron_axe", 1, true, 1800), new Step("equipment upgrade", "iron_sword", 1, true, 1800), new Step("equipment upgrade", "iron_chestplate", 1, true, 3000), new Step("equipment upgrade", "iron_leggings", 1, true, 3000), new Step("equipment upgrade", "iron_helmet", 1, true, 1800), new Step("equipment upgrade", "iron_boots", 1, true, 1800), new Step("supplies", "bread", 16, true, 1600), new Step("supplies", "bed", 1, true, 1600)};
+    private static final Step[] PLAN = new Step[]{new Step("bootstrap", "wooden_pickaxe", 1, true, 1800), new Step("bootstrap", "stone_pickaxe", 2, true, 3600), new Step("bootstrap", "stone_shovel", 1, true, 2400), new Step("bootstrap", "stone_axe", 1, true, 2400), new Step("workshop", "crafting_table", 1, true, 2400), new Step("workshop", "furnace", 1, true, 2400), new Step("storage reserve", "chest", 1, true, 2400), new Step("supplies", "torch", 32, true, 1800), new Step("equipment upgrade", "shield", 1, true, 2400), new Step("equipment upgrade", "bucket", 2, true, 3200), new Step("equipment upgrade", "iron_pickaxe", 1, true, 3000), new Step("equipment upgrade", "iron_shovel", 1, true, 1800), new Step("equipment upgrade", "iron_axe", 1, true, 1800), new Step("equipment upgrade", "iron_sword", 1, true, 1800), new Step("equipment upgrade", "iron_chestplate", 1, true, 3000), new Step("equipment upgrade", "iron_leggings", 1, true, 3000), new Step("equipment upgrade", "iron_helmet", 1, true, 1800), new Step("equipment upgrade", "iron_boots", 1, true, 1800), new Step("supplies", "bread", 16, true, 1600), new Step("supplies", "bed", 1, true, 1600)};
     private int index;
     private int lastCount;
     private int stagnant;
@@ -88,7 +88,7 @@ TrackedTaskOutcomeProvider {
             if (this.journal.error() != null) {
                 EllieSetupTask.event("SETUP_JOURNAL_WARNING", this.journal.error());
             }
-            EllieSetupTask.event("SETUP_START", "Starter setup: full required kit followed by verified workstation and storage placement");
+            EllieSetupTask.event("SETUP_START", "Starter setup: full required kit with a compact three-block workstation");
         } else if (this.pendingGestureResume) {
             this.pendingGestureResume = false;
             TaskSuspensionCause taskSuspensionCause = this.pendingResumeCause;
@@ -108,7 +108,7 @@ TrackedTaskOutcomeProvider {
         }
         // Establish the workshop/storage after bootstrap and before iron upgrades.
         // Preparing the remembered plan on start also credits already placed stations
-        // on rerun, instead of needlessly gathering another eight chest items.
+        // on rerun, instead of needlessly gathering another chest item.
         if (this.index >= 7 && this.baseTask != null && !this.baseAccepted) {
             if (!this.baseTask.isTerminal()) return this.baseTask;
             if (!this.baseTask.isSuccessful()) {
@@ -116,7 +116,7 @@ TrackedTaskOutcomeProvider {
                 return null;
             }
             this.baseAccepted = true;
-            this.checkpoint("RUNNING", "starter_base", "Workstations and eight chest blocks verified; continuing required kit");
+            this.checkpoint("RUNNING", "starter_base", "Workstations and one chest verified; continuing required kit");
         }
         ++this.allTicks;
         if (this.index >= PLAN.length) {
@@ -159,12 +159,12 @@ TrackedTaskOutcomeProvider {
                 }
                 this.baseTask = new StarterBaseTask(this.baseOrigin, this.baseDimension);
                 this.baseTask.controller = this.controller;
-                this.checkpoint("RUNNING", "starter_base", "Full kit verified; placing one table, one furnace and eight chest blocks");
+                this.checkpoint("RUNNING", "starter_base", "Full kit verified; placing one table, one furnace and one chest");
                 return this.baseTask;
             }
             this.completed = true;
             this.checkpoint("COMPLETED", "setup", "All required inventory and workstation objectives verified");
-            String string = "Starter setup complete: full kit verified, crafting table and furnace placed, eight chest blocks verified. No shelter or farm is implied.";
+            String string = "Starter setup complete: full kit verified, crafting table and furnace placed, one chest verified. No shelter or farm is implied.";
             EllieSetupTask.event("SETUP_SUPPLIES_READY", string);
             this.report(string);
             return null;
@@ -711,7 +711,7 @@ TrackedTaskOutcomeProvider {
 
     public String outcomeForCommand() {
         if (this.isSuccessfullyCompleted()) {
-            return "Setup COMPLETED: full starter kit verified; crafting table, furnace and eight chest blocks physically placed and verified. No house or farm is implied.";
+            return "Setup COMPLETED: full starter kit verified; crafting table, furnace and one chest physically placed and verified. No house or farm is implied.";
         }
         if (this.failed) {
             return "Setup BLOCKED, not complete: " + this.failureReason;

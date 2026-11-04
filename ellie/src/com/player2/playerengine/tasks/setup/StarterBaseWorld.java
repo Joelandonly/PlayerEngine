@@ -13,6 +13,10 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     private final StarterBaseLayout.Pos origin;
     private final String expectedDimension;
     private SetupBuildZone zone;
+    private boolean platformMode;
+    private final Set<StarterBaseLayout.Pos> reservedSupport=new HashSet<>();
+    private java.util.function.Predicate<Object> supportBreakGuard;
+    private Object guardedBaritoneSettings;
     private final Class<?> blockPos;
     private final Map<String,Object> blocks=new HashMap<>();
     private final Map<StarterBaseLayout.Pos,StarterBaseLayout.Placement> retained=new HashMap<>();
@@ -39,7 +43,9 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     }
     public List<StarterBaseLayout.Placement> loadExisting() throws Exception {
         CoreGoalJournal journal=baseJournal();
-        if (!journal.get("status","").equals("BASE_LAYOUT")) return List.of();
+        String mode=journal.get("status","");
+        if (!mode.equals("BASE_LAYOUT_COMPACT_V3") && !mode.equals("BASE_LAYOUT_PLATFORM_V3")) return List.of();
+        platformMode=mode.equals("BASE_LAYOUT_PLATFORM_V3");
         if (!journal.isPersistent()) throw new IllegalStateException("Recorded base journal unavailable");
         if (!journal.get("resource","").equals(expectedDimension)) throw new IllegalStateException("Existing base is in another dimension");
         String[] coords=journal.get("detail","").split(",");
@@ -54,9 +60,14 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         CoreGoalJournal journal=baseJournal();
         if (!journal.isPersistent()) throw new IllegalStateException("Persistent base journal unavailable; refusing unrecorded placement");
         var ready=StarterBaseLayout.select(origin,this);
-        var plan=(ready.isPresent()?ready:StarterBaseLayout.selectBuildable(origin,this)).orElseThrow(()->new IllegalStateException("No preparable site within nearby bounds: living space must be dry and obstruction blocks breakable/unprotected"));
+        if(ready.isEmpty())ready=StarterBaseLayout.selectBuildable(origin,this);
+        if(ready.isEmpty()){
+            platformMode=true;
+            ready=StarterBaseLayout.selectPlatform(origin,this);
+        }
+        var plan=ready.orElseThrow(()->new IllegalStateException("No safe three-station ground or reachable compact platform site nearby"));
         var anchor=plan.getFirst().pos();
-        journal.put("BASE_LAYOUT",0,expectedDimension,anchor.x()+","+anchor.y()+","+anchor.z());
+        journal.put(platformMode?"BASE_LAYOUT_PLATFORM_V3":"BASE_LAYOUT_COMPACT_V3",0,expectedDimension,anchor.x()+","+anchor.y()+","+anchor.z());
         if(!journal.isPersistent()) throw new IllegalStateException("Cannot save base anchor; refusing unrecorded placement");
         protect(plan);
         return plan;
@@ -64,10 +75,36 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     public void protect(List<StarterBaseLayout.Placement> plan) throws Exception {
         if(!Objects.equals(expectedDimension,dimension(controller)))throw new IllegalStateException("Setup build zone changed dimension");
         var anchor=plan.getFirst().pos();
-        if(zone==null)zone=new SetupBuildZone(controller,anchor.x()-1,anchor.z()-1,9,7);
+        if(zone==null)zone=new SetupBuildZone(controller,anchor.x()-1,anchor.z()-1,7,3);
         else zone.ensure();
+        if(platformMode && supportBreakGuard==null){
+            // VillageSiteGuard blocks *resource mining*. This guard also tells Baritone
+            // not to route through / excavate the new platform's load-bearing cells.
+            reservedSupport.addAll(StarterBaseLayout.supportCells(plan));
+            Object extra=call(controller,"getExtraBaritoneSettings");
+            Object mutex=call(extra,"getBreakMutex");
+            java.util.function.Predicate<Object> guard=blockPos -> {
+                try {
+                    return reservedSupport.contains(new StarterBaseLayout.Pos(
+                        ((Number)call(blockPos,"method_10263")).intValue(),
+                        ((Number)call(blockPos,"method_10264")).intValue(),
+                        ((Number)call(blockPos,"method_10260")).intValue()));
+                } catch(Exception e){return false;}
+            };
+            synchronized(mutex){((List<Object>)call(extra,"getBreakAvoiders")).add(guard);}
+            supportBreakGuard=guard;guardedBaritoneSettings=extra;
+        }
     }
-    public void releaseProtection(){if(zone!=null){zone.close();zone=null;}}
+    public void releaseProtection(){
+        if(supportBreakGuard!=null){
+            try {
+                Object mutex=call(guardedBaritoneSettings,"getBreakMutex");
+                synchronized(mutex){((List<?>)call(guardedBaritoneSettings,"getBreakAvoiders")).remove(supportBreakGuard);}
+            } catch(Exception e){System.err.println("[EllieSetup] Could not remove temporary platform break guard: "+e);}
+            supportBreakGuard=null;guardedBaritoneSettings=null;reservedSupport.clear();
+        }
+        if(zone!=null){zone.close();zone=null;}
+    }
     public boolean air(StarterBaseLayout.Pos pos) throws Exception { return (Boolean)helper("isAir",controller,pos(pos)); }
     private Object state(StarterBaseLayout.Pos p)throws Exception {return call(call(controller,"getWorld"),"method_8320",pos(p));}
     private boolean withinLimits(StarterBaseLayout.Pos p)throws Exception {
@@ -93,25 +130,33 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         if(!withinLimits(p))return false;
         if(safeFloor(p))return true;
         if(protectedBlock(p))return false;
-        return air(p)||fluid(p)||canClear(p);
+        // Replaceable air/fluid only: don't grind down existing builds for the pad.
+        return air(p)||fluid(p);
     }
     public List<StarterBaseLayout.Placement> terrainPlan(List<StarterBaseLayout.Placement> plan) {
         retained.clear();for(var p:plan)retained.put(p.pos(),p);
-        return StarterBaseLayout.terrain(plan,origin);
+        return StarterBaseLayout.terrain(plan,origin,platformMode);
     }
     public boolean prepared(StarterBaseLayout.Placement job)throws Exception {
         if(job.resource().equals("air"))return air(job.pos())||(retained.containsKey(job.pos())&&matches(retained.get(job.pos())));
         return safeFloor(job.pos());
     }
     public boolean canPrepare(StarterBaseLayout.Placement job)throws Exception {
-        return Objects.equals(expectedDimension,dimension(controller))&&(job.resource().equals("air")?canClear(job.pos()):canFound(job.pos()));
+        if(!Objects.equals(expectedDimension,dimension(controller)))return false;
+        if(job.resource().equals("air"))return canClear(job.pos());
+        return platformMode && job.resource().equals("cobblestone") && canFound(job.pos());
     }
     public Task prepareTerrain(StarterBaseLayout.Placement job)throws Exception {
         if(!canPrepare(job))throw new IllegalStateException("Unsafe terrain preparation");
-        if(job.resource().equals("air"))return (Task)Class.forName("com.player2.playerengine.tasks.construction.DestroyBlockTask").getConstructor(blockPos).newInstance(pos(job.pos()));
-        Class<?> blockType=Class.forName("net.minecraft.class_2248");Object array=Array.newInstance(blockType,1);Array.set(array,0,block("cobblestone"));
+        if(job.resource().equals("air"))return (Task)Class.forName("com.player2.playerengine.tasks.construction.DestroyBlockTask")
+            .getConstructor(blockPos).newInstance(pos(job.pos()));
+        // Native placement only: never edit the world directly or fake completion.
+        Class<?> blockType=Class.forName("net.minecraft.class_2248");
+        Object alternatives=Array.newInstance(blockType,1);
+        Array.set(alternatives,0,block("cobblestone"));
         return (Task)Class.forName("com.player2.playerengine.tasks.construction.PlaceBlockTask")
-            .getConstructor(blockPos,array.getClass(),boolean.class,boolean.class).newInstance(pos(job.pos()),array,false,false);
+            .getConstructor(blockPos,alternatives.getClass(),boolean.class,boolean.class)
+            .newInstance(pos(job.pos()),alternatives,false,false);
     }
     public boolean matches(StarterBaseLayout.Placement placement) throws Exception {
         return (Boolean)helper("isBlock",controller,pos(placement.pos()),block(placement.resource()));

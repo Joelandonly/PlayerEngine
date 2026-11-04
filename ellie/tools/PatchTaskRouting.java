@@ -7,7 +7,7 @@ import jdk.internal.org.objectweb.asm.tree.*;
 /** Redirect reviewed command submission sites; preserve native survival and idle paths. */
 public final class PatchTaskRouting implements Opcodes {
     public static void main(String[] args) throws Exception {
-        if (args.length != 3) throw new IllegalArgumentException("baseline patches-dir reviewed-commands");
+        if (args.length != 4) throw new IllegalArgumentException("baseline patches-dir reviewed-commands compiled-dir");
         List<String> commands = Files.readAllLines(Path.of(args[2]));
         if (new HashSet<>(commands).size() != commands.size()) throw new IllegalStateException("Duplicate command");
         try (ZipFile jar = new ZipFile(args[0])) {
@@ -15,10 +15,14 @@ public final class PatchTaskRouting implements Opcodes {
                 if (!command.matches("[A-Za-z]+Command")) throw new IllegalArgumentException("Invalid reviewed command");
                 String entry = "com/player2/playerengine/commands/" + command + ".class";
                 ClassNode type = new ClassNode();
-                new ClassReader(jar.getInputStream(Objects.requireNonNull(jar.getEntry(entry), entry)).readAllBytes()).accept(type, 0);
+                Path compiled=Path.of(args[3],entry);
+                Path patched=Path.of(args[1],entry);
+                if(Files.isRegularFile(patched))compiled=patched;
+                new ClassReader(Files.isRegularFile(compiled)?Files.readAllBytes(compiled):jar.getInputStream(Objects.requireNonNull(jar.getEntry(entry), entry)).readAllBytes()).accept(type, 0);
                 int count = 0;
                 for (MethodNode method : type.methods) {
                     for (AbstractInsnNode insn : method.instructions) {
+                        if(insn instanceof MethodInsnNode existing && existing.owner.equals("com/player2/playerengine/supervisor/ProjectTaskGateway") && existing.name.equals("run")) count++;
                         if (insn instanceof MethodInsnNode call
                                 && call.owner.equals("com/player2/playerengine/PlayerEngineController")
                                 && call.name.equals("runUserTask")) {

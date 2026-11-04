@@ -1,117 +1,58 @@
-# Ellie: 1.21.1 starter-base setup preview
+# Ellie: Player2 compact setup and crafting recovery
 
-This is the project's current development direction, based on
-`PlayerEngine-Ellie-ChatGPT-Interpreter-STREAM-HOTFIX-FLAT.zip` supplied by the
-maintainer. The project supervisor now has readable recovered source, regression
-coverage and reviewed tool routing. It retains the older Minecraft 1.20.1 code
-in the repository root as legacy reference.
+Current target: **Minecraft 1.21.1 Fabric, PlayerEngine 1.4.0, Java 21**.
+Keep the existing Player2NPC and companion Fabric mods. This is a binary overlay;
+complete matching upstream source remains unavailable. The root Gradle project is
+legacy Minecraft 1.20.1 source, not the current Ellie build.
 
-**Target:** Minecraft 1.21.1 Fabric, PlayerEngine 1.4.0, Java **21 JDK**, Node.js
-**22+**, Python **3**. Runtime installation currently targets Windows / Shadow PC
-and still requires the separately installed Player2NPC integration.
+The maintainer supplied `Ellie-Player2-Crafting-Recovery-Source (1).zip` containing
+`PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-CRAFT-RECOVERY.jar`.
+Its source rebuilds byte-for-byte to SHA-256
+`f36e4210a31024c113f7be6d2afa97385c878a15b1ab1d9f590a4ea745980b9f`.
+The pinned Acquisition Safety baseline is unchanged. Original import provenance is
+in `RELEASE_MANIFEST.json`; the latest supplied manifest is preserved separately
+in `provenance/CRAFT_RECOVERY_UPLOAD.json`.
 
-## What is here
+## Build and install
 
-| Path | Purpose |
-| --- | --- |
-| `sidecar/` | Local ChatGPT sign-in, inference, stream handling, encrypted-session support |
-| `src/` | Java bridge, recovered supervisor/lifecycle source, project task gateway |
-| `tests/` | Node tests, JVM bridge test, supervisor harness and routing verification |
-| `tools/` | Exact-method ASM patching, verification, deterministic JAR packaging |
-| `baseline/` | Required Acquisition Safety baseline binary, pinned by SHA-256 |
-| `Start-Ellie-ChatGPT.ps1` | Windows bridge launcher |
-| `RELEASE_MANIFEST.json` | Original upload's provenance and artifact hashes |
-| `UPSTREAM_README.md`, `RELEASE_NOTES.md` | Original bundle documentation and known limitations |
-| `build/`, `dist/` | Generated outputs, ignored by Git |
-
-**This is a binary-overlay build, not the complete 1.21.1 mod source.** The baseline
-contains earlier navigation, acquisition, supervisor, and NPC integration work
-whose matching source has not been recovered. Retain it until a source port can
-be verified. Do not substitute the legacy root Gradle JAR for this baseline.
-
-A public upstream 1.21.1 mod baseline has since been identified on Goodbird's
-`1.21.1-arch` branch (version 1.1.11). It is not yet established as the matching
-source for this Ellie 1.4.0 preview. See [source provenance](../docs/ELLIE_SOURCE_PROVENANCE.md)
-for the pinned commit and recovery path.
-
-## Build and test
-
-From this directory, with the Java 21 JDK tools on `PATH`:
+With Java 21 JDK tools and Python 3 on PATH:
 
 ```sh
 bash build.sh
 python3 make_release.py
 ```
 
-The build verifies the baseline checksum, starts from clean generated class
-directories, compiles the bridge and supervisor, patches the interpreter and reviewed command
-submission points, runs ASM verification, JVM and Node tests, and packages the
-preview JAR. The generated `build/reports/task-routing.tsv` inventories static
-submission routes; it does not prove runtime execution.
-Packaging verifies that every unrelated baseline archive entry is unchanged.
-It never requires account credentials or a live OpenAI request.
+The current build uses native Player2. No ChatGPT sidecar or Node process is needed.
+Older ChatGPT launcher/sidecar files and `legacy-chatgpt/` are historical material,
+not part of the current runtime. The build verifies Player2 API byte identity,
+exact class changes, ASM, command routing, supervisor, setup and crafting recovery.
+Generated JAR/portable ZIP files are in `dist/`; GitHub Actions uploads them as
+`Ellie-1.21.1-preview`.
 
-The release command writes a portable ZIP to `dist/` containing the JAR,
-launcher, sidecar, tests, build tools, baseline, documentation, and a generated
-manifest for that build. It does not overwrite the original provenance manifest.
-GitHub Actions tests this module on Java 21 / Node 22 and retains the release ZIP
-and JAR as build artifacts. These are previews, not automatically published releases.
+Install only the replacement PlayerEngine JAR in Minecraft's `mods` folder.
+Remove the previous engine JAR and keep the companion mods. Run `Ellie, setup` in
+a test world and observe actual placement/navigation before accepting a release.
 
-## Install and operate
+## Current setup
 
-Download/extract the **Ellie** artifact, not the legacy Gradle artifact. Follow
-the [original Windows install guide](UPSTREAM_README.md#quick-install-windows--shadow-pc).
-Replace the existing PlayerEngine JAR rather than installing a duplicate, retain
-Player2NPC, and keep the sidecar beside the PowerShell launcher. Use a backed-up,
-disposable world first.
-For this build, install the `ELLIE-SETUP-LAYER-HOTFIX.jar` from `dist/`;
-the interpreter filename in the historical guide refers to the original upload.
+The imported revision uses one crafting table, one furnace and one chest in a
+spaced line, on natural ground where possible. A compact support platform is a
+fallback for unsupported terrain, with at most eight load-bearing placements.
+The required survival kit remains. It intentionally supersedes the old eight-chest
+9x7 deck contract; old layout records are not blindly reused or demolished.
+See [setup contract](../docs/ELLIE_SETUP.md) and
+[compact-platform changes](../docs/ELLIE_COMPACT_PLATFORM_UPLOAD.md).
 
-In the bridge terminal, use `login`, `status`, and `probe` before testing chat in
-Minecraft. `probe` performs a real account/model inference; it is not a local test.
-Use `use-player2` only when intentionally selecting Player2. A failed ChatGPT
-request must not silently switch billing providers.
+The imported crafting recovery temporarily rejects stalled/inaccessible tables;
+it is not a shared navigation recovery system. See
+[uploaded recovery notes](../docs/ELLIE_CRAFT_RECOVERY_UPLOAD.md).
+Local simulations and binary checks do not establish live gameplay success.
 
-Never commit or share the generated `ellie-chatgpt.properties` file or
-`ellie-chatgpt-private/` directory. Credentials stay outside this repository.
+## Native commands on this revision
 
-## Validation and next work
-
-The original upload reports local tests and ASM verification, but no live OAuth,
-inference, or Minecraft validation. The maintainer reports partial runtime success;
-this import does not turn that into a complete gameplay pass. See the
-[validation matrix](../docs/ELLIE_VALIDATION.md) and
-[backlog](../docs/ELLIE_BACKLOG.md).
-
-See [project manager verification and remaining gates](../docs/ELLIE_PROJECT_MANAGER.md).
-The hardened JAR has a distinct `ELLIE-SETUP-LAYER-HOTFIX` filename and is
-not byte-identical to the original interpreter upload. ChatGPT bridge behavior is
-unchanged; the supervisor and reviewed command routes intentionally change.
-Navigation, crafting and furnace bugs are not claimed fixed.
-
-## Current setup preview
-
-Exact `setup` now targets the required full kit and placed workstation/storage
-base, with no house or farm implied. Read the [setup contract and live gates](../docs/ELLIE_SETUP.md)
-and [findings from the supplied logs](../docs/ELLIE_LOG_FINDINGS_2026-11-04.md).
-The release ZIP is `dist/PlayerEngine-Ellie-Setup-Layer-Hotfix.zip`. Existing completed
-supervisor-only and original interpreter artifacts remain historical references.
-This setup preview intentionally changes setup and crafting-approach behavior.
-
-### Startup and site-preparation hotfix
-
-The previous preview incorrectly required a flat workshop pad before gathering the
-first tool. The hotfix restores existing plans without selecting a fresh site at
-startup. Placement can mine ordinary obstructions and fill foundation gaps through
-native tasks, including over fluid. It still enforces dry living space, world limits,
-protected/unbreakable blocks, verified outputs and bounded waiting. Live validation
-with the supplied companion mod set remains necessary.
-
-### Protected layers hotfix
-
-Setup now reuses the village builder's resource-mining exclusion for the entire
-9x7 base footprint. It restores protection before bootstrap on reruns and retains
-it through the full kit phase. Clearance and foundation layers are rechecked
-before workstation placement; changed preparation gets bounded repair attempts.
-Already placed requested stations are retained. Root stop/abandon releases the
-zone. See [layer protection findings and validation](../docs/ELLIE_SETUP_LAYERS_HOTFIX.md).
+The integrated build writes `ELLIE-PLAYER2-NATIVE-COMMANDS.jar` and
+`PlayerEngine-Ellie-Player2-Native-Commands.zip`. Exact owner commands such as
+`Ellie, get cobblestone 64`, `Ellie, mine iron_ore 8`, `Ellie, setup_farm` and
+`Ellie, build a huge cobblestone village` use local routing. Supported blueprints,
+agentic drop/storage plans, labels and waypoint descriptions have no AI fallback.
+See [command changes and test limits](../docs/ELLIE_NATIVE_COMMANDS.md).

@@ -3,7 +3,7 @@
 ## Choose the workflow
 
 The current direction is **Ellie for Minecraft 1.21.1** in [`ellie/`](ellie/README.md).
-Use a Java 21 JDK, Node 22+, and Python 3:
+Use a Java 21 JDK and Python 3:
 
 ```sh
 cd ellie
@@ -11,7 +11,9 @@ bash build.sh
 python3 make_release.py
 ```
 
-This runs Node tests, JVM configuration checks, ASM verification and JAR packaging.
+This runs JVM command, supervisor, setup and crafting-recovery checks, ASM verification,
+Player2 integrity checks and JAR packaging. Node/ChatGPT sidecar files are historical
+and are not required by the current native Player2 build.
 The module retains a checksum-pinned binary baseline because the matching full mod
 source is unavailable. Preserve baseline behavior and provenance; do not replace it
 with the legacy root JAR. CI runs Ellie and legacy builds as separate jobs.
