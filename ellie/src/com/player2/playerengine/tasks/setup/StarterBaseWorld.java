@@ -1,0 +1,120 @@
+package com.player2.playerengine.tasks.setup;
+
+import com.player2.playerengine.PlayerEngineController;
+import com.player2.playerengine.tasks.base.Task;
+import java.lang.reflect.*;
+import java.nio.file.Path;
+import java.util.*;
+
+/** Native game boundary. Uses existing placement/gather tasks, never world edits or LLM calls. */
+final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBaseLayout.Probe {
+    private static final Map<String,Method> METHODS=new java.util.concurrent.ConcurrentHashMap<>();
+    private final PlayerEngineController controller;
+    private final StarterBaseLayout.Pos origin;
+    private final String expectedDimension;
+    private final Class<?> blockPos;
+    private final Map<String,Object> blocks=new HashMap<>();
+    StarterBaseWorld(PlayerEngineController controller, StarterBaseLayout.Pos origin, String dimension) {
+        this.controller=controller;this.origin=origin;this.expectedDimension=dimension;
+        try { blockPos=Class.forName("net.minecraft.class_2338"); }
+        catch(ClassNotFoundException error) { throw new IllegalStateException("Minecraft block positions unavailable",error); }
+    }
+    static StarterBaseLayout.Pos origin(PlayerEngineController controller) throws Exception {
+        Object player=call(controller,"getPlayer");
+        double x=number(player,"method_23317","getX"), y=number(player,"method_23318","getY"), z=number(player,"method_23321","getZ");
+        if(!Double.isFinite(x)||!Double.isFinite(y)||!Double.isFinite(z))throw new IllegalStateException("Setup starting coordinates are unavailable");
+        return new StarterBaseLayout.Pos((int)Math.floor(x),(int)Math.floor(y),(int)Math.floor(z));
+    }
+    static String dimension(PlayerEngineController controller) throws Exception {
+        return call(call(call(controller,"getWorld"),"method_27983"),"method_29177").toString();
+    }
+    public List<StarterBaseLayout.Placement> loadOrSelect() throws Exception {
+        if (!Objects.equals(expectedDimension,dimension(controller))) throw new IllegalStateException("Setup changed dimension; original base is not in this world");
+        Object store=callStatic("com.player2.playerengine.tasks.deferred.DeferredJobStore","get");
+        Path root=(Path)call(store,"worldRoot");
+        String character=(String)call(call(controller,"getAIPersistantData"),"getCharacterId");
+        CoreGoalJournal journal=CoreGoalJournal.open(root,character,"starter_base_layout");
+        if (!journal.isPersistent()) throw new IllegalStateException("Persistent base journal unavailable; refusing duplicate placement");
+        String saved=journal.get("detail","");
+        if (journal.get("status","").equals("BASE_LAYOUT")) {
+            if (!journal.get("resource","").equals(expectedDimension)) throw new IllegalStateException("Existing base is in another dimension");
+            String[] coords=saved.split(",");
+            if(coords.length!=3) throw new IllegalStateException("Invalid saved base anchor");
+            var anchor=new StarterBaseLayout.Pos(Integer.parseInt(coords[0]),Integer.parseInt(coords[1]),Integer.parseInt(coords[2]));
+            var plan=StarterBaseLayout.at(anchor);
+            if(!StarterBaseLayout.safe(plan,this)) throw new IllegalStateException("Recorded base site changed or is unsafe");
+            return plan;
+        }
+        var plan=StarterBaseLayout.select(origin,this).orElseThrow(()->new IllegalStateException("No clear supported workshop pad near setup start"));
+        var anchor=plan.getFirst().pos();
+        journal.put("BASE_LAYOUT",0,expectedDimension,anchor.x()+","+anchor.y()+","+anchor.z());
+        if(!journal.isPersistent()) throw new IllegalStateException("Cannot save base anchor; refusing unrecorded placement");
+        return plan;
+    }
+    public boolean air(StarterBaseLayout.Pos pos) throws Exception { return (Boolean)helper("isAir",controller,pos(pos)); }
+    public boolean safeFloor(StarterBaseLayout.Pos pos) throws Exception {
+        if (!(Boolean)helper("isSolidBlock",controller,pos(pos))) return false;
+        Object state=call(call(controller,"getWorld"),"method_8320",pos(pos));
+        String id=call(state,"method_26204").toString();
+        // Full, ordinary solid ground only. No slabs, fences, foliage or hazardous supports.
+        return id.matches("Block\\{minecraft:(stone|grass_block|dirt|coarse_dirt|rooted_dirt|podzol|mycelium|cobblestone|mossy_cobblestone|deepslate|cobbled_deepslate|andesite|granite|diorite|tuff|calcite|sandstone|red_sandstone|end_stone|bricks|stone_bricks|[a-z_]+_planks|[a-z_]*terracotta)\\}");
+    }
+    public boolean matches(StarterBaseLayout.Placement placement) throws Exception {
+        return (Boolean)helper("isBlock",controller,pos(placement.pos()),block(placement.resource()));
+    }
+    public boolean safe(StarterBaseLayout.Placement placement) throws Exception {
+        return Objects.equals(expectedDimension,dimension(controller)) && safeFloor(placement.pos().offset(0,-1,0))
+            && air(placement.pos().offset(0,1,0)) && (air(placement.pos())||matches(placement));
+    }
+    public int count(String resource) throws Exception {
+        Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",resource);
+        return ((Number)call(controller.getItemStorage(),"getItemCountInventoryOnly",matches)).intValue();
+    }
+    public Task acquire(String resource) throws Exception {
+        Object target=callStatic("com.player2.playerengine.TaskCatalogue","getItemTarget",resource,1);
+        Object selection=callStatic("com.player2.playerengine.tasks.crafting.CraftMacroTasks","macroOutcome",controller,target);
+        if(selection!=null && "MACRO_CREATED".equals(String.valueOf(call(selection,"outcome")))) return (Task)call(selection,"task");
+        return (Task)callStatic("com.player2.playerengine.TaskCatalogue","getItemTask",target);
+    }
+    public Task place(StarterBaseLayout.Placement placement) throws Exception {
+        Class<?> blockType=Class.forName("net.minecraft.class_2248");
+        return (Task)Class.forName("com.player2.playerengine.tasks.construction.PlaceItemBlockAtPosTask")
+            .getConstructor(blockPos,blockType).newInstance(pos(placement.pos()),block(placement.resource()));
+    }
+    private Object pos(StarterBaseLayout.Pos pos) throws Exception {
+        return blockPos.getConstructor(int.class,int.class,int.class).newInstance(pos.x(),pos.y(),pos.z());
+    }
+    private Object block(String id) throws Exception {
+        if(!blocks.containsKey(id)) {
+            Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",id);
+            if(matches==null || Array.getLength(matches)!=1)throw new IllegalStateException("Expected one concrete base item: "+id);
+            Object item=Array.get(matches,0);
+            blocks.put(id,call(item,"method_7711"));
+        }
+        return blocks.get(id);
+    }
+    private static Object helper(String name,Object...args) throws Exception {return callStatic("com.player2.playerengine.util.helpers.WorldHelper",name,args);}
+    private static double number(Object object,String mapped,String named) throws Exception {
+        try{return ((Number)call(object,mapped)).doubleValue();}catch(NoSuchMethodException e){return ((Number)call(object,named)).doubleValue();}
+    }
+    private static Object callStatic(String type,String name,Object...args) throws Exception {return invoke(Class.forName(type),null,name,args);}
+    private static Object call(Object object,String name,Object...args) throws Exception {return invoke(object.getClass(),object,name,args);}
+    private static Object invoke(Class<?> type,Object receiver,String name,Object[] args) throws Exception {
+        String key=type.getName()+"#"+name+Arrays.toString(Arrays.stream(args).map(a->a==null?"null":a.getClass().getName()).toArray());
+        Method cached=METHODS.get(key);
+        if(cached!=null)return cached.invoke(receiver,args);
+        outer:for(Method method:type.getMethods()) {
+            if(!method.getName().equals(name)||method.getParameterCount()!=args.length)continue;
+            Class<?>[] params=method.getParameterTypes();
+            for(int i=0;i<args.length;i++) {
+                Class<?> param=params[i];
+                if(param==int.class)param=Integer.class;
+                if(args[i]!=null&&!param.isInstance(args[i]))continue outer;
+            }
+            method.setAccessible(true);
+            METHODS.put(key,method);
+            return method.invoke(receiver,args);
+        }
+        throw new NoSuchMethodException(type.getName()+"."+name);
+    }
+}

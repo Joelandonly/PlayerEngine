@@ -3,7 +3,7 @@ from zipfile import ZipFile,ZipInfo,ZIP_DEFLATED
 from hashlib import sha256
 ROOT=Path(__file__).resolve().parents[1]
 base=ROOT/'baseline/playerengine-acquisition-safety.jar'
-out=ROOT/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PROJECT-SUPERVISOR-PREVIEW.jar'
+out=ROOT/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-STARTER-BASE-PREVIEW.jar'
 changes={p.relative_to(ROOT/'build/classes').as_posix():p.read_bytes() for p in (ROOT/'build/classes').rglob('*.class')}
 changes.update({p.relative_to(ROOT/'build/patches').as_posix():p.read_bytes() for p in (ROOT/'build/patches').rglob('*.class')})
 expected_existing={
@@ -14,9 +14,20 @@ expected_existing={
     'com/player2/playerengine/supervisor/GoalLifecycle$Snapshot.class',
     'com/player2/playerengine/supervisor/GoalLifecycle$Status.class',
 }
+expected_existing.update({
+    'com/player2/playerengine/commands/EllieSetupCommand.class',
+    'com/player2/playerengine/tasks/setup/EllieSetupTask.class',
+    'com/player2/playerengine/tasks/setup/EllieSetupTask$Step.class',
+    'com/player2/playerengine/tasks/setup/CoreAcquisitionProgress.class',
+    'com/player2/playerengine/tasks/setup/CoreAcquisitionProgress$Sample.class',
+    'com/player2/playerengine/tasks/crafting/CraftMacroResourceTask.class',
+})
 expected_existing.update('com/player2/playerengine/commands/'+name+'.class' for name in (ROOT/'tools/supervised-commands.txt').read_text().splitlines())
 expected_new={'com/player2/playerengine/interpreter/LocalChatGPTBridge.class',
               'com/player2/playerengine/supervisor/ProjectTaskGateway.class'}
+expected_new.update('com/player2/playerengine/tasks/setup/'+name+'.class' for name in [
+    'StarterBaseLayout','StarterBaseLayout$Pos','StarterBaseLayout$Placement','StarterBaseLayout$Probe',
+    'StarterBaseTask','StarterBaseTask$Environment','StarterBaseWorld'])
 assert set(changes)==expected_existing|expected_new,changes.keys()
 with ZipFile(base) as z: orig={k:z.read(k) for k in z.namelist() if not k.endswith('/')}
 assert set(changes)-set(orig)==expected_new
