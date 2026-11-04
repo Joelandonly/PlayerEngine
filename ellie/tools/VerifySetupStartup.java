@@ -14,6 +14,18 @@ public final class VerifySetupStartup {
    }
   }
   if(restore!=1)throw new AssertionError("Expected one restore-only startup handoff");
-  System.out.println("Packaged setup startup verified: restore-only handoff, no eager site selection");
+  for(String name:List.of("onStop","onTransientResumeAbandoned"))
+   requireCall(type,name,"com/player2/playerengine/tasks/setup/StarterBaseTask","releaseProtection");
+  ClassNode world=new ClassNode();try(ZipFile jar=new ZipFile(args[0])){
+   new ClassReader(jar.getInputStream(jar.getEntry("com/player2/playerengine/tasks/setup/StarterBaseWorld.class")).readAllBytes()).accept(world,0);
+  }
+  for(String name:List.of("loadExisting","loadOrSelect"))
+   requireCall(world,name,"com/player2/playerengine/tasks/setup/StarterBaseWorld","protect");
+  System.out.println("Packaged setup startup/lifecycle verified: restore-only handoff, protection on restored/new sites, root cleanup");
+ }
+ static void requireCall(ClassNode type,String methodName,String owner,String name){
+  for(MethodNode method:type.methods)if(method.name.equals(methodName))for(AbstractInsnNode insn:method.instructions)
+   if(insn instanceof MethodInsnNode call&&call.owner.equals(owner)&&call.name.equals(name))return;
+  throw new AssertionError(type.name+"."+methodName+" must call "+name);
  }
 }

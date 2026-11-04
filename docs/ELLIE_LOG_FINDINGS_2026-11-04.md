@@ -60,3 +60,18 @@ not claim to fix it, and performance needs profiling rather than inferred causat
 Live checks still need to verify all required items and ten placed blocks, safe
 site handling, no duplicate base on rerun, stop/resume/reload, and the observed
 crafting approach. Local tests substitute game boundaries and do not replace that.
+
+## Later run: setup mined its own foundation, then failed
+
+The newest event export shows cobblestone placed at (6,62,-4) and (7,62,0),
+then mined at those same coordinates during resource acquisition. Game-log times
+14:08:47 and 14:09:20 (UTC 13:08:47 and 13:09:20) record two setup generations
+failing with “Base site is occupied, obstructed or unsupported; no blocks will
+be broken.” These are controlled task failures, not operator cancellation.
+Restarting correctly skips existing bootstrap items but repeats the base failure.
+This later evidence is separate from the earlier cancelled runs above.
+
+The protected-layer correction reuses the shipped village resource-source guard
+and revalidates preparation before station placement. It prevents acquisition from
+using the active base footprint as a mine while allowing deliberate site excavation.
+See `ELLIE_SETUP_LAYERS_HOTFIX.md`; complete in-game acceptance remains pending.

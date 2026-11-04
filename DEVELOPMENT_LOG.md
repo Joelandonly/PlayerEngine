@@ -180,3 +180,15 @@ tasks. The maintainer explicitly requested clearing/filling ordinary terrain rat
 than rejecting it. Dry living space, world limits, unbreakable/protected blocks,
 verified native outputs and bounded waits remain enforced. See
 `docs/ELLIE_SETUP_STARTUP_HOTFIX.md` for findings, mod versions and test limits.
+
+## 2026-11-04: Protect setup foundation and revalidate layers
+
+Latest supplied events show native acquisition mining cobblestone it had just
+placed in the setup foundation; two generations then fail the base safety gate.
+Reused the existing village resource-source exclusion through a small setup owner
+adapter. New/restored anchors register before acquisition, and protection survives
+the base phase until the whole setup stops. Rechecked terrain layers retain matching
+stations and repair changed support before placement, with a finite repair budget.
+The new damage regression fails against the previous task implementation. The real
+shipped guard passes footprint/boundary/character/owner-cleanup checks. Native
+Minecraft gathering, placement and full setup still require live acceptance.

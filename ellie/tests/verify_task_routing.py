@@ -15,7 +15,7 @@ assert counts == expected, (counts, expected)
 assert not any(row['route'] == 'legacy-user-task' and row['caller'].split('#')[0] in expected for row in rows)
 # These paths must retain their baseline behavior; they are not project work.
 with zipfile.ZipFile(root / 'baseline/playerengine-acquisition-safety.jar') as baseline, \
-     zipfile.ZipFile(root / 'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SETUP-SITE-HOTFIX.jar') as built:
+     zipfile.ZipFile(root / 'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SETUP-LAYER-HOTFIX.jar') as built:
     setup_changes = {
         'com/player2/playerengine/tasks/setup/EllieSetupTask.class',
         'com/player2/playerengine/tasks/setup/EllieSetupTask$Step.class',
