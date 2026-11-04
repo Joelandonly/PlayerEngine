@@ -243,3 +243,14 @@ Tests run real patched Task.tick with substituted world/pathfinder boundaries,
 alongside production/NPC-use regressions and all earlier checks. Live Minecraft
 physics, complete armour setup and construction still require acceptance. Raw uploads
 and logs stay outside the repository. See docs/ELLIE_SHARED_RECOVERY.md.
+
+## 2026-11-04: Table item versus placed-bench contract
+
+The follow-up logs show successful use of table 118,63,-1, then setup step 8 fails
+while acquiring a table item. The macro skipped/satisfied a table inventory step
+based on world reachability, even when the table itself was the requested output.
+Guarded skipping, satisfaction and requirement collapse for requested table output.
+Setup prefers a safe nearby bench as its workshop anchor and can persist a new
+anchor for an empty saved layout; existing partial stations retain their positions.
+Added eight packaged decision checks and five layout/task regressions. No raw user
+logs or pasted HTML catalogue are committed. Live gameplay acceptance is pending.

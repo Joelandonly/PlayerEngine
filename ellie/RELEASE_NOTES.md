@@ -1,5 +1,9 @@
 # Shared target recovery, NPC crash and production handoffs
 
+Latest follow-up: fix table acquisition confusing a usable world bench with a
+requested inventory item. Reuse a safe nearby bench as setup's workshop anchor,
+including recovery of an empty saved layout; preserve partial construction.
+
 - Guard NPC axe stripping from the null-player vanilla path in the supplied crash.
 - Preserve final furnace input/output handoff and refresh material accounting.
 - Resume the same physical build after accepted defense/gesture suspension.

@@ -16,7 +16,24 @@ public final class PatchReliability implements Opcodes {
   for(MethodNode m:macro.methods)if(m.name.equals("onResourceTick")&&m.desc.equals("(L"+P+"PlayerEngineController;)L"+P+"tasks/base/Task;")){
    LabelNode normal=new LabelNode();InsnList i=new InsnList();i.add(new VarInsnNode(ALOAD,0));i.add(new VarInsnNode(ALOAD,1));i.add(new MethodInsnNode(INVOKESTATIC,P+"reliability/ProductionHandoff","pending","(Ljava/lang/Object;Ljava/lang/Object;)L"+P+"tasks/base/Task;",false));i.add(new InsnNode(DUP));i.add(new JumpInsnNode(IFNULL,normal));i.add(new InsnNode(ARETURN));i.add(normal);i.add(new FrameNode(F_SAME1,0,null,1,new Object[]{P+"tasks/base/Task"}));i.add(new InsnNode(POP));m.instructions.insert(i);hooks++;
   }
-  if(hooks!=1)throw new IllegalStateException("Expected one production handoff");save(macro,out);
+  if(hooks!=1)throw new IllegalStateException("Expected one production handoff");
+  // A placed table is a reusable tool, never an acquired table item requested as output.
+  int tableContracts=0;
+  for(MethodNode m:macro.methods){
+   if(m.name.equals("shouldSkipInventoryStep")||m.name.equals("collapseTableRequirement")){
+    LabelNode normal=new LabelNode();InsnList guard=new InsnList();guard.add(new VarInsnNode(ALOAD,0));guard.add(new FieldInsnNode(GETFIELD,macro.name,"pinnedOutputItem","Lnet/minecraft/class_1792;"));guard.add(new FieldInsnNode(GETSTATIC,"net/minecraft/class_1802","field_8465","Lnet/minecraft/class_1792;"));guard.add(new JumpInsnNode(IF_ACMPNE,normal));if(m.name.equals("shouldSkipInventoryStep"))guard.add(new InsnNode(ICONST_0));guard.add(new InsnNode(m.name.equals("shouldSkipInventoryStep")?IRETURN:RETURN));guard.add(normal);guard.add(new FrameNode(F_SAME,0,null,0,null));m.instructions.insert(guard);tableContracts++;
+   }
+   if(m.name.equals("inventoryStepSatisfied")){
+    int matches=0;
+    for(AbstractInsnNode n:m.instructions.toArray())if(n instanceof JumpInsnNode branch&&branch.getOpcode()==IF_ACMPNE){
+     AbstractInsnNode prev=branch.getPrevious();if(prev instanceof FieldInsnNode field&&field.name.equals("CRAFT_CRAFTING_TABLE_IN_INVENTORY")){
+      InsnList guard=new InsnList();guard.add(new VarInsnNode(ALOAD,0));guard.add(new FieldInsnNode(GETFIELD,macro.name,"pinnedOutputItem","Lnet/minecraft/class_1792;"));guard.add(new FieldInsnNode(GETSTATIC,"net/minecraft/class_1802","field_8465","Lnet/minecraft/class_1792;"));guard.add(new JumpInsnNode(IF_ACMPEQ,branch.label));m.instructions.insert(branch,guard);matches++;
+     }
+    }
+    if(matches!=1)throw new IllegalStateException("Unreviewed inventory table-output decision");tableContracts++;
+   }
+  }
+  if(tableContracts!=3)throw new IllegalStateException("Expected three table item/tool contracts");save(macro,out);
 
   ClassNode smelt=read(z,out,P+"tasks/container/SmeltInFurnaceTask");int smeltHooks=0;
   for(MethodNode m:smelt.methods)if(m.name.equals("onResourceTick")){

@@ -52,6 +52,14 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         String[] coords=journal.get("detail","").split(",");
         if(coords.length!=3) throw new IllegalStateException("Invalid saved base anchor");
         var plan=StarterBaseLayout.at(new StarterBaseLayout.Pos(Integer.parseInt(coords[0]),Integer.parseInt(coords[1]),Integer.parseInt(coords[2])));
+        var reused=StarterBaseLayout.reuseUnstarted(plan,origin,this);
+        if(!reused.equals(plan)){
+            var anchor=reused.getFirst().pos();
+            journal.put("BASE_LAYOUT_COMPACT_V3",0,expectedDimension,anchor.x()+","+anchor.y()+","+anchor.z());
+            if(!journal.isPersistent())throw new IllegalStateException("Cannot save reused workstation anchor");
+            platformMode=false;plan=reused;
+            com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_WORKSTATION_REUSED","Reanchored unstarted base around existing table "+anchor);
+        }
         protect(plan);
         return plan;
     }
@@ -60,7 +68,8 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         if(!existing.isEmpty())return existing;
         CoreGoalJournal journal=baseJournal();
         if (!journal.isPersistent()) throw new IllegalStateException("Persistent base journal unavailable; refusing unrecorded placement");
-        var ready=StarterBaseLayout.select(origin,this);
+        var ready=StarterBaseLayout.reuse(origin,this);
+        if(ready.isEmpty())ready=StarterBaseLayout.select(origin,this);
         if(ready.isEmpty())ready=StarterBaseLayout.selectBuildable(origin,this);
         if(ready.isEmpty()){
             platformMode=true;

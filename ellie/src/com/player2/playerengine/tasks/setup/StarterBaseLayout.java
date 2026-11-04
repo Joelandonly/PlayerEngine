@@ -44,6 +44,23 @@ public final class StarterBaseLayout {
         }
         return false;
     }
+    /** Reuse a real nearby bench as the three-station anchor, if its full site is safe/buildable. */
+    public static Optional<List<Placement>> reuse(Pos origin, Probe probe) throws Exception {
+        for(int radius=0;radius<=12;radius++)for(int dy:new int[]{0,1,-1,2,3})
+          for(int dx=-radius;dx<=radius;dx++)for(int dz=-radius;dz<=radius;dz++) {
+            if(Math.max(Math.abs(dx),Math.abs(dz))!=radius)continue;
+            List<Placement> candidate=at(origin.offset(dx,dy,dz));
+            if(!probe.matches(candidate.getFirst()))continue;
+            if(candidate.stream().anyMatch(p->Math.abs(p.pos().x()-origin.x())<=1&&Math.abs(p.pos().z()-origin.z())<=1))continue;
+            if(safe(candidate,probe)||buildable(candidate,probe))return Optional.of(candidate);
+          }
+        return Optional.empty();
+    }
+    /** A saved project with any verified workstation must keep its recorded layout. */
+    public static List<Placement> reuseUnstarted(List<Placement> saved,Pos origin,Probe probe)throws Exception {
+        for(Placement p:saved)if(probe.matches(p))return saved;
+        return reuse(origin,probe).orElse(saved);
+    }
     public static Optional<List<Placement>> select(Pos origin, Probe probe) throws Exception {
         return select(origin,probe,false);
     }

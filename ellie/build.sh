@@ -9,7 +9,7 @@ baseline = Path('baseline/playerengine-acquisition-safety.jar')
 if hashlib.sha256(baseline.read_bytes()).hexdigest() != manifest['baseline_sha256']:
     raise SystemExit('Baseline checksum mismatch; refusing to patch an unknown JAR')
 PY
-rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses
+rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses
 mkdir -p build/{classes,patches,tools,testclasses} dist
 javac --release 21 -cp baseline/playerengine-acquisition-safety.jar -d build/classes $(find src -name '*.java' | LC_ALL=C sort)
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchNativeCommands.java
@@ -69,3 +69,9 @@ javac --release 21 -cp build/patches:build/native-testclasses:build/testclasses:
 java -cp build/shared-testclasses:build/patches:build/native-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar com.player2.playerengine.reliability.SharedRecoveryRuntimeTest
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifyRecovery.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyRecovery dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
+
+# Execute the packaged table item/tool decisions; isolate game boundary fixtures.
+mkdir -p build/table-testclasses
+javac --release 21 -cp build/native-testclasses:build/testclasses:baseline/playerengine-acquisition-safety.jar -d build/table-testclasses $(find tests/tablefixtures -name '*.java' | LC_ALL=C sort)
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/table-testclasses:build/native-testclasses:build/testclasses:baseline/playerengine-acquisition-safety.jar -d build/tools tools/VerifyTableOutput.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools:build/table-testclasses:build/native-testclasses:build/testclasses:baseline/playerengine-acquisition-safety.jar VerifyTableOutput dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar

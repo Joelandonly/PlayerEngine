@@ -129,3 +129,34 @@ collection, interrupt a build with defense, and test an obstructed bench/route.
 Record the JAR hash and new Observatory exports. A normal lookup/syntax rejection
 (e.g. `smith iron_sword`, `get 64 stone`) is separate: use `get iron_sword 1` and
 `get stone 64`; smithing operates on upgrade recipes.
+
+## Follow-up: setup rejects the bench it just used
+
+The next supplied run (22:19 and 22:27 Europe/Amsterdam on November 4) is not a
+crafting-table resource-ID failure. It successfully crafts tools, a furnace and a
+chest using the table at `118,63,-1`, records that bench, then fails at base step
+8 with `Native acquisition ended without crafting_table`. The exported event file
+also contains older sessions; those are not evidence about this run.
+
+The acquisition macro treats a crafting-table inventory step as satisfied/skippable
+when a world bench is reachable. That is valid for a tool prerequisite, but wrong
+when the requested output is a table item for placement. Three native decisions
+now preserve that distinction: inventory-step skipping, inventory-step satisfaction,
+and removal of table requirements from the resolver budget. Multiple requested
+tables retain their actual quantity check. Native recipes and inventory operations
+remain responsible for producing the output.
+
+Setup now prefers an existing nearby bench as its three-station anchor when its
+full supported layout and standing access are safe or can be safely cleared. An
+empty saved layout can be reanchored and persisted for this retry. A layout with
+any matching station keeps its recorded positions. Existing blocks are verified,
+not credited as inventory, and a bench with no suitable site is not accepted merely
+because its ID matches. If another table item really is needed, the macro can make
+it without skipping it because of a different world bench.
+
+Eight checks execute these packaged macro decisions with substituted reach,
+inventory and recipe descriptors. Five additional layout/task regressions cover
+the supplied nearby bench, empty-journal recovery, preserving partial construction,
+unsafe access and completing placement without reacquiring the existing bench.
+These remain separate from live Minecraft acceptance. The pasted item catalogue
+contains `minecraft:crafting_table`; no numerical-ID substitution is introduced.

@@ -36,7 +36,9 @@ a test world and observe actual placement/navigation before accepting a release.
 ## Current setup
 
 The imported revision uses one crafting table, one furnace and one chest in a
-spaced line, on natural ground where possible. A compact support platform is a
+spaced line, on natural ground where possible. A safe nearby bench is preferred
+as the anchor; a saved layout with placed stations retains its coordinates.
+A world bench cannot substitute for a table item explicitly requested for placement. A compact support platform is a
 fallback for unsupported terrain, with at most eight load-bearing placements.
 The required survival kit remains. It intentionally supersedes the old eight-chest
 9x7 deck contract; old layout records are not blindly reused or demolished.
