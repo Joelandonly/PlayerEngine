@@ -18,7 +18,8 @@ baseline live in [`ellie/`](ellie/). Start there for current development.
 - [Gameplay validation matrix](docs/ELLIE_VALIDATION.md)
 - [Development history](DEVELOPMENT_LOG.md)
 
-The imported bundle preserves the interpreter and earlier baseline behavior.
+The imported bundle preserves the interpreter; the project-supervisor preview adds
+reviewed task routing and lifecycle fixes. See [manager verification](docs/ELLIE_PROJECT_MANAGER.md).
 It does not claim that reported crafting, navigation, or inference failures are
 fixed. Local tests and reproducible packaging are separate from live gameplay.
 
