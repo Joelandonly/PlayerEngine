@@ -26,8 +26,13 @@ The current build uses native Player2. No ChatGPT sidecar or Node process is nee
 Older ChatGPT launcher/sidecar files and `legacy-chatgpt/` are historical material,
 not part of the current runtime. The build verifies Player2 API byte identity,
 exact class changes, ASM, command routing, supervisor, setup and crafting recovery.
-Generated JAR/portable ZIP files are in `dist/`; GitHub Actions uploads them as
-`Ellie-1.21.1-preview`.
+Generated JAR/portable ZIP files are in `dist/`. For installation, download the
+GitHub Actions artifact **`Ellie-1.21.1-JAR-only`**: it contains exactly one mod JAR,
+with its source revision in the filename. GitHub wraps artifact downloads in a ZIP;
+extract that one JAR into `mods`.
+
+The separate **`Ellie-1.21.1-source-bundle`** is for rebuilding. It includes source,
+tests and the older pinned baseline JAR; do not install that baseline.
 
 Install only the replacement PlayerEngine JAR in Minecraft's `mods` folder.
 Remove the previous engine JAR and keep the companion mods. Run `Ellie, setup` in

@@ -254,3 +254,10 @@ Setup prefers a safe nearby bench as its workshop anchor and can persist a new
 anchor for an empty saved layout; existing partial stations retain their positions.
 Added eight packaged decision checks and five layout/task regressions. No raw user
 logs or pasted HTML catalogue are committed. Live gameplay acceptance is pending.
+
+## 2026-11-04: Separate install artifact from rebuild bundle
+
+The combined preview download included both the current mod and the source ZIP,
+whose pinned baseline JAR could be mistaken for the installable build. Split CI
+uploads into a one-JAR install artifact and a separately labelled source bundle.
+The install filename includes the source revision. Runtime bytes are unchanged.

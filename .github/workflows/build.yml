@@ -43,13 +43,23 @@ jobs:
           name: Ellie-task-routing
           path: ellie/build/reports/
           if-no-files-found: ignore
-      - name: Upload Ellie preview
+      - name: Prepare installable JAR
+        env:
+          ELLIE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p build/install
+          cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar "build/install/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-${ELLIE_REVISION:0:7}.jar"
+      - name: Upload installable Ellie JAR
         uses: actions/upload-artifact@v4
         with:
-          name: Ellie-1.21.1-preview
-          path: |
-            ellie/dist/*.jar
-            ellie/dist/*.zip
+          name: Ellie-1.21.1-JAR-only
+          path: ellie/build/install/*.jar
+          if-no-files-found: error
+      - name: Upload portable source bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ellie-1.21.1-source-bundle
+          path: ellie/dist/PlayerEngine-Ellie-Player2-Shared-Recovery.zip
           if-no-files-found: error
 
   legacy:
