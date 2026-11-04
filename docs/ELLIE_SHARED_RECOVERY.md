@@ -198,3 +198,45 @@ idle-state cleanup. These tests substitute Minecraft boundaries; full live setup
 through buckets and armour remains an acceptance test, not an automated-test claim.
 The new native route does not by itself prove that every terrain deadlock reported
 in chat has been eliminated. Raw logs stay outside the repository.
+
+## Follow-up: placed-torch hunting and treetop workbenches
+
+The next supplied run fails at torches, before the iron-upgrade acceptance test.
+The native catalogue selected CraftInInventoryTask, but ResourceTask's automatic
+`mineIfPresent` shortcut ran before its crafting logic. Observable targets include
+torches around `282,115,138`, then `319,-40,208`; inventory increases one torch at a
+time to 6/32 before stalling. This establishes collection of placed torch blocks,
+not which dungeon/structure generated them. The long journey was partly a source
+selection problem; this evidence does not establish that all navigation failures
+are solved.
+
+Fixed setup acquisition clears both the inherited placed-output source shortcut
+and its remembered target before returning each native task, including workstation
+reacquisition. Ingredient gathering, native smelting and native recipe crafting
+remain. The general catalogue and explicit mining commands keep their own policies.
+Route telemetry identifies native production with placed-output harvesting disabled.
+Tests check inherited private fields, not only public fixture properties.
+
+The bootstrap records benches at `143,66,-14` and `126,65,-13`, above the initially
+requested placement cells, consistent with the user's observed tree placement.
+Native nearby placement accepted unrestricted candidates and opportunistic clicks.
+Crafting-table/furnace placement now requires dry clear headroom, stable non-tree
+support, no body overlap, a nearby height and an adjacent supported standing pose.
+Selection preserves the original caller predicate, and the actual click path
+revalidates geometry. Other nearby block-placement tasks retain their policy.
+The new geometry is not proof of a complete path; native navigation/interaction
+still executes and verifies placement.
+
+Known leaf/trunk-supported or inaccessible benches are not preferred for reuse.
+Unknown foreign reuse boundaries defer to existing native validation, while new
+workshop placements fail closed if the geometry boundary cannot be inspected.
+Setup site floors also exclude foliage/trunk support. No existing tree bench is
+automatically destroyed.
+
+Fourteen geometry cases cover ground/furnace placement, canopy/trunk rejection,
+headroom, height/body overlap, fluid, missing access, native predicate retention,
+unrelated placements and existing-bench reuse. Packaged bytecode checks require
+both nearby-candidate hooks and the click guard. The 23 setup/station selection
+checks require the source shortcut and cached target to be cleared; native fields
+are checked against the actual packaged ResourceTask. Live acceptance remains:
+craft 32 torches from ingredients, then test the final iron handoff and armor.

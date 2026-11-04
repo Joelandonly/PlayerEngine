@@ -11,15 +11,15 @@ public final class SetupNativeAcquisitionTest {
   Method resolve=EllieSetupTask.class.getDeclaredMethod("resolve",EllieSetupTask.Step.class);resolve.setAccessible(true);int cases=0;
   for(var step:EllieSetupTask.plannedSteps()){
    Object task=resolve.invoke(setup,step);check(task instanceof TaskCatalogue.NativeAcquisition,"setup must select native catalogue for "+step.resource);
-   var request=(TaskCatalogue.NativeAcquisition)task;check(request.id.equals(step.resource)&&request.count==step.amount,"native request quantity must survive for "+step.resource);cases++;
+   var request=(TaskCatalogue.NativeAcquisition)task;check(request.id.equals(step.resource)&&request.count==step.amount,"native request quantity must survive for "+step.resource);check(!request.reclaimsPlacedOutput(),"setup must craft supplies instead of chasing placed output for "+step.resource);cases++;
   }
   Class<?> world=Class.forName("com.player2.playerengine.tasks.setup.StarterBaseWorld");var ctor=world.getDeclaredConstructor(PlayerEngineController.class,StarterBaseLayout.Pos.class,String.class);ctor.setAccessible(true);Object environment=ctor.newInstance(setup.controller,new StarterBaseLayout.Pos(0,64,0),"minecraft:overworld");
   Method acquire=world.getDeclaredMethod("acquire",String.class);acquire.setAccessible(true);
-  for(String id:new String[]{"crafting_table","furnace","chest"}){var request=(TaskCatalogue.NativeAcquisition)acquire.invoke(environment,id);check(request.id.equals(id)&&request.count==1,"workstation acquisition must use native catalogue");cases++;}
+  for(String id:new String[]{"crafting_table","furnace","chest"}){var request=(TaskCatalogue.NativeAcquisition)acquire.invoke(environment,id);check(request.id.equals(id)&&request.count==1,"workstation acquisition must use native catalogue");check(!request.reclaimsPlacedOutput(),"station reacquisition must not strip placed output");cases++;}
   Controller natural=new Controller();Object naturalWorld=ctor.newInstance(natural,new StarterBaseLayout.Pos(0,64,0),"minecraft:overworld");
   Method protect=world.getDeclaredMethod("protect",java.util.List.class);protect.setAccessible(true);var plan=StarterBaseLayout.at(new StarterBaseLayout.Pos(10,64,10));protect.invoke(naturalWorld,plan);
   check(natural.extra.guards.size()==1&&natural.extra.guards.getFirst().test(new net.minecraft.class_2338(10,63,10)),"natural workstation floors must be protected from navigation excavation");cases++;
   Method release=world.getDeclaredMethod("releaseProtection");release.setAccessible(true);release.invoke(naturalWorld);check(natural.extra.guards.isEmpty(),"terminal root must remove its native break guard");cases++;
-  System.out.println("SetupNativeAcquisitionTest: "+(cases-2)+" native selections and 2 guard lifecycle checks passed with macro resolution forbidden; game crafting not simulated");
+  System.out.println("SetupNativeAcquisitionTest: "+(cases-2)+" native production selections and 2 guard lifecycle checks passed with macro resolution forbidden; game crafting not simulated");
  }
 }

@@ -407,10 +407,20 @@ TrackedTaskOutcomeProvider {
     private Task resolve(Step step) throws ReflectiveOperationException {
         // The fixed setup kit uses the same native acquisition route as mining prerequisites.
         // Do not opt into the dynamic macro resolver between furnace outputs.
+        Task result=nativeAcquisition(step.resource,step.amount);
+        EllieSetupTask.event("SETUP_ACQUISITION_ROUTE","native production (placed-output harvesting disabled): "+step.resource+" x"+step.amount+" -> "+result.getClass().getSimpleName());
+        return (Task)result;
+    }
+
+    public static Task nativeAcquisition(String resource,int amount)throws ReflectiveOperationException {
         Class<?> catalogue=Class.forName("com.player2.playerengine.TaskCatalogue");
-        Object result=catalogue.getMethod("getItemTask",String.class,Integer.TYPE).invoke(null,step.resource,step.amount);
-        if(!(result instanceof Task))throw new IllegalStateException("No native acquisition task for "+step.resource);
-        EllieSetupTask.event("SETUP_ACQUISITION_ROUTE","native catalogue: "+step.resource+" x"+step.amount+" -> "+result.getClass().getSimpleName());
+        Object result=catalogue.getMethod("getItemTask",String.class,Integer.TYPE).invoke(null,resource,amount);
+        if(!(result instanceof Task))throw new IllegalStateException("No native acquisition task for "+resource);
+        try{
+            // A setup supplies order is a production request, not permission to strip distant placed output.
+            com.player2.playerengine.nativecommands.NativeAccess.set(result,"mineIfPresent",null);
+            com.player2.playerengine.nativecommands.NativeAccess.set(result,"mineLastClosest",null);
+        }catch(Exception error){throw new ReflectiveOperationException("Cannot apply setup production policy for "+resource,error);}
         return (Task)result;
     }
 

@@ -273,3 +273,14 @@ furnace delay is added. Also replace base verification's unchanged-condition loo
 with actual safe support/headroom/access repair jobs and exact safety diagnostics;
 protect natural workshop support from path excavation. Clear stale recovery mode
 when its root ends. Tests remain separate from live gameplay acceptance.
+
+## 2026-11-04: Produce setup torches instead of stripping placed lights
+
+The new run reaches native torch acquisition but follows distant placed torches,
+collecting six individually before stalling. Clear native output-reclamation fields
+for fixed setup requests while retaining native ingredient tasks/crafting. Logs
+cannot identify the structure as a dungeon. Also constrain nearby bench/furnace
+selection and actual placement clicks to supported non-tree sites with usable
+standing space, and filter known unsuitable reused benches. Add 14 geometry checks
+and verify actual packaged hooks/native source fields. Full torch/iron gameplay
+acceptance remains pending; raw uploads remain outside the repository.

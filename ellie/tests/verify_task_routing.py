@@ -26,7 +26,7 @@ with zipfile.ZipFile(root / 'baseline/playerengine-acquisition-safety.jar') as b
         'com/player2/playerengine/tasks/construction/build_structure/BuildStructureTask.class',
         'com/player2/playerengine/tasks/agentic/LabelChestTask.class',
         'com/player2/playerengine/tasks/base/Task.class',
-        'com/player2/playerengine/tasks/container/SmeltInFurnaceTask.class',
+        'com/player2/playerengine/tasks/container/SmeltInFurnaceTask.class', 'com/player2/playerengine/tasks/construction/PlaceBlockNearbyTask.class',
         'com/player2/playerengine/tasks/crafting/CraftingTableLocator.class',
     }
     for entry in baseline.namelist():

@@ -11,6 +11,7 @@ public final class VerifyRecovery {
   require(calls(read(z,"util/helpers/LookHelper"),"lookAt",R+"SharedTargetRecovery","allowTaskLook")==2,"both task rotation boundaries must yield to movement");
   require(calls(read(z,"automaton/behavior/LookBehavior"),"updateTarget",R+"SharedTargetRecovery","baritoneLook")==1,"missing actual look-writer instrumentation");
   require(calls(read(z,"automaton/utils/InputOverrideHandler"),"setInputForceState",R+"SharedTargetRecovery","inputWrite")==1,"missing actual input-writer instrumentation");
+  ClassNode nearby=read(z,"tasks/construction/PlaceBlockNearbyTask");require(calls(nearby,"onTick",R+"WorkshopPlacement","allows")==1&&calls(nearby,"locateClosePlacePos",R+"WorkshopPlacement","allows")==1&&calls(nearby,"place",R+"WorkshopPlacement","allowed")==1,"nearby workstation placement must validate both selection and actual click");
   ClassNode interaction=read(z,"automaton/api/entity/LivingEntityInteractionManager");require(calls(interaction,"interactBlock",R+"NpcItemUse","use")==2,"both NPC item-use paths must be guarded");require(calls(interaction,"interactBlock","net/minecraft/class_1799","method_7981")==0,"unguarded vanilla item use remains");
   require(calls(read(z,"tasks/crafting/CraftMacroResourceTask"),"onResourceTick",R+"ProductionHandoff","pending")==1,"missing production handoff");
   ClassNode smelt=read(z,"tasks/container/SmeltInFurnaceTask");require(calls(smelt,"onResourceTick",R+"ProductionHandoff","beforeSmeltTick")==1,"missing pending-furnace guard");

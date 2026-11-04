@@ -130,6 +130,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         if(!withinLimits(p)||fluid(p))return false;
         Object world=call(controller,"getWorld");Object state=state(p);
         String id=call(state,"method_26204").toString();
+        if(com.player2.playerengine.reliability.WorkshopPlacement.isTreeSupport(id))return false;
         if(id.contains(":magma_block")||id.contains(":cactus")||id.contains("campfire"))return false;
         return (Boolean)call(state,"method_26234",world,pos(p));
     }
@@ -208,7 +209,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         return ((Number)call(controller.getItemStorage(),"getItemCountInventoryOnly",matches)).intValue();
     }
     public Task acquire(String resource) throws Exception {
-        return (Task)callStatic("com.player2.playerengine.TaskCatalogue","getItemTask",resource,1);
+        return EllieSetupTask.nativeAcquisition(resource,1);
     }
     public Task place(StarterBaseLayout.Placement placement) throws Exception {
         Class<?> blockType=Class.forName("net.minecraft.class_2248");

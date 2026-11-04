@@ -6,5 +6,6 @@ public final class TaskCatalogue {
  public static Object getItemTarget(String id,int count){return new Target(id,count);}
  public static Task getItemTask(String id,int count){return new NativeAcquisition(id,count);}
  public record Target(String id,int count){}
- public static final class NativeAcquisition extends Task {public final String id;public final int count;NativeAcquisition(String id,int count){this.id=id;this.count=count;}}
+ public static class ResourceBoundary extends Task {private Object mineIfPresent=new Object();private Object mineLastClosest=new Object();public boolean reclaimsPlacedOutput(){return mineIfPresent!=null||mineLastClosest!=null;}}
+ public static final class NativeAcquisition extends ResourceBoundary {public final String id;public final int count;NativeAcquisition(String id,int count){this.id=id;this.count=count;}}
 }

@@ -65,8 +65,9 @@ java -cp build/native-testclasses:build/patches:build/testclasses:build/classes:
 java -cp build/testclasses:build/classes:build/patches:baseline/playerengine-acquisition-safety.jar TargetRecoveryPolicyTest
 
 mkdir -p build/shared-testclasses
-javac --release 21 -cp build/patches:build/native-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/shared-testclasses $(find tests/sharedfixtures -name '*.java' | LC_ALL=C sort) tests/SharedRecoveryRuntimeTest.java
+javac --release 21 -cp build/patches:build/native-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/shared-testclasses $(find tests/sharedfixtures -name '*.java' | LC_ALL=C sort) tests/SharedRecoveryRuntimeTest.java tests/WorkshopPlacementTest.java
 java -cp build/shared-testclasses:build/patches:build/native-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar com.player2.playerengine.reliability.SharedRecoveryRuntimeTest
+java -cp build/shared-testclasses:build/patches:build/native-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar com.player2.playerengine.reliability.WorkshopPlacementTest
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifyRecovery.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyRecovery dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
 

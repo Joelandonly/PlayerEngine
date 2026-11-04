@@ -42,6 +42,9 @@ a test world and observe actual placement/navigation before accepting a release.
 
 The fixed setup kit uses native catalogue acquisition tasks, as mining prerequisites
 do. It does not opt into the dynamic crafting macro at furnace/material transitions.
+Setup requests disable opportunistic mining of placed output (such as torches),
+so supplies use native ingredient gathering and crafting. Nearby workbench/furnace
+placement requires non-tree support and a usable adjacent standing position.
 Failed base safety checks produce safe native repair jobs or identify the unsafe
 cell; naturally supported workstation floors are protected during setup too.
 

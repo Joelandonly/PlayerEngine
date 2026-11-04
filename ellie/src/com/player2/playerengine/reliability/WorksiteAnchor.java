@@ -35,7 +35,7 @@ public final class WorksiteAnchor {
  }
  public static Optional<?> preferBench(Object controller,Optional<?> fallback){
   try{Site s=sites.get(controller);if(s==null||s.bench==null||s.world.get()!=call(controller,"getWorld"))return fallback;
-   RecoveryWorld game=new RecoveryWorld(controller);Object pos=RecoveryWorld.pos(s.bench);if(SharedTargetRecovery.rejected(controller,pos))return fallback;
+   RecoveryWorld game=new RecoveryWorld(controller);Object pos=RecoveryWorld.pos(s.bench);if(SharedTargetRecovery.rejected(controller,pos)||Boolean.FALSE.equals(WorkshopPlacement.reuseAllowed(controller,pos)))return fallback;
    double[] at=game.position();double radius=((Number)call(call(controller,"getModSettings"),"getCraftingTableReuseRadius")).doubleValue();
    if(radius<=0)return fallback;
    double distance=Math.pow(at[0]-s.bench.x(),2)+Math.pow(at[1]-s.bench.y(),2)+Math.pow(at[2]-s.bench.z(),2);

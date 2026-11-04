@@ -42,6 +42,16 @@ public final class PatchReliability implements Opcodes {
    smeltHooks++;
   }
   if(smeltHooks!=1)throw new IllegalStateException("Expected native furnace handoff boundary");save(smelt,out);
+  ClassNode nearby=read(z,out,P+"tasks/construction/PlaceBlockNearbyTask");int placementFilters=0,clickFilters=0;
+  for(MethodNode m:nearby.methods){
+   if(m.name.equals("onTick")||m.name.equals("locateClosePlacePos"))for(AbstractInsnNode n:m.instructions.toArray())if(n instanceof MethodInsnNode call&&call.owner.equals("java/util/function/Predicate")&&call.name.equals("test")&&call.desc.equals("(Ljava/lang/Object;)Z")){
+    m.instructions.insertBefore(call,new VarInsnNode(ALOAD,0));call.setOpcode(INVOKESTATIC);call.owner=P+"reliability/WorkshopPlacement";call.name="allows";call.desc="(Ljava/util/function/Predicate;Ljava/lang/Object;Ljava/lang/Object;)Z";call.itf=false;placementFilters++;
+   }
+   if(m.name.equals("place")&&m.desc.equals("(L"+P+"PlayerEngineController;Lnet/minecraft/class_2338;)Z")){
+    LabelNode normal=new LabelNode();InsnList gate=new InsnList();gate.add(new VarInsnNode(ALOAD,0));gate.add(new VarInsnNode(ALOAD,2));gate.add(new MethodInsnNode(INVOKESTATIC,P+"reliability/WorkshopPlacement","allowed","(Ljava/lang/Object;Ljava/lang/Object;)Z",false));gate.add(new JumpInsnNode(IFNE,normal));gate.add(new InsnNode(ICONST_0));gate.add(new InsnNode(IRETURN));gate.add(normal);gate.add(new FrameNode(F_SAME,0,null,0,null));m.instructions.insert(gate);clickFilters++;
+   }
+  }
+  if(placementFilters!=2||clickFilters!=1)throw new IllegalStateException("Unreviewed nearby-workshop placement boundary");save(nearby,out);
   String hook=P+"reliability/SharedTargetRecovery";
   ClassNode task=read(z,out,P+"tasks/base/Task");task.fields.add(new FieldNode(ACC_PRIVATE,"sharedRecoveryAction","L"+P+"tasks/base/Task;",null,null));int gates=0,ticks=0;
   for(MethodNode m:task.methods){

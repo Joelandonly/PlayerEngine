@@ -25,7 +25,7 @@ expected_existing.update({
 })
 expected_existing.update('com/player2/playerengine/commands/'+name+'.class' for name in (ROOT/'tools/supervised-commands.txt').read_text().splitlines())
 expected_existing.update('com/player2/playerengine/'+name+'.class' for name in [
-    'tasks/container/SmeltInFurnaceTask','automaton/api/entity/LivingEntityInteractionManager','automaton/utils/InputOverrideHandler','automaton/behavior/LookBehavior','commands/BlockScanner','tasks/base/Task','util/helpers/LookHelper',
+    'tasks/construction/PlaceBlockNearbyTask','tasks/container/SmeltInFurnaceTask','automaton/api/entity/LivingEntityInteractionManager','automaton/utils/InputOverrideHandler','automaton/behavior/LookBehavior','commands/BlockScanner','tasks/base/Task','util/helpers/LookHelper',
     'agentic/AgenticPlannerService','agentic/elliegps/WaypointIngestionService',
     'commands/BuildStructureCommand','commands/AgenticCommand','commands/random/ScanCommand','commands/base/CommandExecutor',
     'player2api/SetupDirectRoute','tasks/agentic/LabelChestTask',
@@ -38,7 +38,7 @@ expected_new.update('com/player2/playerengine/tasks/setup/'+name+'.class' for na
     'SetupBuildZone','SetupBuildZone$Shape','SetupBuildZone$Origin'])
 expected_new.update('com/player2/playerengine/nativecommands/'+name+'.class' for name in [
     'NativeAccess','NativeBuildSupport','NativeFood','NativeCommandText'])
-expected_new.update('com/player2/playerengine/reliability/'+name+'.class' for name in ['NpcItemUse','ProductionHandoff','TargetRecoveryPolicy','RecoveryWorld','RecoveryWorld$Cell','SharedTargetRecovery','SharedTargetRecovery$Session','WorksiteAnchor','WorksiteAnchor$Site'])
+expected_new.update('com/player2/playerengine/reliability/'+name+'.class' for name in ['NpcItemUse','ProductionHandoff','TargetRecoveryPolicy','RecoveryWorld','RecoveryWorld$Cell','SharedTargetRecovery','SharedTargetRecovery$Session','WorksiteAnchor','WorksiteAnchor$Site','WorkshopPlacement'])
 removed={'com/player2/playerengine/commands/random/DummyTaskCommand.class',
          'com/player2/playerengine/commands/random/DummyTaskCommand$DummyTask.class'}
 assert set(changes)==expected_existing|expected_new,(set(changes)-(expected_existing|expected_new),(expected_existing|expected_new)-set(changes))
