@@ -3,8 +3,8 @@
 This preview implements the maintainer's chosen target: a full starter kit plus
 placed workstations/storage. It is not a claim of live Minecraft acceptance.
 Invoke the existing exact `Ellie, setup` route; supplied logs show that this route
-can dispatch without calling the conversation model. Generic `build_structure`
-is a different, LLM-assisted operation.
+can dispatch without calling the conversation model. `build_structure` is separate: it tries supported local templates first and uses
+LLM planning only as a fallback. See the command inventory’s village correction.
 
 ## Required outputs
 
@@ -22,14 +22,22 @@ iron kit is obtained. The old optional-item skips cannot satisfy this contract.
 ## Workstation/storage phase
 
 The original setup starting feet position and dimension are captured before
-resource gathering. A bounded nearby search at that height looks for a clear,
-supported workshop pad. Only ordinary full-block ground is accepted. It does not
-excavate terrain, clear buildings, break occupied blocks, fill water, or descend
-into a cave to find a site. An unsuitable site blocks setup with an explanation.
-The NPC's initial feet cell and immediate neighboring cells are excluded as
-placement targets, accounting conservatively for body overlap at block edges.
+resource gathering. Startup restores an existing recorded layout only; it does
+not require a ready-made site before the first tool can be gathered.
 
-The layout occupies these relative cells (all at the same Y):
+At the workstation phase, the planner first prefers an already usable nearby site.
+If none exists, it chooses a **preparable** site: ordinary obstructions are mined
+using `DestroyBlockTask`, and unsupported foundation cells are filled with
+cobblestone using `PlaceBlockTask`. The native task engine performs all actions;
+there are no direct world edits, teleports or blueprint-model calls.
+
+The deck includes the workstation/storage footprint and walk space. Living-space
+cells must be dry or safely clearable; foundation cells may be over water or lava.
+Actual world build limits and the world border are checked. Unbreakable blocks
+and nonmatching block entities (including storage) are not automatically demolished.
+Native permission, reach and material failures remain explicit blocked outcomes.
+
+The layout's workstation positions are:
 
 ```text
 T . F . . . .     T = crafting table, F = furnace, C = chest
@@ -39,11 +47,11 @@ C . C . C . C
 C . C . C . C
 ```
 
-The complete pad includes a one-block margin, solid support and head/lid clearance.
-The selected anchor is saved to a separate per-world/per-character goal journal
-before placement. Rerunning setup reuses and rechecks that recorded layout instead
-of placing another base. A corrupted, unavailable or dimension-mismatched journal
-blocks placement rather than silently choosing a duplicate site.
+The selected anchor is journaled per world/character before execution. Reruns reuse
+and recheck it. The NPC's initial feet cell and neighboring edge-overlap cells are
+excluded as workstation/chest targets. Preparatory tasks are bounded and verify
+world changes before advancing. This does not claim universal native reachability
+or a successful platform over lava/water until tested in Minecraft.
 
 Workstations/storage are established after bootstrap and before iron upgrades.
 The native `PlaceItemBlockAtPosTask` performs interactions and checks the resulting

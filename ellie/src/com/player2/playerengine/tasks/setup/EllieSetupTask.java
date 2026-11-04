@@ -75,10 +75,10 @@ TrackedTaskOutcomeProvider {
                 this.baseDimension = StarterBaseWorld.dimension(this.controller);
                 this.baseTask = new StarterBaseTask(this.baseOrigin, this.baseDimension);
                 this.baseTask.controller = this.controller;
-                this.baseTask.prepare();
+                this.baseTask.prepareExisting();
             } catch (Exception | LinkageError error) {
                 String detail = error instanceof IllegalStateException && error.getMessage() != null ? ": " + error.getMessage() : "";
-                this.stopStep(PLAN[0], "Cannot prepare a safe setup base: " + error.getClass().getSimpleName() + detail, true);
+                this.stopStep(new Step("startup", "setup_context", 1, true, 12000), "Cannot restore setup context: " + error.getClass().getSimpleName() + detail, true);
                 return;
             }
             this.journal = this.openGoalJournal();
