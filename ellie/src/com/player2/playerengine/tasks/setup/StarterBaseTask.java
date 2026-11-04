@@ -6,6 +6,11 @@ import java.util.*;
 /** Runs native item/placement tasks and verifies each real block before accepting it. */
 public final class StarterBaseTask extends Task implements TrackedTaskOutcomeProvider, TransientlyResumableTask {
     public interface Environment {
+        default List<StarterBaseLayout.Placement> loadExisting() throws Exception { return List.of(); }
+        default List<StarterBaseLayout.Placement> terrainPlan(List<StarterBaseLayout.Placement> plan)throws Exception { return List.of(); }
+        default boolean prepared(StarterBaseLayout.Placement job)throws Exception { throw new UnsupportedOperationException(); }
+        default boolean canPrepare(StarterBaseLayout.Placement job)throws Exception { return false; }
+        default Task prepareTerrain(StarterBaseLayout.Placement job)throws Exception { throw new UnsupportedOperationException(); }
         List<StarterBaseLayout.Placement> loadOrSelect() throws Exception;
         boolean matches(StarterBaseLayout.Placement placement) throws Exception;
         boolean safe(StarterBaseLayout.Placement placement) throws Exception;
@@ -17,6 +22,8 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     private final StarterBaseLayout.Pos origin;
     private final String dimension;
     private List<StarterBaseLayout.Placement> plan;
+    private List<StarterBaseLayout.Placement> terrain;
+    private int terrainIndex;
     private Task active;
     private boolean acquiring;
     private int index, ticks, stageTicks;
@@ -31,13 +38,33 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
         onStart();
         if (plan==null) plan=List.copyOf(environment.loadOrSelect());
     }
+    public void prepareExisting() throws Exception {
+        onStart();
+        List<StarterBaseLayout.Placement> existing=environment.loadExisting();
+        if (!existing.isEmpty()) plan=List.copyOf(existing);
+    }
     protected Task onTick() {
         if (done || failed) return null;
         try {
-            if (++ticks>12000) return blocked("Starter base active-work budget exhausted; verify site and placement reach");
+            if (++ticks>72000) return blocked("Starter base active-work budget exhausted; verify preparation and placement reach");
             if (plan==null) {
                 plan=List.copyOf(environment.loadOrSelect());
                 if (plan.size()!=10) return blocked("Starter base requires one table, one furnace and eight chest blocks");
+            }
+            if(terrain==null)terrain=List.copyOf(environment.terrainPlan(plan));
+            while(terrainIndex<terrain.size()) {
+                var job=terrain.get(terrainIndex);
+                if(environment.prepared(job)){terrainIndex++;active=null;stageTicks=0;continue;}
+                if(!environment.canPrepare(job))return blocked("Cannot safely prepare "+job.resource()+" at "+job.pos()+" (bounds, fluid, protected or unbreakable block)");
+                if(active!=null) {
+                    if(++stageTicks>(acquiring?2400:1200))return blocked("Native site preparation made no verified output at "+job.pos());
+                    if(!active.isFinished()&&!active.stopped())return active;
+                    if(acquiring&&environment.count(job.resource())>0){active=null;stageTicks=0;}
+                    else return blocked("Native site preparation stopped without verified output at "+job.pos());
+                }
+                acquiring=!job.resource().equals("air")&&environment.count(job.resource())==0;
+                active=Objects.requireNonNull(acquiring?environment.acquire(job.resource()):environment.prepareTerrain(job));
+                active.controller=controller;return active;
             }
             while(index<plan.size() && environment.matches(plan.get(index))) { index++; active=null; stageTicks=0; }
             if (index==plan.size()) {
@@ -84,7 +111,10 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     public String controlledReason() { return reason; }
     public boolean isFinished() { return isTerminal(); }
     protected boolean isEqual(Task other) { return this==other; }
-    protected String toDebugString() { return "Starter base "+index+"/10: "+reason; }
+    protected String toDebugString() {
+        if(terrain!=null&&terrainIndex<terrain.size())return "Starter base site preparation "+terrainIndex+"/"+terrain.size();
+        return "Starter base "+index+"/10: "+reason;
+    }
     protected void onStop(Task next) { if(!done&&!failed)blocked("Starter base interrupted; recorded positions will be reverified on setup rerun"); }
     public boolean prepareForTransientResume(TaskSuspensionCause cause) {
         return !isTerminal() && (cause==TaskSuspensionCause.GESTURE_OVERLAY||cause==TaskSuspensionCause.HIGHER_PRIORITY_CHAIN);

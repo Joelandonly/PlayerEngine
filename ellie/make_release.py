@@ -5,9 +5,9 @@ from hashlib import sha256
 import json
 
 ROOT = Path(__file__).resolve().parent
-JAR_NAME = 'PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-STARTER-BASE-PREVIEW.jar'
+JAR_NAME = 'PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SETUP-SITE-HOTFIX.jar'
 JAR = ROOT / 'dist' / JAR_NAME
-OUT = ROOT / 'dist' / 'PlayerEngine-Ellie-Starter-Base.zip'
+OUT = ROOT / 'dist' / 'PlayerEngine-Ellie-Setup-Site-Hotfix.zip'
 BASE = ROOT / 'baseline' / 'playerengine-acquisition-safety.jar'
 original = json.loads((ROOT / 'RELEASE_MANIFEST.json').read_text())
 if sha256(BASE.read_bytes()).hexdigest() != original['baseline_sha256']:
@@ -37,7 +37,7 @@ manifest = {
     'jar_sha256': sha256(files[JAR_NAME]).hexdigest(),
     'source_upload_jar_sha256': original.get('source_upload_jar_sha256', original['jar_sha256']),
     'build_kind': 'binary-overlay; complete Minecraft 1.21.1 source unavailable',
-    'release': 'Ellie full starter kit and placed workstation/storage base preview',
+    'release': 'Ellie setup startup and native site-preparation hotfix',
     'changed_existing_classes': [
         'com/player2/playerengine/player2api/Player2APIService.class',
         'com/player2/playerengine/supervisor/CoreGoalSupervisor.class',

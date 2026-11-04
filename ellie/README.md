@@ -64,7 +64,7 @@ the [original Windows install guide](UPSTREAM_README.md#quick-install-windows--s
 Replace the existing PlayerEngine JAR rather than installing a duplicate, retain
 Player2NPC, and keep the sidecar beside the PowerShell launcher. Use a backed-up,
 disposable world first.
-For this build, install the `ELLIE-STARTER-BASE-PREVIEW.jar` from `dist/`;
+For this build, install the `ELLIE-SETUP-SITE-HOTFIX.jar` from `dist/`;
 the interpreter filename in the historical guide refers to the original upload.
 
 In the bridge terminal, use `login`, `status`, and `probe` before testing chat in
@@ -84,7 +84,7 @@ this import does not turn that into a complete gameplay pass. See the
 [backlog](../docs/ELLIE_BACKLOG.md).
 
 See [project manager verification and remaining gates](../docs/ELLIE_PROJECT_MANAGER.md).
-The hardened JAR has a distinct `ELLIE-STARTER-BASE-PREVIEW` filename and is
+The hardened JAR has a distinct `ELLIE-SETUP-SITE-HOTFIX` filename and is
 not byte-identical to the original interpreter upload. ChatGPT bridge behavior is
 unchanged; the supervisor and reviewed command routes intentionally change.
 Navigation, crafting and furnace bugs are not claimed fixed.
@@ -94,6 +94,15 @@ Navigation, crafting and furnace bugs are not claimed fixed.
 Exact `setup` now targets the required full kit and placed workstation/storage
 base, with no house or farm implied. Read the [setup contract and live gates](../docs/ELLIE_SETUP.md)
 and [findings from the supplied logs](../docs/ELLIE_LOG_FINDINGS_2026-11-04.md).
-The release ZIP is `dist/PlayerEngine-Ellie-Starter-Base.zip`. Existing completed
+The release ZIP is `dist/PlayerEngine-Ellie-Setup-Site-Hotfix.zip`. Existing completed
 supervisor-only and original interpreter artifacts remain historical references.
 This setup preview intentionally changes setup and crafting-approach behavior.
+
+### Startup and site-preparation hotfix
+
+The previous preview incorrectly required a flat workshop pad before gathering the
+first tool. The hotfix restores existing plans without selecting a fresh site at
+startup. Placement can mine ordinary obstructions and fill foundation gaps through
+native tasks, including over fluid. It still enforces dry living space, world limits,
+protected/unbreakable blocks, verified outputs and bounded waiting. Live validation
+with the supplied companion mod set remains necessary.

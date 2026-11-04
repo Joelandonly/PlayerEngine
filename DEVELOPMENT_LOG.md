@@ -170,3 +170,13 @@ eight progress checks, 15 supervisor scenarios, bridge JVM test, all 24 Node tes
 These substitute game boundaries. Native placement, full acquisition, reload and
 observed crafting/edge stalls still require live Minecraft acceptance; no claim
 that all existing gameplay defects are fixed.
+
+## 2026-11-04: Immediate setup startup regression and terraforming requirement
+
+New logs reproduce immediate failure at the over-restrictive flat-pad startup gate.
+Changed startup to restore-only layout handling, deferred new selection to placement,
+and added preparable-site handling using native excavation and cobblestone foundation
+tasks. The maintainer explicitly requested clearing/filling ordinary terrain rather
+than rejecting it. Dry living space, world limits, unbreakable/protected blocks,
+verified native outputs and bounded waits remain enforced. See
+`docs/ELLIE_SETUP_STARTUP_HOTFIX.md` for findings, mod versions and test limits.

@@ -3,7 +3,7 @@ from zipfile import ZipFile,ZipInfo,ZIP_DEFLATED
 from hashlib import sha256
 ROOT=Path(__file__).resolve().parents[1]
 base=ROOT/'baseline/playerengine-acquisition-safety.jar'
-out=ROOT/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-STARTER-BASE-PREVIEW.jar'
+out=ROOT/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SETUP-SITE-HOTFIX.jar'
 changes={p.relative_to(ROOT/'build/classes').as_posix():p.read_bytes() for p in (ROOT/'build/classes').rglob('*.class')}
 changes.update({p.relative_to(ROOT/'build/patches').as_posix():p.read_bytes() for p in (ROOT/'build/patches').rglob('*.class')})
 expected_existing={

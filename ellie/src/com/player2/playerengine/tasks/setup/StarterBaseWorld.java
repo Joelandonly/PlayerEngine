@@ -14,6 +14,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     private final String expectedDimension;
     private final Class<?> blockPos;
     private final Map<String,Object> blocks=new HashMap<>();
+    private final Map<StarterBaseLayout.Pos,StarterBaseLayout.Placement> retained=new HashMap<>();
     StarterBaseWorld(PlayerEngineController controller, StarterBaseLayout.Pos origin, String dimension) {
         this.controller=controller;this.origin=origin;this.expectedDimension=dimension;
         try { blockPos=Class.forName("net.minecraft.class_2338"); }
@@ -28,43 +29,86 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     static String dimension(PlayerEngineController controller) throws Exception {
         return call(call(call(controller,"getWorld"),"method_27983"),"method_29177").toString();
     }
-    public List<StarterBaseLayout.Placement> loadOrSelect() throws Exception {
+    private CoreGoalJournal baseJournal() throws Exception {
         if (!Objects.equals(expectedDimension,dimension(controller))) throw new IllegalStateException("Setup changed dimension; original base is not in this world");
         Object store=callStatic("com.player2.playerengine.tasks.deferred.DeferredJobStore","get");
         Path root=(Path)call(store,"worldRoot");
         String character=(String)call(call(controller,"getAIPersistantData"),"getCharacterId");
-        CoreGoalJournal journal=CoreGoalJournal.open(root,character,"starter_base_layout");
-        if (!journal.isPersistent()) throw new IllegalStateException("Persistent base journal unavailable; refusing duplicate placement");
-        String saved=journal.get("detail","");
-        if (journal.get("status","").equals("BASE_LAYOUT")) {
-            if (!journal.get("resource","").equals(expectedDimension)) throw new IllegalStateException("Existing base is in another dimension");
-            String[] coords=saved.split(",");
-            if(coords.length!=3) throw new IllegalStateException("Invalid saved base anchor");
-            var anchor=new StarterBaseLayout.Pos(Integer.parseInt(coords[0]),Integer.parseInt(coords[1]),Integer.parseInt(coords[2]));
-            var plan=StarterBaseLayout.at(anchor);
-            if(!StarterBaseLayout.safe(plan,this)) throw new IllegalStateException("Recorded base site changed or is unsafe");
-            return plan;
-        }
-        var plan=StarterBaseLayout.select(origin,this).orElseThrow(()->new IllegalStateException("No clear supported workshop pad near setup start"));
+        return CoreGoalJournal.open(root,character,"starter_base_layout");
+    }
+    public List<StarterBaseLayout.Placement> loadExisting() throws Exception {
+        CoreGoalJournal journal=baseJournal();
+        if (!journal.get("status","").equals("BASE_LAYOUT")) return List.of();
+        if (!journal.isPersistent()) throw new IllegalStateException("Recorded base journal unavailable");
+        if (!journal.get("resource","").equals(expectedDimension)) throw new IllegalStateException("Existing base is in another dimension");
+        String[] coords=journal.get("detail","").split(",");
+        if(coords.length!=3) throw new IllegalStateException("Invalid saved base anchor");
+        return StarterBaseLayout.at(new StarterBaseLayout.Pos(Integer.parseInt(coords[0]),Integer.parseInt(coords[1]),Integer.parseInt(coords[2])));
+    }
+    public List<StarterBaseLayout.Placement> loadOrSelect() throws Exception {
+        List<StarterBaseLayout.Placement> existing=loadExisting();
+        if(!existing.isEmpty())return existing;
+        CoreGoalJournal journal=baseJournal();
+        if (!journal.isPersistent()) throw new IllegalStateException("Persistent base journal unavailable; refusing unrecorded placement");
+        var ready=StarterBaseLayout.select(origin,this);
+        var plan=(ready.isPresent()?ready:StarterBaseLayout.selectBuildable(origin,this)).orElseThrow(()->new IllegalStateException("No preparable site within nearby bounds: living space must be dry and obstruction blocks breakable/unprotected"));
         var anchor=plan.getFirst().pos();
         journal.put("BASE_LAYOUT",0,expectedDimension,anchor.x()+","+anchor.y()+","+anchor.z());
         if(!journal.isPersistent()) throw new IllegalStateException("Cannot save base anchor; refusing unrecorded placement");
         return plan;
     }
     public boolean air(StarterBaseLayout.Pos pos) throws Exception { return (Boolean)helper("isAir",controller,pos(pos)); }
-    public boolean safeFloor(StarterBaseLayout.Pos pos) throws Exception {
-        if (!(Boolean)helper("isSolidBlock",controller,pos(pos))) return false;
-        Object state=call(call(controller,"getWorld"),"method_8320",pos(pos));
+    private Object state(StarterBaseLayout.Pos p)throws Exception {return call(call(controller,"getWorld"),"method_8320",pos(p));}
+    private boolean withinLimits(StarterBaseLayout.Pos p)throws Exception {
+        Object world=call(controller,"getWorld");
+        return (Boolean)call(world,"method_24794",pos(p))&&(Boolean)call(call(world,"method_8621"),"method_11952",pos(p));
+    }
+    private boolean fluid(StarterBaseLayout.Pos p)throws Exception {return !(Boolean)call(call(state(p),"method_26227"),"method_15769");}
+    private boolean protectedBlock(StarterBaseLayout.Pos p)throws Exception {return call(call(controller,"getWorld"),"method_8321",pos(p))!=null;}
+    public boolean safeFloor(StarterBaseLayout.Pos p) throws Exception {
+        if(!withinLimits(p)||fluid(p))return false;
+        Object world=call(controller,"getWorld");Object state=state(p);
         String id=call(state,"method_26204").toString();
-        // Full, ordinary solid ground only. No slabs, fences, foliage or hazardous supports.
-        return id.matches("Block\\{minecraft:(stone|grass_block|dirt|coarse_dirt|rooted_dirt|podzol|mycelium|cobblestone|mossy_cobblestone|deepslate|cobbled_deepslate|andesite|granite|diorite|tuff|calcite|sandstone|red_sandstone|end_stone|bricks|stone_bricks|[a-z_]+_planks|[a-z_]*terracotta)\\}");
+        if(id.contains(":magma_block")||id.contains(":cactus")||id.contains("campfire"))return false;
+        return (Boolean)call(state,"method_26234",world,pos(p));
+    }
+    public boolean canClear(StarterBaseLayout.Pos p)throws Exception {
+        if(!withinLimits(p)||fluid(p))return false;
+        if(air(p))return true;
+        if(protectedBlock(p))return false;
+        return ((Number)call(state(p),"method_26214",call(controller,"getWorld"),pos(p))).floatValue()>=0;
+    }
+    public boolean canFound(StarterBaseLayout.Pos p)throws Exception {
+        if(!withinLimits(p))return false;
+        if(safeFloor(p))return true;
+        if(protectedBlock(p))return false;
+        return air(p)||fluid(p)||canClear(p);
+    }
+    public List<StarterBaseLayout.Placement> terrainPlan(List<StarterBaseLayout.Placement> plan) {
+        retained.clear();for(var p:plan)retained.put(p.pos(),p);
+        return StarterBaseLayout.terrain(plan,origin);
+    }
+    public boolean prepared(StarterBaseLayout.Placement job)throws Exception {
+        if(job.resource().equals("air"))return air(job.pos())||(retained.containsKey(job.pos())&&matches(retained.get(job.pos())));
+        return safeFloor(job.pos());
+    }
+    public boolean canPrepare(StarterBaseLayout.Placement job)throws Exception {
+        return Objects.equals(expectedDimension,dimension(controller))&&(job.resource().equals("air")?canClear(job.pos()):canFound(job.pos()));
+    }
+    public Task prepareTerrain(StarterBaseLayout.Placement job)throws Exception {
+        if(!canPrepare(job))throw new IllegalStateException("Unsafe terrain preparation");
+        if(job.resource().equals("air"))return (Task)Class.forName("com.player2.playerengine.tasks.construction.DestroyBlockTask").getConstructor(blockPos).newInstance(pos(job.pos()));
+        Class<?> blockType=Class.forName("net.minecraft.class_2248");Object array=Array.newInstance(blockType,1);Array.set(array,0,block("cobblestone"));
+        return (Task)Class.forName("com.player2.playerengine.tasks.construction.PlaceBlockTask")
+            .getConstructor(blockPos,array.getClass(),boolean.class,boolean.class).newInstance(pos(job.pos()),array,false,false);
     }
     public boolean matches(StarterBaseLayout.Placement placement) throws Exception {
         return (Boolean)helper("isBlock",controller,pos(placement.pos()),block(placement.resource()));
     }
     public boolean safe(StarterBaseLayout.Placement placement) throws Exception {
         return Objects.equals(expectedDimension,dimension(controller)) && safeFloor(placement.pos().offset(0,-1,0))
-            && air(placement.pos().offset(0,1,0)) && (air(placement.pos())||matches(placement));
+            && air(placement.pos().offset(0,1,0)) && (air(placement.pos())||matches(placement))
+            && StarterBaseLayout.hasAccess(placement.pos(),this);
     }
     public int count(String resource) throws Exception {
         Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",resource);
