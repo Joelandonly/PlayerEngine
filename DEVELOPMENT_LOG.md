@@ -121,3 +121,8 @@ Local import validation: 24 Node tests, JVM configuration/fail-closed test and A
 verification passed. Rebuilt JAR exactly matches the uploaded artifact, SHA-256
 `9464cebb201edf6ac720828bb445293195389c9123007a3319c12510857be2c8`.
 No live account inference, Windows OAuth or Minecraft gameplay was run.
+
+Upstream discovery: Goodbird-git/PlayerEngine has a public `1.21.1-arch` branch,
+commit `aa4ad2d5ec2a834107c76cdb58af732acb192ecc`, advertising version 1.21.1-1.1.11.
+It is a source-recovery candidate, not yet verified as equivalent to the custom
+Ellie 1.4.0 baseline. See `docs/ELLIE_SOURCE_PROVENANCE.md`.

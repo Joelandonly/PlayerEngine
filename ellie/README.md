@@ -28,6 +28,11 @@ contains earlier navigation, acquisition, supervisor, and NPC integration work
 whose matching source has not been recovered. Retain it until a source port can
 be verified. Do not substitute the legacy root Gradle JAR for this baseline.
 
+A public upstream 1.21.1 mod baseline has since been identified on Goodbird's
+`1.21.1-arch` branch (version 1.1.11). It is not yet established as the matching
+source for this Ellie 1.4.0 preview. See [source provenance](../docs/ELLIE_SOURCE_PROVENANCE.md)
+for the pinned commit and recovery path.
+
 ## Build and test
 
 From this directory, with the Java 21 JDK tools on `PATH`:

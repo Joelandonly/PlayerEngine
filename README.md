@@ -13,6 +13,7 @@ baseline live in [`ellie/`](ellie/). Start there for current development.
 
 - [Current Ellie setup, architecture, and build](ellie/README.md)
 - [Contribution guide and workflow selection](CONTRIBUTING.md)
+- [Source provenance and the upstream 1.21.1 branch](docs/ELLIE_SOURCE_PROVENANCE.md)
 - [Known bugs and stable backlog IDs](docs/ELLIE_BACKLOG.md)
 - [Gameplay validation matrix](docs/ELLIE_VALIDATION.md)
 - [Development history](DEVELOPMENT_LOG.md)
