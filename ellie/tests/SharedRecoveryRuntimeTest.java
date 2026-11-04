@@ -37,7 +37,7 @@ public final class SharedRecoveryRuntimeTest {
   advance(c,user,1);check(root.ticks==heldTicks+1&&root.starts==1&&leaf.starts==2&&leaf.stops==1&&c.baritone.custom.goal==null,"verified approach resumes the same root and restarts only the native movement leaf");
   c.reachable=false;SharedTargetRecovery.inputWrite(new InputOwner(c.baritone),"MOVE_FORWARD",true);c.player.x=.5;c.player.z=.5;advance(c,user,115);check(c.baritone.custom.goal!=null,"second obstruction must recover too");check(String.valueOf(ObservatoryTelemetry.fields.get("recoveryInputWriter")).contains("OUTSIDE_TASK:"),"input diagnostics must identify outside-task callers separately");
   Object defenseGoal=new Object();c.baritone.custom.goal=defenseGoal;Probe defender=new Probe(null);Chain defense=new Chain(c,defender);defense.name="Mob Defense";defense.tick();check(defender.ticks==1&&c.baritone.custom.goal==defenseGoal,"recovery must yield without cancelling a replacement defense goal");
-  user.tick();root.stop();check(ObservatoryTelemetry.events.stream().anyMatch(e->e.startsWith("TARGET_RECOVERY:")),"recovery diagnostics must name target, reach, blocker and writer");
+  user.tick();root.stop();check("IDLE".equals(ObservatoryTelemetry.fields.get("recovery")),"idle snapshot must not report a stale active recovery lease");check(ObservatoryTelemetry.events.stream().anyMatch(e->e.startsWith("TARGET_RECOVERY:")),"recovery diagnostics must name target, reach, blocker and writer");
   Controller air=new Controller();air.player.air=40;air.player.water=true;air.world.pool=true;air.world.blocks.put(new class_2338(0,66,0),"minecraft:stone");Probe airRoot=new Probe(new GetCloseToBlockTask());Chain airChain=new Chain(air,airRoot);advance(air,airChain,1);
   check(airRoot.ticks==0&&air.baritone.custom.goal!=null,"critical air must override ordinary work before issuing more mining actions");
   Object exit=air.baritone.custom.goal;check(((Number)NativeAccess.get(exit,"x")).intValue()!=0||((Number)NativeAccess.get(exit,"z")).intValue()!=0,"overhead obstruction needs a sideways breathable exit");
@@ -61,6 +61,6 @@ public final class SharedRecoveryRuntimeTest {
   check(WorksiteAnchor.preferBench(site,Optional.empty()).orElseThrow().equals(bench),"reachable worksite bench should be reused without changing personal home");
   SharedTargetRecovery.reject(site,bench);check(WorksiteAnchor.preferBench(site,Optional.empty()).isEmpty(),"worksite preference must respect shared target rejection");WorksiteAnchor.close(siteOwner);
   check(ObservatoryTelemetry.events.stream().noneMatch(e->e.startsWith("RECOVERY_BOUNDARY_UNAVAILABLE")),"runtime integration must not silently skip the native boundary");
-  System.out.println("SharedRecoveryRuntimeTest: 24 checks passed through real patched Task.tick; native world/pathfinding boundaries substituted");
+  System.out.println("SharedRecoveryRuntimeTest: 25 checks passed through real patched Task.tick; native world/pathfinding boundaries substituted");
  }
 }

@@ -40,6 +40,11 @@ a test world and observe actual placement/navigation before accepting a release.
 
 ## Current setup
 
+The fixed setup kit uses native catalogue acquisition tasks, as mining prerequisites
+do. It does not opt into the dynamic crafting macro at furnace/material transitions.
+Failed base safety checks produce safe native repair jobs or identify the unsafe
+cell; naturally supported workstation floors are protected during setup too.
+
 The imported revision uses one crafting table, one furnace and one chest in a
 spaced line, on natural ground where possible. A safe nearby bench is preferred
 as the anchor; a saved layout with placed stations retains its coordinates.

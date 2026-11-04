@@ -75,3 +75,6 @@ mkdir -p build/table-testclasses
 javac --release 21 -cp build/native-testclasses:build/testclasses:baseline/playerengine-acquisition-safety.jar -d build/table-testclasses $(find tests/tablefixtures -name '*.java' | LC_ALL=C sort)
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/table-testclasses:build/native-testclasses:build/testclasses:baseline/playerengine-acquisition-safety.jar -d build/tools tools/VerifyTableOutput.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools:build/table-testclasses:build/native-testclasses:build/testclasses:baseline/playerengine-acquisition-safety.jar VerifyTableOutput dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
+
+javac --release 21 -cp build/testclasses:build/classes:build/native-testclasses:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/SetupNativeAcquisitionTest.java
+java -cp build/testclasses:build/classes:build/native-testclasses:baseline/playerengine-acquisition-safety.jar SetupNativeAcquisitionTest

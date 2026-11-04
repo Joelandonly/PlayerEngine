@@ -160,3 +160,41 @@ the supplied nearby bench, empty-journal recovery, preserving partial constructi
 unsafe access and completing placement without reacquiring the existing bench.
 These remain separate from live Minecraft acceptance. The pasted item catalogue
 contains `minecraft:crafting_table`; no numerical-ID substitution is introduced.
+
+## Follow-up: reuse native acquisition after live furnace failures
+
+The next supplied run confirms nearby-table reuse and station placement. Setup
+still fails at the final material transition for buckets/chestplate/leggings;
+reissuing setup can immediately craft from the now-available ingots. The user
+also reports successful continuous diamond acquisition. Code inspection identifies
+the relevant difference: setup explicitly opted into `CraftMacroTasks.macroOutcome`,
+whereas mining prerequisites use `TaskCatalogue` and native `CraftInTableTask` /
+`CollectRecipeCataloguedResourcesTask` / `CollectIronIngotTask` / furnace tasks.
+
+Setup's fixed kit now requests native catalogue tasks directly, including any
+missing station item during base repair. The native recipe collector checks
+actual held materials before table crafting. This reuses the established acquisition
+sequence and removes the macro replanning boundary from setup; it does not add a
+last-ingot sleep or claim to fix every use of the dynamic macro resolver. The
+existing shared navigation and reviewed native furnace hooks remain in place.
+`SETUP_ACQUISITION_ROUTE` records the selected native task and quantity.
+
+The final reruns also fail with `Placed base changed repeatedly before final
+verification`. That message does not establish which world block changed: the
+old code could repeatedly check an unchanged unsafe condition without generating
+repair work. Failed station verification now requests concrete native jobs for
+repairable support/headroom/service-lane cells and reports the failing cell or
+standing-access condition. When no safe job exists it fails explicitly, without
+spending four ticks pretending to repair. Existing stations remain verified;
+support repair uses native cobblestone acquisition/placement within the compact
+reserved support footprint. Navigation break guards protect natural-site support
+and matching stations as well as platform supports until the setup root releases
+them. Idle Observatory snapshots stop reporting a stale active recovery mode.
+
+Validation adds 23 setup/station selection checks with macro routing forbidden,
+two natural-site break-guard lifecycle checks, blocked-access/support repair cases,
+and unchanged-unsafe-geometry diagnostics. Shared recovery runtime checks include
+idle-state cleanup. These tests substitute Minecraft boundaries; full live setup
+through buckets and armour remains an acceptance test, not an automated-test claim.
+The new native route does not by itself prove that every terrain deadlock reported
+in chat has been eliminated. Raw logs stay outside the repository.

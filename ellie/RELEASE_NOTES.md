@@ -1,8 +1,13 @@
 # Shared target recovery, NPC crash and production handoffs
 
-Latest follow-up: fix table acquisition confusing a usable world bench with a
-requested inventory item. Reuse a safe nearby bench as setup's workshop anchor,
-including recovery of an empty saved layout; preserve partial construction.
+Latest follow-up: setup uses the established native catalogue acquisition chain
+for its fixed kit, matching mining prerequisites instead of replanning through the
+dynamic crafting macro near the last furnace output. Add concrete base repair
+jobs and safety diagnostics, protect naturally supported workshop floors/stations,
+and clear stale recovery status after a task ends. Live setup acceptance is pending.
+
+The earlier table fix distinguishes a requested table item from a reusable world
+bench and preserves partial construction.
 
 - Guard NPC axe stripping from the null-player vanilla path in the supplied crash.
 - Preserve final furnace input/output handoff and refresh material accounting.

@@ -173,7 +173,7 @@ public final class SharedTargetRecovery {
   if(!forced)return;try{Object baritone=get(handler,"baritone");synchronized(sessions){for(Session s:sessions.values())if(s.baritone.get()==baritone){s.inputWriter=String.valueOf(input)+" by "+writer();break;}}}catch(Exception ignored){}
  }
  public static void stopped(Object task){
-  ticking.remove();try{Object controller=get(task,"controller");if(controller==null)return;Session s=sessions.get(controller);if(s!=null&&s.root.get()==task){dropLease(s);sessions.remove(controller);}}catch(Exception|LinkageError e){warn(e);}
+  ticking.remove();try{Object controller=get(task,"controller");if(controller==null)return;Session s=sessions.get(controller);if(s!=null&&s.root.get()==task){dropLease(s);sessions.remove(controller);ObservatoryTelemetry.set("recovery","IDLE");ObservatoryTelemetry.set("recoveryAttempt","0/3");ObservatoryTelemetry.set("targetRecovery","No active recovery; task ended");}}catch(Exception|LinkageError e){warn(e);}
  }
  private static void diagnostics(Session s,RecoveryWorld game,double[] position,boolean reachable)throws Exception{
   Object owner=s.owner.get();String block=String.valueOf(call(game.state(s.target),"method_26204"));

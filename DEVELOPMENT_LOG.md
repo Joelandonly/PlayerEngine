@@ -261,3 +261,15 @@ The combined preview download included both the current mod and the source ZIP,
 whose pinned baseline JAR could be mistaken for the installable build. Split CI
 uploads into a one-JAR install artifact and a separately labelled source bundle.
 The install filename includes the source revision. Runtime bytes are unchanged.
+
+## 2026-11-04: Reuse native acquisition for the fixed setup kit
+
+The follow-up confirms successful table reuse/station placement but retains final
+iron-output failures under the dynamic macro. The user's working diamond command
+points to the existing catalogue acquisition chain. Setup now uses that native
+chain directly for all fixed kit requests and station reacquisition, with route
+telemetry and a regression boundary that rejects any macro selection. No new
+furnace delay is added. Also replace base verification's unchanged-condition loop
+with actual safe support/headroom/access repair jobs and exact safety diagnostics;
+protect natural workshop support from path excavation. Clear stale recovery mode
+when its root ends. Tests remain separate from live gameplay acceptance.

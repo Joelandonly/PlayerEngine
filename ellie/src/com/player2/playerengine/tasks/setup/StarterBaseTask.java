@@ -13,6 +13,8 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
         default boolean prepared(StarterBaseLayout.Placement job)throws Exception { throw new UnsupportedOperationException(); }
         default boolean canPrepare(StarterBaseLayout.Placement job)throws Exception { return false; }
         default Task prepareTerrain(StarterBaseLayout.Placement job)throws Exception { throw new UnsupportedOperationException(); }
+        default List<StarterBaseLayout.Placement> repairPlan(StarterBaseLayout.Placement station)throws Exception {return List.of();}
+        default String unsafeReason(StarterBaseLayout.Placement station)throws Exception {return "support, headroom or standing access is unsafe";}
         List<StarterBaseLayout.Placement> loadOrSelect() throws Exception;
         boolean matches(StarterBaseLayout.Placement placement) throws Exception;
         boolean safe(StarterBaseLayout.Placement placement) throws Exception;
@@ -81,19 +83,14 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
             while(index<plan.size() && environment.matches(plan.get(index))) { index++; active=null; stageTicks=0; }
             if (index==plan.size()) {
                 for (int i=0;i<plan.size();i++) if (!environment.matches(plan.get(i))||!environment.safe(plan.get(i))) {
-                    if(++layerRepairs>3)return blocked("Placed base changed repeatedly before final verification");
-                    index=i;terrainIndex=0;active=null;stageTicks=0;
-                    reason="Repairing base before final verification";return null;
+                    index=i;return repair(plan.get(i));
                 }
                 done=true; reason="Starter base verified: crafting table, furnace, one chest and usable support";
                 return null;
             }
             var target=plan.get(index);
             if (!environment.safe(target)) {
-                if(++layerRepairs>3)return blocked("Cannot retain safe base layer at "+target.pos()+" after bounded repairs");
-                terrainIndex=0;active=null;stageTicks=0;
-                reason="Rechecking support/clearance before placing "+target.resource()+" at "+target.pos();
-                return null;
+                return repair(target);
             }
             if (active!=null) {
                 if (++stageTicks > (acquiring ? 2400 : 600)) return blocked("No verified base output within the bounded native task window at "+target.pos());
@@ -111,6 +108,18 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
             String detail = error instanceof IllegalStateException && error.getMessage()!=null ? ": "+error.getMessage() : "";
             return blocked("Starter base verification/task unavailable: "+error.getClass().getSimpleName()+detail);
         }
+    }
+    private Task repair(StarterBaseLayout.Placement target)throws Exception {
+        var jobs=environment.repairPlan(target);var pending=new ArrayList<StarterBaseLayout.Placement>();
+        for(var job:jobs)if(!environment.prepared(job))pending.add(job);
+        String detail=target.resource()+" at "+target.pos()+": "+environment.unsafeReason(target);
+        if(pending.isEmpty())return blocked("Unsafe workstation; no safe native repair available: "+detail);
+        if(++layerRepairs>3)return blocked("Workstation repair budget exhausted: "+detail);
+        var combined=new LinkedHashSet<StarterBaseLayout.Placement>(pending);combined.addAll(terrain);
+        terrain=List.copyOf(combined);terrainIndex=0;active=null;stageTicks=0;
+        reason="Repairing workstation: "+detail;
+        com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_BASE_REPAIR",reason+"; native jobs="+pending);
+        return null;
     }
     private Task blocked(String detail) { failed=true; reason=detail; return null; }
     public void releaseProtection(){if(environment!=null)environment.releaseProtection();}

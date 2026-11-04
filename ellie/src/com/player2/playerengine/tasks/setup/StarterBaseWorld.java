@@ -16,6 +16,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     private boolean worksiteRegistered;
     private boolean platformMode;
     private final Set<StarterBaseLayout.Pos> reservedSupport=new HashSet<>();
+    private final Set<StarterBaseLayout.Pos> reservedStations=new HashSet<>();
     private java.util.function.Predicate<Object> supportBreakGuard;
     private Object guardedBaritoneSettings;
     private final Class<?> blockPos;
@@ -88,18 +89,18 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         if(!worksiteRegistered){com.player2.playerengine.reliability.WorksiteAnchor.open(this,controller,pos(anchor),"starter_setup");worksiteRegistered=true;}
         if(zone==null)zone=new SetupBuildZone(controller,anchor.x()-1,anchor.z()-1,7,3);
         else zone.ensure();
-        if(platformMode && supportBreakGuard==null){
+        if(supportBreakGuard==null){
             // VillageSiteGuard blocks *resource mining*. This guard also tells Baritone
-            // not to route through / excavate the new platform's load-bearing cells.
+            // not to excavate workstation/support cells, including naturally supported sites.
             reservedSupport.addAll(StarterBaseLayout.supportCells(plan));
+            for(var station:plan){reservedStations.add(station.pos());retained.put(station.pos(),station);}
             Object extra=call(controller,"getExtraBaritoneSettings");
             Object mutex=call(extra,"getBreakMutex");
             java.util.function.Predicate<Object> guard=blockPos -> {
                 try {
-                    return reservedSupport.contains(new StarterBaseLayout.Pos(
-                        ((Number)call(blockPos,"method_10263")).intValue(),
-                        ((Number)call(blockPos,"method_10264")).intValue(),
-                        ((Number)call(blockPos,"method_10260")).intValue()));
+                    var cell=new StarterBaseLayout.Pos(((Number)call(blockPos,"method_10263")).intValue(),((Number)call(blockPos,"method_10264")).intValue(),((Number)call(blockPos,"method_10260")).intValue());
+                    if(reservedSupport.contains(cell))return true;
+                    var station=retained.get(cell);return reservedStations.contains(cell)&&station!=null&&matches(station);
                 } catch(Exception e){return false;}
             };
             synchronized(mutex){((List<Object>)call(extra,"getBreakAvoiders")).add(guard);}
@@ -113,7 +114,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
                 Object mutex=call(guardedBaritoneSettings,"getBreakMutex");
                 synchronized(mutex){((List<?>)call(guardedBaritoneSettings,"getBreakAvoiders")).remove(supportBreakGuard);}
             } catch(Exception e){System.err.println("[EllieSetup] Could not remove temporary platform break guard: "+e);}
-            supportBreakGuard=null;guardedBaritoneSettings=null;reservedSupport.clear();
+            supportBreakGuard=null;guardedBaritoneSettings=null;reservedSupport.clear();reservedStations.clear();
         }
         if(zone!=null){zone.close();zone=null;}
     }
@@ -156,7 +157,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     public boolean canPrepare(StarterBaseLayout.Placement job)throws Exception {
         if(!Objects.equals(expectedDimension,dimension(controller)))return false;
         if(job.resource().equals("air"))return canClear(job.pos());
-        return platformMode && job.resource().equals("cobblestone") && canFound(job.pos());
+        return reservedSupport.contains(job.pos()) && job.resource().equals("cobblestone") && canFound(job.pos());
     }
     public Task prepareTerrain(StarterBaseLayout.Placement job)throws Exception {
         if(!canPrepare(job))throw new IllegalStateException("Unsafe terrain preparation");
@@ -178,15 +179,36 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
             && air(placement.pos().offset(0,1,0)) && (air(placement.pos())||matches(placement))
             && StarterBaseLayout.hasAccess(placement.pos(),this);
     }
+    public List<StarterBaseLayout.Placement> repairPlan(StarterBaseLayout.Placement station)throws Exception {
+        var jobs=new ArrayList<StarterBaseLayout.Placement>();var p=station.pos();
+        if(!safeFloor(p.offset(0,-1,0))&&canFound(p.offset(0,-1,0)))jobs.add(new StarterBaseLayout.Placement(p.offset(0,-1,0),"cobblestone"));
+        if(!air(p.offset(0,1,0))&&canClear(p.offset(0,1,0)))jobs.add(new StarterBaseLayout.Placement(p.offset(0,1,0),"air"));
+        if(!air(p)&&!matches(station)&&canClear(p))jobs.add(new StarterBaseLayout.Placement(p,"air"));
+        if(!StarterBaseLayout.hasAccess(p,this)){
+            // Repair only the compact workshop's recorded service lane, not arbitrary surroundings.
+            var side=p.offset(0,0,1);var floor=side.offset(0,-1,0);var head=side.offset(0,1,0);
+            if(canFound(floor)&&canClear(side)&&canClear(head)){
+                if(!safeFloor(floor))jobs.add(new StarterBaseLayout.Placement(floor,"cobblestone"));
+                if(!air(side))jobs.add(new StarterBaseLayout.Placement(side,"air"));
+                if(!air(head))jobs.add(new StarterBaseLayout.Placement(head,"air"));
+            }
+        }
+        return List.copyOf(jobs);
+    }
+    public String unsafeReason(StarterBaseLayout.Placement station)throws Exception {
+        var p=station.pos();var issues=new ArrayList<String>();
+        if(!safeFloor(p.offset(0,-1,0)))issues.add("unsafe support "+p.offset(0,-1,0));
+        if(!air(p.offset(0,1,0)))issues.add("blocked headroom "+p.offset(0,1,0));
+        if(!air(p)&&!matches(station))issues.add("wrong block "+p);
+        if(!StarterBaseLayout.hasAccess(p,this))issues.add("no supported standing position beside workstation");
+        return String.join("; ",issues);
+    }
     public int count(String resource) throws Exception {
         Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",resource);
         return ((Number)call(controller.getItemStorage(),"getItemCountInventoryOnly",matches)).intValue();
     }
     public Task acquire(String resource) throws Exception {
-        Object target=callStatic("com.player2.playerengine.TaskCatalogue","getItemTarget",resource,1);
-        Object selection=callStatic("com.player2.playerengine.tasks.crafting.CraftMacroTasks","macroOutcome",controller,target);
-        if(selection!=null && "MACRO_CREATED".equals(String.valueOf(call(selection,"outcome")))) return (Task)call(selection,"task");
-        return (Task)callStatic("com.player2.playerengine.TaskCatalogue","getItemTask",target);
+        return (Task)callStatic("com.player2.playerengine.TaskCatalogue","getItemTask",resource,1);
     }
     public Task place(StarterBaseLayout.Placement placement) throws Exception {
         Class<?> blockType=Class.forName("net.minecraft.class_2248");

@@ -172,6 +172,34 @@ public final class SetupTerraformTest {
   StarterBaseTask stalled=new StarterBaseTask(impossible);run(stalled);
   check(stalled.isTerminal()&&!stalled.isSuccessful(),
         "native clearance that produces no real world change must fail boundedly");
-  System.out.println("SetupTerraformTest: 12 passed; natural ground, water fallback, no floor mining, bounded foundation repair");
+  World accessRepair=new World(){
+   final StarterBaseLayout.Pos obstructed=plan.getFirst().pos().offset(0,1,1);
+   {blocks.clear();for(var station:plan){blocks.put(station.pos(),station.resource());blocks.put(station.pos().offset(0,-1,0),"stone");}blocks.put(obstructed,"stone");}
+   public boolean safe(StarterBaseLayout.Placement p){return super.safe(p)&&at(obstructed).equals("air");}
+   public List<StarterBaseLayout.Placement> repairPlan(StarterBaseLayout.Placement p){return List.of(new StarterBaseLayout.Placement(obstructed,"air"));}
+   public String unsafeReason(StarterBaseLayout.Placement p){return "blocked service headroom "+obstructed;}
+  };
+  StarterBaseTask accessTask=new StarterBaseTask(accessRepair);run(accessTask);
+  check(accessTask.isSuccessful()&&accessRepair.cleared==1&&accessRepair.placed==0,"existing stations with blocked access require one real repair, not repeated verification failure");
+  World naturalSupportRepair=new World(){
+   final StarterBaseLayout.Pos missing=plan.getFirst().pos().offset(0,-1,0);
+   {blocks.clear();for(var station:plan){blocks.put(station.pos(),station.resource());blocks.put(station.pos().offset(0,-1,0),"stone");}blocks.put(missing,"air");}
+   public boolean prepared(StarterBaseLayout.Placement p){return p.resource().equals("cobblestone")?at(p.pos()).equals("cobblestone"):super.prepared(p);}
+   public boolean canPrepare(StarterBaseLayout.Placement p){return true;}
+   public Task prepareTerrain(StarterBaseLayout.Placement p){return p.resource().equals("cobblestone")?new Op(()->blocks.put(p.pos(),"cobblestone")):super.prepareTerrain(p);}
+   public boolean safe(StarterBaseLayout.Placement p){return (at(p.pos().offset(0,-1,0)).equals("stone")||at(p.pos().offset(0,-1,0)).equals("cobblestone"))&&at(p.pos().offset(0,1,0)).equals("air")&&(at(p.pos()).equals("air")||matches(p));}
+   public List<StarterBaseLayout.Placement> repairPlan(StarterBaseLayout.Placement p){return List.of(new StarterBaseLayout.Placement(missing,"cobblestone"));}
+   public String unsafeReason(StarterBaseLayout.Placement p){return "missing support "+missing;}
+  };
+  StarterBaseTask naturalRepairTask=new StarterBaseTask(naturalSupportRepair);run(naturalRepairTask);
+  check(naturalRepairTask.isSuccessful()&&naturalSupportRepair.placed==0,"natural-site support can be repaired without replacing stations");
+  World unsafeExisting=new World(){
+   {blocks.clear();for(var p:plan)blocks.put(p.pos(),p.resource());}
+   public boolean safe(StarterBaseLayout.Placement p){return false;}
+   public String unsafeReason(StarterBaseLayout.Placement p){return "unsafe support cell 10,63,10";}
+  };
+  StarterBaseTask noSafeRepair=new StarterBaseTask(unsafeExisting);run(noSafeRepair);
+  check(noSafeRepair.isTerminal()&&!noSafeRepair.isSuccessful()&&noSafeRepair.controlledReason().contains("unsafe support cell 10,63,10")&&!noSafeRepair.controlledReason().contains("changed repeatedly"),"unrepairable unchanged geometry must identify the real safety failure");
+  System.out.println("SetupTerraformTest: 15 passed; natural ground, water fallback, no floor mining, bounded foundation repair");
  }
 }
