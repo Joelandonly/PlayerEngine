@@ -14,10 +14,13 @@ public final class PatchNativeCommands implements Opcodes {
   InsnList i=reset(method(root,"<init>",ctor));i.add(new VarInsnNode(ALOAD,0));i.add(new MethodInsnNode(INVOKESPECIAL,TASK,"<init>","()V",false));
   String[] fields={"buildPosition","schematicQuery","description","mod"};String[] types={"Lnet/minecraft/class_2338;","Ljava/lang/String;","Ljava/lang/String;","L"+BASE+"PlayerEngineController;"};
   for(int n=0;n<4;n++){i.add(new VarInsnNode(ALOAD,0));i.add(new VarInsnNode(ALOAD,n+1));i.add(new FieldInsnNode(PUTFIELD,BUILD,fields[n],types[n]));}i.add(new InsnNode(RETURN));
+  root.fields.add(new FieldNode(ACC_PRIVATE,"nativeResumePending","Z",null,null));
   root.fields.add(new FieldNode(ACC_PRIVATE,"nativeFailure","Ljava/lang/String;",null,null));
   delegate(method(root,"onStart","()V"),"start","(Ljava/lang/Object;)V",RETURN);
   delegate(method(root,"onTick","()L"+TASK+";"),"tick","(Ljava/lang/Object;)L"+TASK+";",ARETURN);
   delegate(method(root,"onStop","(L"+TASK+";)V"),"stop","(Ljava/lang/Object;)V",RETURN);
+  MethodNode suspend=method(root,"prepareForTransientResume","(L"+BASE+"tasks/base/TaskSuspensionCause;)Z");
+  for(AbstractInsnNode n:suspend.instructions.toArray())if(n.getOpcode()==IRETURN){InsnList mark=new InsnList();mark.add(new InsnNode(DUP));mark.add(new VarInsnNode(ALOAD,0));mark.add(new InsnNode(SWAP));mark.add(new MethodInsnNode(INVOKESTATIC,HELP,"suspended","(Ljava/lang/Object;Z)V",false));suspend.instructions.insertBefore(n,mark);}
   root.interfaces.add(BASE+"tasks/base/TrackedTaskOutcomeProvider");
   MethodNode terminal=new MethodNode(ACC_PUBLIC,"isTerminal","()Z",null,null);terminal.instructions.add(new VarInsnNode(ALOAD,0));terminal.instructions.add(new FieldInsnNode(GETFIELD,BUILD,"isDone","Z"));terminal.instructions.add(new InsnNode(IRETURN));root.methods.add(terminal);
   MethodNode success=new MethodNode(ACC_PUBLIC,"isSuccessful","()Z",null,null);delegate(success,"successful","(Ljava/lang/Object;)Z",IRETURN);root.methods.add(success);

@@ -3,6 +3,7 @@ package com.player2.playerengine.tasks.base;
 public class Task {
     public com.player2.playerengine.PlayerEngineController controller;
     public boolean isFinished() { return false; }
+    public void reset() {}
     public boolean stopped() { return false; }
     public void fail(String reason) {}
     public String getTaskTree() { return "test boundary"; }

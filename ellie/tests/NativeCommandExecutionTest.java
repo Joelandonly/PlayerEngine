@@ -27,11 +27,14 @@ public final class NativeCommandExecutionTest {
   BuildStructureTask unsupported=new BuildStructureTask(new class_2338(0,64,0),"castle","custom castle",mod);tick(unsupported);
   check(((TrackedTaskOutcomeProvider)unsupported).isTerminal()&&!((TrackedTaskOutcomeProvider)unsupported).isSuccessful()&&((TrackedTaskOutcomeProvider)unsupported).controlledReason().contains("Unsupported local blueprint"),"unsupported build must fail locally with typed outcome");
   BuildStructureTask root=new BuildStructureTask(new class_2338(0,64,0),"small shelter","small shelter",mod);Object child=tick(root);check(child instanceof Task&&!root.isFinished(),"supported template must hand off to native physical builder: "+((TrackedTaskOutcomeProvider)root).controlledReason());
+  NativeAccess.set(child,"halted",true);
+  NativeBuildSupport.suspended(root,true);NativeBuildSupport.start(root);
+  check(!((Task)child).stopped()&&tick(root)==child&&!root.isFinished(),"defense suspension must resume the same physical child without a terminal failure");
   complete(child,Optional.empty());tick(root);check(((TrackedTaskOutcomeProvider)root).isSuccessful(),"verified physical result required");
   BuildStructureTask failed=new BuildStructureTask(new class_2338(0,64,0),"small shelter","small shelter",mod);Object bad=tick(failed);complete(bad,Optional.of("blocked cell"));tick(failed);check(!((TrackedTaskOutcomeProvider)failed).isSuccessful()&&((TrackedTaskOutcomeProvider)failed).controlledReason().equals("blocked cell"),"physical failure must never become command success or request a model retry");
   var outcome=SetupDirectRoute.class.getDeclaredMethod("outcomeText",String.class,String.class,com.player2.playerengine.supervisor.GoalLifecycle.Snapshot.class,com.player2.playerengine.supervisor.GoalLifecycle.Snapshot.class);outcome.setAccessible(true);
   var rejected=new com.player2.playerengine.supervisor.GoalLifecycle.Snapshot(1,"test","mine",com.player2.playerengine.supervisor.GoalLifecycle.Status.FAILED,"blocked target");
   check(((String)outcome.invoke(null,"mine","completed",null,rejected)).contains("Completion was not verified"),"failed native receipt cannot be reported as completion");
-  System.out.println("NativeCommandExecutionTest: 14 checks pass: real owner route, food selection/errors, real patched builder orchestration; game boundaries substituted");
+  System.out.println("NativeCommandExecutionTest: 15 checks pass: real owner route, food selection/errors, real patched builder orchestration; game boundaries substituted");
  }
 }

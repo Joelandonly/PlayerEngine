@@ -8,7 +8,18 @@ public final class NativeBuildSupport {
  private NativeBuildSupport() {}
  public static void start(Object root) {
   try {
-   if(Boolean.TRUE.equals(get(root,"isDone"))||get(root,"actuallyRunningTask")!=null)return;
+   if(Boolean.TRUE.equals(get(root,"isDone")))return;
+   if(get(root,"actuallyRunningTask")!=null){
+    if(Boolean.TRUE.equals(get(root,"nativeResumePending"))){
+     Task child=(Task)get(root,"actuallyRunningTask");
+     if(!child.isFinished()&&get(child,"result") instanceof Optional<?> result&&result.isEmpty()){
+      child.reset();
+      com.player2.playerengine.observatory.ObservatoryTelemetry.event("BUILD_LOCAL_RESUME","Resuming physical child after safety/gesture suspension; blueprint retained");
+     }
+     set(root,"nativeResumePending",false);
+    }
+    return;
+   }
    com.player2.playerengine.observatory.ObservatoryTelemetry.goalStart(root);
    String code=(String)callStatic("com.player2.playerengine.tasks.construction.build_structure.FastStarterBlueprint","maybeCode",root);
    if(code==null){failed(root,"Unsupported local blueprint. Choose a starter shelter, cabin, lodge, stone cottage, workshop, storage shed, greenhouse or 47x47 fortified village. No AI request was made.");return;}
@@ -31,6 +42,7 @@ public final class NativeBuildSupport {
    set(root,"isDone",true);return null;
   }catch(Exception|LinkageError e){failed(root,"Cannot verify physical build: "+e.getClass().getSimpleName());return null;}
  }
+ public static void suspended(Object root,boolean accepted){try{set(root,"nativeResumePending",accepted);}catch(Exception e){throw new IllegalStateException(e);}}
  public static void stop(Object root){
   try{Object child=get(root,"actuallyRunningTask");if(child!=null)VillageSiteGuard.clearForJob(child);
    if(!Boolean.TRUE.equals(get(root,"isDone")))failed(root,"Physical construction interrupted; completed blocks remain in the world");
