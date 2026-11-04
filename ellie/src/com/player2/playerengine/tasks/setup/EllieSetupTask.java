@@ -570,6 +570,7 @@ TrackedTaskOutcomeProvider {
     }
 
     public void onTransientResumeAbandoned() {
+        if (this.baseTask != null) this.baseTask.releaseProtection();
         if (this.completed || this.failed || this.abandoned) {
             return;
         }
@@ -581,6 +582,7 @@ TrackedTaskOutcomeProvider {
     }
 
     protected void onStop(Task task) {
+        if (this.baseTask != null) this.baseTask.releaseProtection();
         if (!(this.completed || this.failed || this.abandoned)) {
             this.abandoned = true;
             this.pendingGestureResume = false;

@@ -12,6 +12,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     private final PlayerEngineController controller;
     private final StarterBaseLayout.Pos origin;
     private final String expectedDimension;
+    private SetupBuildZone zone;
     private final Class<?> blockPos;
     private final Map<String,Object> blocks=new HashMap<>();
     private final Map<StarterBaseLayout.Pos,StarterBaseLayout.Placement> retained=new HashMap<>();
@@ -43,7 +44,9 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         if (!journal.get("resource","").equals(expectedDimension)) throw new IllegalStateException("Existing base is in another dimension");
         String[] coords=journal.get("detail","").split(",");
         if(coords.length!=3) throw new IllegalStateException("Invalid saved base anchor");
-        return StarterBaseLayout.at(new StarterBaseLayout.Pos(Integer.parseInt(coords[0]),Integer.parseInt(coords[1]),Integer.parseInt(coords[2])));
+        var plan=StarterBaseLayout.at(new StarterBaseLayout.Pos(Integer.parseInt(coords[0]),Integer.parseInt(coords[1]),Integer.parseInt(coords[2])));
+        protect(plan);
+        return plan;
     }
     public List<StarterBaseLayout.Placement> loadOrSelect() throws Exception {
         List<StarterBaseLayout.Placement> existing=loadExisting();
@@ -55,8 +58,16 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         var anchor=plan.getFirst().pos();
         journal.put("BASE_LAYOUT",0,expectedDimension,anchor.x()+","+anchor.y()+","+anchor.z());
         if(!journal.isPersistent()) throw new IllegalStateException("Cannot save base anchor; refusing unrecorded placement");
+        protect(plan);
         return plan;
     }
+    public void protect(List<StarterBaseLayout.Placement> plan) throws Exception {
+        if(!Objects.equals(expectedDimension,dimension(controller)))throw new IllegalStateException("Setup build zone changed dimension");
+        var anchor=plan.getFirst().pos();
+        if(zone==null)zone=new SetupBuildZone(controller,anchor.x()-1,anchor.z()-1,9,7);
+        else zone.ensure();
+    }
+    public void releaseProtection(){if(zone!=null){zone.close();zone=null;}}
     public boolean air(StarterBaseLayout.Pos pos) throws Exception { return (Boolean)helper("isAir",controller,pos(pos)); }
     private Object state(StarterBaseLayout.Pos p)throws Exception {return call(call(controller,"getWorld"),"method_8320",pos(p));}
     private boolean withinLimits(StarterBaseLayout.Pos p)throws Exception {

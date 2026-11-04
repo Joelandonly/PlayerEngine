@@ -6,6 +6,8 @@ import java.util.*;
 /** Runs native item/placement tasks and verifies each real block before accepting it. */
 public final class StarterBaseTask extends Task implements TrackedTaskOutcomeProvider, TransientlyResumableTask {
     public interface Environment {
+        default void protect(List<StarterBaseLayout.Placement> plan)throws Exception {}
+        default void releaseProtection() {}
         default List<StarterBaseLayout.Placement> loadExisting() throws Exception { return List.of(); }
         default List<StarterBaseLayout.Placement> terrainPlan(List<StarterBaseLayout.Placement> plan)throws Exception { return List.of(); }
         default boolean prepared(StarterBaseLayout.Placement job)throws Exception { throw new UnsupportedOperationException(); }
@@ -24,6 +26,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     private List<StarterBaseLayout.Placement> plan;
     private List<StarterBaseLayout.Placement> terrain;
     private int terrainIndex;
+    private int layerRepairs;
     private Task active;
     private boolean acquiring;
     private int index, ticks, stageTicks;
@@ -52,6 +55,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
                 if (plan.size()!=10) return blocked("Starter base requires one table, one furnace and eight chest blocks");
             }
             if(terrain==null)terrain=List.copyOf(environment.terrainPlan(plan));
+            environment.protect(plan);
             while(terrainIndex<terrain.size()) {
                 var job=terrain.get(terrainIndex);
                 if(environment.prepared(job)){terrainIndex++;active=null;stageTicks=0;continue;}
@@ -66,14 +70,31 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
                 active=Objects.requireNonNull(acquiring?environment.acquire(job.resource()):environment.prepareTerrain(job));
                 active.controller=controller;return active;
             }
+            // Preparation is a verified layer, not a cursor that can remain valid
+            // after resource gathering removed an earlier foundation block.
+            for(int i=0;i<terrain.size();i++)if(!environment.prepared(terrain.get(i))) {
+                if(++layerRepairs>3)return blocked("Prepared base layer changed repeatedly; repair budget exhausted at "+terrain.get(i).pos());
+                terrainIndex=i;active=null;stageTicks=0;
+                reason="Repairing changed prepared layer at "+terrain.get(i).pos();
+                return null;
+            }
             while(index<plan.size() && environment.matches(plan.get(index))) { index++; active=null; stageTicks=0; }
             if (index==plan.size()) {
-                for (var p:plan) if (!environment.matches(p)||!environment.safe(p)) return blocked("Placed base changed or became obstructed before final verification");
+                for (int i=0;i<plan.size();i++) if (!environment.matches(plan.get(i))||!environment.safe(plan.get(i))) {
+                    if(++layerRepairs>3)return blocked("Placed base changed repeatedly before final verification");
+                    index=i;terrainIndex=0;active=null;stageTicks=0;
+                    reason="Repairing base before final verification";return null;
+                }
                 done=true; reason="Starter base blocks verified: crafting table, furnace, eight chest blocks with aisles and lid clearance";
                 return null;
             }
             var target=plan.get(index);
-            if (!environment.safe(target)) return blocked("Base site is occupied, obstructed or unsupported; no blocks will be broken");
+            if (!environment.safe(target)) {
+                if(++layerRepairs>3)return blocked("Cannot retain safe base layer at "+target.pos()+" after bounded repairs");
+                terrainIndex=0;active=null;stageTicks=0;
+                reason="Rechecking support/clearance before placing "+target.resource()+" at "+target.pos();
+                return null;
+            }
             if (active!=null) {
                 if (++stageTicks > (acquiring ? 2400 : 600)) return blocked("No verified base output within the bounded native task window at "+target.pos());
                 if (!active.isFinished() && !active.stopped()) return active;
@@ -92,6 +113,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
         }
     }
     private Task blocked(String detail) { failed=true; reason=detail; return null; }
+    public void releaseProtection(){if(environment!=null)environment.releaseProtection();}
     public int verifiedPlacedCount(String resource) {
         if (environment==null || plan==null) return 0;
         try { int count=0;for(var p:plan) if(p.resource().equals(resource)&&environment.matches(p))count++;return count; }

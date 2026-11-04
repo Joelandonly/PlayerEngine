@@ -5,9 +5,9 @@ from hashlib import sha256
 import json
 
 ROOT = Path(__file__).resolve().parent
-JAR_NAME = 'PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SETUP-SITE-HOTFIX.jar'
+JAR_NAME = 'PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SETUP-LAYER-HOTFIX.jar'
 JAR = ROOT / 'dist' / JAR_NAME
-OUT = ROOT / 'dist' / 'PlayerEngine-Ellie-Setup-Site-Hotfix.zip'
+OUT = ROOT / 'dist' / 'PlayerEngine-Ellie-Setup-Layer-Hotfix.zip'
 BASE = ROOT / 'baseline' / 'playerengine-acquisition-safety.jar'
 original = json.loads((ROOT / 'RELEASE_MANIFEST.json').read_text())
 if sha256(BASE.read_bytes()).hexdigest() != original['baseline_sha256']:
@@ -37,7 +37,7 @@ manifest = {
     'jar_sha256': sha256(files[JAR_NAME]).hexdigest(),
     'source_upload_jar_sha256': original.get('source_upload_jar_sha256', original['jar_sha256']),
     'build_kind': 'binary-overlay; complete Minecraft 1.21.1 source unavailable',
-    'release': 'Ellie setup startup and native site-preparation hotfix',
+    'release': 'Ellie setup protected foundation and layer-repair hotfix',
     'changed_existing_classes': [
         'com/player2/playerengine/player2api/Player2APIService.class',
         'com/player2/playerengine/supervisor/CoreGoalSupervisor.class',
@@ -64,7 +64,8 @@ manifest['changed_existing_classes'] += [
 ]
 manifest['new_classes'] += ['com/player2/playerengine/tasks/setup/'+name+'.class' for name in [
     'StarterBaseLayout','StarterBaseLayout$Pos','StarterBaseLayout$Placement','StarterBaseLayout$Probe',
-    'StarterBaseTask','StarterBaseTask$Environment','StarterBaseWorld']]
+    'StarterBaseTask','StarterBaseTask$Environment','StarterBaseWorld',
+    'SetupBuildZone','SetupBuildZone$Shape','SetupBuildZone$Origin']]
 files['RELEASE_MANIFEST.json'] = (json.dumps(manifest, indent=2) + '\n').encode()
 with ZipFile(OUT, 'w', ZIP_DEFLATED, compresslevel=6) as z:
     for name, data in sorted(files.items()):

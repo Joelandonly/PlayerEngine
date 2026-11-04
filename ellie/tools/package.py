@@ -3,7 +3,7 @@ from zipfile import ZipFile,ZipInfo,ZIP_DEFLATED
 from hashlib import sha256
 ROOT=Path(__file__).resolve().parents[1]
 base=ROOT/'baseline/playerengine-acquisition-safety.jar'
-out=ROOT/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SETUP-SITE-HOTFIX.jar'
+out=ROOT/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SETUP-LAYER-HOTFIX.jar'
 changes={p.relative_to(ROOT/'build/classes').as_posix():p.read_bytes() for p in (ROOT/'build/classes').rglob('*.class')}
 changes.update({p.relative_to(ROOT/'build/patches').as_posix():p.read_bytes() for p in (ROOT/'build/patches').rglob('*.class')})
 expected_existing={
@@ -27,7 +27,8 @@ expected_new={'com/player2/playerengine/interpreter/LocalChatGPTBridge.class',
               'com/player2/playerengine/supervisor/ProjectTaskGateway.class'}
 expected_new.update('com/player2/playerengine/tasks/setup/'+name+'.class' for name in [
     'StarterBaseLayout','StarterBaseLayout$Pos','StarterBaseLayout$Placement','StarterBaseLayout$Probe',
-    'StarterBaseTask','StarterBaseTask$Environment','StarterBaseWorld'])
+    'StarterBaseTask','StarterBaseTask$Environment','StarterBaseWorld',
+    'SetupBuildZone','SetupBuildZone$Shape','SetupBuildZone$Origin'])
 assert set(changes)==expected_existing|expected_new,changes.keys()
 with ZipFile(base) as z: orig={k:z.read(k) for k in z.namelist() if not k.endswith('/')}
 assert set(changes)-set(orig)==expected_new

@@ -64,7 +64,7 @@ the [original Windows install guide](UPSTREAM_README.md#quick-install-windows--s
 Replace the existing PlayerEngine JAR rather than installing a duplicate, retain
 Player2NPC, and keep the sidecar beside the PowerShell launcher. Use a backed-up,
 disposable world first.
-For this build, install the `ELLIE-SETUP-SITE-HOTFIX.jar` from `dist/`;
+For this build, install the `ELLIE-SETUP-LAYER-HOTFIX.jar` from `dist/`;
 the interpreter filename in the historical guide refers to the original upload.
 
 In the bridge terminal, use `login`, `status`, and `probe` before testing chat in
@@ -84,7 +84,7 @@ this import does not turn that into a complete gameplay pass. See the
 [backlog](../docs/ELLIE_BACKLOG.md).
 
 See [project manager verification and remaining gates](../docs/ELLIE_PROJECT_MANAGER.md).
-The hardened JAR has a distinct `ELLIE-SETUP-SITE-HOTFIX` filename and is
+The hardened JAR has a distinct `ELLIE-SETUP-LAYER-HOTFIX` filename and is
 not byte-identical to the original interpreter upload. ChatGPT bridge behavior is
 unchanged; the supervisor and reviewed command routes intentionally change.
 Navigation, crafting and furnace bugs are not claimed fixed.
@@ -94,7 +94,7 @@ Navigation, crafting and furnace bugs are not claimed fixed.
 Exact `setup` now targets the required full kit and placed workstation/storage
 base, with no house or farm implied. Read the [setup contract and live gates](../docs/ELLIE_SETUP.md)
 and [findings from the supplied logs](../docs/ELLIE_LOG_FINDINGS_2026-11-04.md).
-The release ZIP is `dist/PlayerEngine-Ellie-Setup-Site-Hotfix.zip`. Existing completed
+The release ZIP is `dist/PlayerEngine-Ellie-Setup-Layer-Hotfix.zip`. Existing completed
 supervisor-only and original interpreter artifacts remain historical references.
 This setup preview intentionally changes setup and crafting-approach behavior.
 
@@ -106,3 +106,12 @@ startup. Placement can mine ordinary obstructions and fill foundation gaps throu
 native tasks, including over fluid. It still enforces dry living space, world limits,
 protected/unbreakable blocks, verified outputs and bounded waiting. Live validation
 with the supplied companion mod set remains necessary.
+
+### Protected layers hotfix
+
+Setup now reuses the village builder's resource-mining exclusion for the entire
+9x7 base footprint. It restores protection before bootstrap on reruns and retains
+it through the full kit phase. Clearance and foundation layers are rechecked
+before workstation placement; changed preparation gets bounded repair attempts.
+Already placed requested stations are retained. Root stop/abandon releases the
+zone. See [layer protection findings and validation](../docs/ELLIE_SETUP_LAYERS_HOTFIX.md).
