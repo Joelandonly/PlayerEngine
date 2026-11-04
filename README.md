@@ -17,6 +17,7 @@ baseline live in [`ellie/`](ellie/). Start there for current development.
 - [Known bugs and stable backlog IDs](docs/ELLIE_BACKLOG.md)
 - [Gameplay validation matrix](docs/ELLIE_VALIDATION.md)
 - [Complete command inventory and test results](docs/ELLIE_COMMANDS.md)
+- [Full-kit and starter-base setup contract](docs/ELLIE_SETUP.md)
 - [Development history](DEVELOPMENT_LOG.md)
 
 The imported bundle preserves the interpreter; the project-supervisor preview adds

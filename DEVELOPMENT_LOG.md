@@ -1,5 +1,7 @@
 # Ellie / PlayerEngine development log
 
+**2026-11-04 user observation — ELLIE-023:** Ellie sometimes waits on a block edge while most of her visible body overlaps the next block. Feet/grid-cell ownership, collision support, arrival and interaction reach need correlated inspection. Added setup/build movement acceptance checks; root cause and fix remain unverified.
+
 A chronological record of **observations, decisions, preview artifacts and verification**, not a claim that the current GitHub source contains those binaries. See [Ellie Backlog](docs/ELLIE_BACKLOG.md) for actionable IDs and [Validation Matrix](docs/ELLIE_VALIDATION.md).
 
 ## Ground rules
@@ -141,3 +143,30 @@ class-change inventory. The artifact is distinctly named PROJECT-SUPERVISOR-PREV
 it intentionally differs from the original interpreter JAR. Full task-graph
 persistence, bounded recovery and live building verification remain outstanding.
 See `docs/ELLIE_PROJECT_MANAGER.md`; no gameplay backlog items are closed.
+
+## 2026-11-04: Command audit, setup contract, and supplied-log regressions
+
+Audited the supervisor JAR: 46 registered NPC commands and nine unregistered
+command classes. `gamer`/BeatMinecraftTask exists but is not registered; lookup
+rejects it. Generic `build_structure` uses LLM-generated code. Added a full inventory
+and real-dispatcher lookup tests, without claiming any game handler passed live.
+
+The maintainer selected a full starter kit plus placed workstations/storage for
+exact `setup`. Recovered setup/progress source; all supplies and iron-or-better gear
+are required, final outputs are reverified, and a conservative native placement
+phase establishes a crafting table, furnace and eight separated chest blocks.
+A per-world/per-character journal records the base anchor; unsafe/unavailable
+sites block rather than excavating or duplicating a base.
+
+Supplied logs show skipped armor/food with old inventory-only success, unrelated
+cobblestone counted as iron progress, and repeated approach to a table three blocks
+above the NPC. Added monotonic relevant-material progress and a targeted crafting
+approach-radius correction, plus ELLIE-023 edge/feet/bounds diagnostics. Raw logs
+remain outside the repository; findings are in `docs/ELLIE_LOG_FINDINGS_2026-11-04.md`.
+
+Local validation: 15 base/layout/journal scenarios, 11 setup final-output checks,
+eight progress checks, 15 supervisor scenarios, bridge JVM test, all 24 Node tests,
+46 dispatcher lookups/nine unavailable-ID rejections, ASM and routing inventory.
+These substitute game boundaries. Native placement, full acquisition, reload and
+observed crafting/edge stalls still require live Minecraft acceptance; no claim
+that all existing gameplay defects are fixed.

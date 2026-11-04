@@ -1,4 +1,4 @@
-# Ellie: 1.21.1 project supervisor preview
+# Ellie: 1.21.1 starter-base setup preview
 
 This is the project's current development direction, based on
 `PlayerEngine-Ellie-ChatGPT-Interpreter-STREAM-HOTFIX-FLAT.zip` supplied by the
@@ -64,7 +64,7 @@ the [original Windows install guide](UPSTREAM_README.md#quick-install-windows--s
 Replace the existing PlayerEngine JAR rather than installing a duplicate, retain
 Player2NPC, and keep the sidecar beside the PowerShell launcher. Use a backed-up,
 disposable world first.
-For this build, install the `ELLIE-PROJECT-SUPERVISOR-PREVIEW.jar` from `dist/`;
+For this build, install the `ELLIE-STARTER-BASE-PREVIEW.jar` from `dist/`;
 the interpreter filename in the historical guide refers to the original upload.
 
 In the bridge terminal, use `login`, `status`, and `probe` before testing chat in
@@ -84,7 +84,16 @@ this import does not turn that into a complete gameplay pass. See the
 [backlog](../docs/ELLIE_BACKLOG.md).
 
 See [project manager verification and remaining gates](../docs/ELLIE_PROJECT_MANAGER.md).
-The hardened JAR has a distinct `ELLIE-PROJECT-SUPERVISOR-PREVIEW` filename and is
+The hardened JAR has a distinct `ELLIE-STARTER-BASE-PREVIEW` filename and is
 not byte-identical to the original interpreter upload. ChatGPT bridge behavior is
 unchanged; the supervisor and reviewed command routes intentionally change.
 Navigation, crafting and furnace bugs are not claimed fixed.
+
+## Current setup preview
+
+Exact `setup` now targets the required full kit and placed workstation/storage
+base, with no house or farm implied. Read the [setup contract and live gates](../docs/ELLIE_SETUP.md)
+and [findings from the supplied logs](../docs/ELLIE_LOG_FINDINGS_2026-11-04.md).
+The release ZIP is `dist/PlayerEngine-Ellie-Starter-Base.zip`. Existing completed
+supervisor-only and original interpreter artifacts remain historical references.
+This setup preview intentionally changes setup and crafting-approach behavior.

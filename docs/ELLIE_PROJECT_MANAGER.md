@@ -1,5 +1,9 @@
 # In-game project supervisor
 
+This records the supervisor reliability pass. The subsequent starter-base preview
+adds explicit setup and crafting changes, documented in [ELLIE_SETUP.md](ELLIE_SETUP.md);
+its allowed task changes are separately verified during packaging.
+
 This work concerns `CoreGoalSupervisor` and its handoff to the native
 `TaskStepExecutorAdapter`, not the ChatGPT interpreter or an operating-system
 process manager. The existing native runner remains the single execution engine.

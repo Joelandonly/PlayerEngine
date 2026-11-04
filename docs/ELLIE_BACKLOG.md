@@ -42,6 +42,15 @@ _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [D
 | ELLIE-020 | P0 | Invariant | KEEP | Preserve retaliation, player control and teleport extension |
 | ELLIE-021 | P1 | Feature / crafting | PREVIEW / MOCK | Remember verified crafting tables in EllieGPS and avoid deep detours |
 | ELLIE-022 | P1 | Bug / bridge | PREVIEW / MOCK | Bridge reflection-access repair; live crossing still unverified |
+| ELLIE-023 | P1 | Bug / navigation | OBSERVED | Stops at a block edge while body visually overlaps the next block |
+
+### ELLIE-023 — Block-edge waiting / apparent arrival mismatch
+
+**User observation (2026-11-04):** Ellie sometimes stands waiting on the edge of a block. Most of her visible body appears over the next block, but she still stands on the first block in typical Minecraft fashion. This can interrupt setup, construction or other movement-dependent work.
+
+**Investigation:** Capture exact X/Y/Z and fractional coordinates, feet-derived block position, supporting block and collision bounds, current path node/target, on-ground state, reach/arrival checks and active task tree. Visual body overlap is not proof of entry into the next grid cell. Distinguish navigation arrival from crafting/placement reach and input/footing problems; do not label a root cause from the observation alone.
+
+**Exit test:** Approach workstations, placement sites and ordinary destinations from block centers, edges and corners, including positive and negative coordinates. Verify bounded forward progress and correct arrival without repeated waiting, unsafe support breaking, teleportation or false completion. Include setup and building regressions.
 
 ### ELLIE-001 — Vines and leaves obstruct navigation
 **Evidence:** User reports Ellie stands in jungle vine clusters until specific vines are broken; leaves occasionally behave similarly. The 2026-11-02 20:01 Observatory snapshot did not include collision/block coordinates. **The owner intentionally set a tree on fire**, explaining later survival-chain interventions and burning death; do not attribute that death to vines.

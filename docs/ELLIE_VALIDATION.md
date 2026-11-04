@@ -4,6 +4,8 @@ Current runtime target: Minecraft 1.21.1, Fabric, PlayerEngine 1.4.0 and the exi
 
 ## Interpreter bundle import verification (2026-11-04)
 
+**New live regression required — ELLIE-023:** Reproduce waiting at block edges while the body visually overlaps the next block. Log exact/fractional coordinates, feet block, supporting block/collision bounds, path node/target, on-ground and reach/arrival checks. Exercise ordinary movement, setup workstation approach and build placement from centers, edges and corners, including negative coordinates. No root cause or fix is verified yet.
+
 - Imported bridge source, sidecar and tests match the supplied STREAM-HOTFIX-FLAT ZIP.
 - 24 Node tests, the JVM configuration/fail-closed test, and ASM verification pass locally.
 - Rebuilt preview JAR matches the uploaded JAR **byte for byte**: SHA-256 `9464cebb201edf6ac720828bb445293195389c9123007a3319c12510857be2c8`.
