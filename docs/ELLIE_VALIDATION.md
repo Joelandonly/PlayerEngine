@@ -122,3 +122,20 @@ Binary: `PlayerEngine-Fabric-1.21.1-1.4.0-BACKLOG-BATCH1-PREVIEW.jar`, SHA-256 `
 **Not run:** actual Minecraft 1.21.1 Fabric, jungle and ladder regression, physical bridging, per-world persistence, long-duration stress. **Do not close ELLIE-001 or ELLIE-022.**
 
 Live acceptance checkpoints: `T-07`, `T-09`, `T-27`, `T-33`–`T-37`. If a native route still chooses climbing vines, capture the current movement type/position and adjust that specific movement generator rather than disabling all climbing or assuming `allowVines=false` is adequate.
+
+
+## November 4 proposed new validation gates (not run)
+
+| ID | Scenario | Required outcome |
+|---|---|---|
+| T-38 | Build with exactly one chest of required stock | Verify every item before building; no unnecessary depot framework |
+| T-39 | Larger schematic needs multiple chests | Compute actual capacity; keep all containers reachable outside build footprint |
+| T-40 | Random mined drops fill inventory | Clear/route incidental drops; required stock remains counted and reserved |
+| T-41 | One material permanently unavailable | Explicit BLOCKED material count; no partial-success claim; bounded retries |
+| T-42 | Baritone section interrupted for acquisition or defense | Single movement owner, deterministic suspension, resume from verified world state |
+| T-43 | Baritone reports complete but roof/door missing | Inspection fails, missing states identified; do not mark project complete |
+| T-44 | Save/reload with half-built structure and filled staging chests | Exact blueprint/state and physical inventory reconcile without duplication |
+| T-45 | Small structure and 5,407-cell village | Same manager phases with different chest counts; no regressions in builder, combat, teleport and HUD |
+| T-46 | ChatGPT usage exhausted/provider offline | Direct commands still function, no silent Player2 fallback, exact quota/provider error and bounded retries |
+
+These are acceptance tests for future code. No Minecraft run or new JAR was produced by this documentation commit.
