@@ -191,3 +191,13 @@ For ELLIE-022, Baritone 1.21.1 exposes supported typed `IPathingBehavior.getCurr
 4. Before closing, record source commit, test seed/world, actual result, regressions checked and user observation.
 5. Prefer minimal patches; do not remove unrelated features. Never publish raw logs, authentication information, UUIDs or local paths in this public repo.
 6. If GitHub Issues are enabled, migrate by stable `ELLIE-###` ID and cross-link back here. Do not create duplicate entries.
+
+
+## 2026-11-04 reconciliation (post Nov 3 preview)
+
+Read [Nov 3-4 implementation reconciliation](ELLIE_RECONCILIATION_2026-11-04.md) for provenance and the newly approved Building Manager architecture. This is design/preview tracking, not a claim that newer 1.21.1 code lives in the old 1.20.1 repository source.
+
+- **ELLIE-023..042:** expanded ideas from Nov 3 master backlog reconciliation; source parity and live validation remain blocked.
+- **PREVIEW:** Goal Supervisor Phase 2 journal/generation protection; acquisition travel-progress/bed-source patch; optional OpenAI Sign in with ChatGPT interpreter. Preserve separate source and binary provenance. No end-to-end live success assumed.
+- **APPROVED DESIGN:** one manager; blueprint -> chests -> collect all materials -> verified stock -> Baritone-subordinate build -> independent inspection. One or more chests as capacity requires, even for small builds. No separate warehouse subsystem or alternate competing construction manager.
+- **OPEN:** actual modern Fabric source recovery, Player2-independent schematic handling, material/chest transactions, reproducible Baritone NPC builder calls, and live tests of interruption/resume/scaffolds.
