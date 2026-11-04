@@ -1,12 +1,12 @@
 # PlayerEngine: The AI Embodiment Framework for Minecraft
 
 **Current direction: [Ellie for Minecraft 1.21.1](ellie/README.md).** The current
-ChatGPT interpreter preview, bridge source, tests, launcher, and pinned binary
+Player2 compact setup and crafting-recovery source, tests, and pinned binary
 baseline live in [`ellie/`](ellie/). Start there for current development.
 
 | Workflow | Target | Build | Status |
 | --- | --- | --- | --- |
-| **Current Ellie preview** | Minecraft 1.21.1 Fabric, Java 21, Node 22+ | `cd ellie && bash build.sh` | Binary overlay; full matching mod source unavailable |
+| **Current Ellie preview** | Minecraft 1.21.1 Fabric, Java 21, Python 3 | `cd ellie && bash build.sh` | Binary overlay; full matching mod source unavailable |
 | Legacy root source | Minecraft 1.20.1, Java 17, Fabric dependencies | `bash gradlew --no-daemon --max-workers=2 build` | Source build; does not produce the Ellie preview |
 
 ## Start here

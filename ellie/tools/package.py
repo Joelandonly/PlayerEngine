@@ -3,11 +3,10 @@ from zipfile import ZipFile,ZipInfo,ZIP_DEFLATED
 from hashlib import sha256
 ROOT=Path(__file__).resolve().parents[1]
 base=ROOT/'baseline/playerengine-acquisition-safety.jar'
-out=ROOT/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SETUP-LAYER-HOTFIX.jar'
+out=ROOT/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-CRAFT-RECOVERY.jar'
 changes={p.relative_to(ROOT/'build/classes').as_posix():p.read_bytes() for p in (ROOT/'build/classes').rglob('*.class')}
 changes.update({p.relative_to(ROOT/'build/patches').as_posix():p.read_bytes() for p in (ROOT/'build/patches').rglob('*.class')})
 expected_existing={
-    'com/player2/playerengine/player2api/Player2APIService.class',
     'com/player2/playerengine/supervisor/CoreGoalSupervisor.class',
     'com/player2/playerengine/supervisor/CoreGoalSupervisor$Slot.class',
     'com/player2/playerengine/supervisor/GoalLifecycle.class',
@@ -21,10 +20,13 @@ expected_existing.update({
     'com/player2/playerengine/tasks/setup/CoreAcquisitionProgress.class',
     'com/player2/playerengine/tasks/setup/CoreAcquisitionProgress$Sample.class',
     'com/player2/playerengine/tasks/crafting/CraftMacroResourceTask.class',
+    'com/player2/playerengine/tasks/container/CraftInTableTask.class',
+    'com/player2/playerengine/tasks/crafting/CraftingTableLocator.class',
 })
 expected_existing.update('com/player2/playerengine/commands/'+name+'.class' for name in (ROOT/'tools/supervised-commands.txt').read_text().splitlines())
-expected_new={'com/player2/playerengine/interpreter/LocalChatGPTBridge.class',
-              'com/player2/playerengine/supervisor/ProjectTaskGateway.class'}
+expected_new={'com/player2/playerengine/supervisor/ProjectTaskGateway.class',
+              'com/player2/playerengine/tasks/crafting/CraftTableApproachRecovery.class',
+              'com/player2/playerengine/tasks/crafting/CraftTableApproachRecovery$Progress.class'}
 expected_new.update('com/player2/playerengine/tasks/setup/'+name+'.class' for name in [
     'StarterBaseLayout','StarterBaseLayout$Pos','StarterBaseLayout$Placement','StarterBaseLayout$Probe',
     'StarterBaseTask','StarterBaseTask$Environment','StarterBaseWorld',

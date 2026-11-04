@@ -52,7 +52,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
             if (++ticks>72000) return blocked("Starter base active-work budget exhausted; verify preparation and placement reach");
             if (plan==null) {
                 plan=List.copyOf(environment.loadOrSelect());
-                if (plan.size()!=10) return blocked("Starter base requires one table, one furnace and eight chest blocks");
+                if (plan.size()!=3) return blocked("Starter base requires one table, one furnace and one chest");
             }
             if(terrain==null)terrain=List.copyOf(environment.terrainPlan(plan));
             environment.protect(plan);
@@ -85,7 +85,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
                     index=i;terrainIndex=0;active=null;stageTicks=0;
                     reason="Repairing base before final verification";return null;
                 }
-                done=true; reason="Starter base blocks verified: crafting table, furnace, eight chest blocks with aisles and lid clearance";
+                done=true; reason="Starter base verified: crafting table, furnace, one chest and usable support";
                 return null;
             }
             var target=plan.get(index);
@@ -135,7 +135,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     protected boolean isEqual(Task other) { return this==other; }
     protected String toDebugString() {
         if(terrain!=null&&terrainIndex<terrain.size())return "Starter base site preparation "+terrainIndex+"/"+terrain.size();
-        return "Starter base "+index+"/10: "+reason;
+        return "Starter base "+index+"/3: "+reason;
     }
     protected void onStop(Task next) { if(!done&&!failed)blocked("Starter base interrupted; recorded positions will be reverified on setup rerun"); }
     public boolean prepareForTransientResume(TaskSuspensionCause cause) {

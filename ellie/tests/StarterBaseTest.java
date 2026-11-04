@@ -14,7 +14,7 @@ public final class StarterBaseTest {
     static final class World implements StarterBaseTask.Environment {
         final List<StarterBaseLayout.Placement> plan=StarterBaseLayout.at(new StarterBaseLayout.Pos(10,64,10));
         final Set<StarterBaseLayout.Placement> placed=new HashSet<>();
-        final Map<String,Integer> inventory=new HashMap<>(Map.of("crafting_table",1,"furnace",1,"chest",8));
+        final Map<String,Integer> inventory=new HashMap<>(Map.of("crafting_table",1,"furnace",1,"chest",1));
         boolean safe=true, falseCompletion;
         int acquisitions,placements;
         public List<StarterBaseLayout.Placement> loadOrSelect(){return plan;}
@@ -37,15 +37,15 @@ public final class StarterBaseTest {
     public static void main(String[] args)throws Exception{
         int passed=0;
         World world=new World();StarterBaseTask task=new StarterBaseTask(world);run(task);
-        check(task.isSuccessful()&&world.placements==10&&world.placed.size()==10,"all ten blocks must be verified");passed++;
-        check(task.verifiedPlacedCount("chest")==8&&world.inventory.get("chest")==0,"placed storage must replace consumed chest items");passed++;
+        check(task.isSuccessful()&&world.placements==3&&world.placed.size()==3,"all three blocks must be verified");passed++;
+        check(task.verifiedPlacedCount("chest")==1&&world.inventory.get("chest")==0,"placed chest must replace consumed chest item");passed++;
         world.placed.remove(world.plan.getFirst());check(!task.isSuccessful(),"removed workstation cannot remain verified");passed++;
         World unsafe=new World();unsafe.safe=false;StarterBaseTask blocked=new StarterBaseTask(unsafe);run(blocked);
         check(blocked.isTerminal()&&!blocked.isSuccessful()&&unsafe.placements==0,"unsafe site must not be modified");passed++;
         World fakeSuccess=new World();fakeSuccess.falseCompletion=true;StarterBaseTask falseTask=new StarterBaseTask(fakeSuccess);run(falseTask);
         check(falseTask.isTerminal()&&!falseTask.isSuccessful(),"child finished without placed block is not success");passed++;
         World empty=new World();empty.inventory.clear();StarterBaseTask supplied=new StarterBaseTask(empty);run(supplied);
-        check(supplied.isSuccessful()&&empty.acquisitions==10,"native acquisition must precede missing placement items");passed++;
+        check(supplied.isSuccessful()&&empty.acquisitions==3,"native acquisition must precede missing placement items");passed++;
         check(completedBase().isSuccessful(),"existing exact base should be reused");passed++;
         World obstructed=new World();obstructed.placed.addAll(obstructed.plan);StarterBaseTask changed=new StarterBaseTask(obstructed);tick(changed);
         obstructed.safe=false;check(!changed.isSuccessful(),"obstructed workstation must not remain usable/verified");passed++;
@@ -60,14 +60,14 @@ public final class StarterBaseTest {
         Task first=tick(resumed);((Op)first).execute();
         check(resumed.prepareForTransientResume(com.player2.playerengine.tasks.base.TaskSuspensionCause.HIGHER_PRIORITY_CHAIN),"safety preemption must be resumable");
         resumed.afterChildrenStopped();run(resumed);
-        check(resumed.isSuccessful()&&resumable.placements==10,"resume must not duplicate already verified placement");passed++;
+        check(resumed.isSuccessful()&&resumable.placements==3,"resume must not duplicate already verified placement");passed++;
         World stalled=new World();StarterBaseTask waiting=new StarterBaseTask(stalled);
         for(int i=0;i<602&&!waiting.isTerminal();i++)tick(waiting);
         check(waiting.isTerminal()&&!waiting.isSuccessful(),"placement must not wait forever");passed++;
         var dir=java.nio.file.Files.createTempDirectory("ellie-base-journal-test-");
         try {
             var journal=CoreGoalJournal.open(dir,"test-character","starter_base_layout");
-            journal.put("BASE_LAYOUT",0,"minecraft:overworld","10,64,10");
+            journal.put("BASE_LAYOUT_COMPACT_V3",0,"minecraft:overworld","10,64,10");
             var reopened=CoreGoalJournal.open(dir,"test-character","starter_base_layout");
             check(reopened.isPersistent()&&reopened.get("detail","").equals("10,64,10")&&reopened.get("resource","").equals("minecraft:overworld"),"anchor journal must survive reopen");passed++;
             check(CoreGoalJournal.open(dir,"different-character","starter_base_layout").get("status","none").equals("none"),"base journals must not cross character ownership");passed++;

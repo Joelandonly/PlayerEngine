@@ -1,98 +1,28 @@
-# Exact setup contract: full kit and placed starter base
+# Ellie setup: compact workstations, conditional local platform
 
-This preview implements the maintainer's chosen target: a full starter kit plus
-placed workstations/storage. It is not a claim of live Minecraft acceptance.
-Invoke the existing exact `Ellie, setup` route; supplied logs show that this route
-can dispatch without calling the conversation model. `build_structure` is separate: it tries supported local templates first and uses
-LLM planning only as a fallback. See the command inventory’s village correction.
+`Ellie, setup` follows the existing 20-milestone survival equipment plan and now acquires **one chest**, **one furnace**, and **one crafting table**, then verifies their real placement.
 
-## Required outputs
+## Layout
 
-- Iron-or-better pickaxe, shovel, axe and sword.
-- Iron-or-better helmet, chestplate, leggings and boots, held or worn. Existing
-  diamond/netherite equivalents count; setup should not demand an iron downgrade.
-- One shield, two buckets, 32 torches, 16 bread and one bed item.
-- A placed crafting table, a placed furnace and **eight placed single chest blocks**.
-  Chests are separated to preserve walk space; no double-chest orientation guarantee
-  is made. Bed/torches remain supplies; this does not place a house, bed or farm.
-
-Wooden/stone tools are bootstrap steps, not final reserve requirements once the
-iron kit is obtained. The old optional-item skips cannot satisfy this contract.
-
-## Workstation/storage phase
-
-The original setup starting feet position and dimension are captured before
-resource gathering. Startup restores an existing recorded layout only; it does
-not require a ready-made site before the first tool can be gathered.
-
-At the workstation phase, the planner first prefers an already usable nearby site.
-If none exists, it chooses a **preparable** site: ordinary obstructions are mined
-using `DestroyBlockTask`, and unsupported foundation cells are filled with
-cobblestone using `PlaceBlockTask`. The native task engine performs all actions;
-there are no direct world edits, teleports or blueprint-model calls.
-
-The deck includes the workstation/storage footprint and walk space. Living-space
-cells must be dry or safely clearable; foundation cells may be over water or lava.
-Actual world build limits and the world border are checked. Unbreakable blocks
-and nonmatching block entities (including storage) are not automatically demolished.
-Native permission, reach and material failures remain explicit blocked outcomes.
-
-The layout's workstation positions are:
-
-```text
-T . F . . . .     T = crafting table, F = furnace, C = chest
-. . . . . . .
-C . C . C . C
-. . . . . . .
-C . C . C . C
+```
+T . F . C       T table, F furnace, C chest
+= = = = =       One-block standing/service aisle (only when platform needed)
 ```
 
-The selected anchor is journaled per world/character before execution. Reruns reuse
-and recheck it. The NPC's initial feet cell and neighboring edge-overlap cells are
-excluded as workstation/chest targets. Preparatory tasks are bounded and verify
-world changes before advancing. This does not claim universal native reachability
-or a successful platform over lava/water until tested in Minecraft.
+## Site selection
 
-Workstations/storage are established after bootstrap and before iron upgrades.
-The native `PlaceItemBlockAtPosTask` performs interactions and checks the resulting
-block. Native catalogue/crafting tasks acquire missing station materials. There
-are no direct world edits or LLM blueprint requests in this phase.
+1. Prefer a directly usable existing surface within 12 horizontal blocks of Ellie.
+2. Otherwise select an existing supported surface that only needs obstruction clearing.
+3. Only if neither exists, try native compact support construction at a nearby supported/replaceable water or void site. Search vertical offsets 0, +1, -1, +2, +3, protecting Ellie's immediate body/aisle from work.
 
-Placed station/chest blocks count toward the requirement after their item stacks
-are consumed, and only when the expected block is actually observed. Missing kit
-items trigger at most two final repair passes. Placement has a finite active-work
-budget and does not treat a stopped child as successful placement.
+For ordinary land, no cobblestone support jobs are generated. For the water/unsupported fallback, the site consists of **three equipment support cells and five aisle support cells** (maximum eight cobblestone foundation jobs), plus at most 16 native clearance checks. Existing solid supports are reused, and terrain jobs never contain an air-clear instruction at the same coordinates as a foundation cell. Only air/fluid support cells can be filled; protected/occupied obstructions are not blindly excavated.
 
-## Fixes motivated by the supplied logs
+Every operation is delegated to a native Minecraft task, then checked against the actual world; no block-state writes, teleport, free inventory or generated villages. The original `build_structure` command remains separate. Baritone's `AdditionalBaritoneSettings` receives a temporary *exact-Y* predicate protecting platform support coordinates against path-mining during setup, in addition to the existing resource-source exclusion on the 7×3 footprint. Both guards are removed on terminal completion or stop.
 
-- All kit objectives are required; missing armor/food cannot be optional skips.
-- Recheck final kit and placed blocks rather than only trusting past subtask success.
-- Ignore unrelated cobblestone changes during iron acquisition. Material progress
-  requires a new per-item high-water mark, not a decrease/regain cycle.
-- Narrow the crafting macro's approach goal from radius three to one while retaining
-  its actual native interaction-reach check. This targets the observed vertical
-  arrival/reach mismatch; it is not a global pathfinding rewrite or verified cure.
-- Stall diagnostics include feet cell, cell below feet and collision bounds to
-  investigate ELLIE-023 at positive/negative block boundaries.
+Saved journal markers are `BASE_LAYOUT_COMPACT_V3` for natural ground and `BASE_LAYOUT_PLATFORM_V3` for the supported fallback. Older V2 or 9×7 layout journals are not reused; existing placed structures are not automatically torn down.
 
-See [sanitized log findings](ELLIE_LOG_FINDINGS_2026-11-04.md).
+## Verification and limitations
 
-## Verification and remaining gates
+`bash build.sh` runs bytecode validation, original Player2 interpreter byte equality, command and supervisor tests, platform generation tests, simulated water/supported surfaces, foundation damage recovery, and release packaging checks.
 
-The build runs the existing supervisor/bridge/dispatcher checks plus:
-
-- setup final-verification tests with inventory boundaries;
-- conservative layout and task-handoff tests with a simulated world;
-- monotonic/relevant material-progress tests, including the supplied-log regression;
-- ASM verification and an exact allowed-class-change inventory.
-
-The native reflection symbols were checked against the actual baseline method
-signatures and Fabric Yarn 1.21.1+build.3 mappings. This is static API evidence,
-not a Minecraft integration test. The complete mod source remains unrecovered.
-
-**Not yet verified live:** bootstrap/gathering every required resource, the actual
-placement interactions, safe-site selection on the real terrain, interruption and
-world reload, chest reuse, and the narrowed crafting-table approach. Native
-resource macros can still fail or lack reachable materials. Such a failure must
-report BLOCKED rather than completing setup. A prepared test pad, exact JAR hash,
-matching Player2NPC version and actual in-game logs are needed for acceptance.
+**Game behavior remains unverified.** Baritone must be able to reach/place support cells physically; unsupported remote aerial builds, deep submerged starts, protected areas or distant elevations are not guaranteed reachable. Repeated ineffective native tasks fail with a precise status instead of silently reporting setup complete.
