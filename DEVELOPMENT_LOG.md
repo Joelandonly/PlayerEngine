@@ -220,3 +220,67 @@ commands visible in the audit. None are described as proven impossible to implem
 Player2 API identity and the imported compact setup/table-recovery behavior remain.
 Shared navigation deadlock recovery is a separate pending architectural change;
 this revision does not claim it was implemented or all gameplay handlers tested.
+
+## 2026-11-04: Supplied NPC crash, final-ingot race and shared target recovery
+
+The new native-command log identifies a null PlayerEntity in vanilla axe stripping,
+a five-of-six bucket material failure at the nominal furnace-batch boundary, and
+our wrapper incorrectly failing a physical child after defense suspension. Guarded
+the known NPC-only item-use boundary, retained in-flight native furnace production,
+prevented an expired timer from skipping final output collection, refreshed inventory
+accounting, and repaired accepted build resume without changing operator-stop semantics.
+
+Implemented one shared recovery owner at Task.tick: verified progress/novel-position
+sampling, alternative interaction poses, conservative native excavation, finite target
+rejection, safety-chain yield and critical-air routing. Task look calls are gated
+by interaction reach and actual look writers are recorded. Scanner/table selectors
+share rejection; the craft-only watchdog is retired. Native re-entry balances leaf
+cleanup while preserving the project. Worksites/verified benches are journalled
+separately from personal home and revalidated for nearby reuse. Unknown builder
+targets and persistence failures remain explicit; no chat-command injection.
+
+Tests run real patched Task.tick with substituted world/pathfinder boundaries,
+alongside production/NPC-use regressions and all earlier checks. Live Minecraft
+physics, complete armour setup and construction still require acceptance. Raw uploads
+and logs stay outside the repository. See docs/ELLIE_SHARED_RECOVERY.md.
+
+## 2026-11-04: Table item versus placed-bench contract
+
+The follow-up logs show successful use of table 118,63,-1, then setup step 8 fails
+while acquiring a table item. The macro skipped/satisfied a table inventory step
+based on world reachability, even when the table itself was the requested output.
+Guarded skipping, satisfaction and requirement collapse for requested table output.
+Setup prefers a safe nearby bench as its workshop anchor and can persist a new
+anchor for an empty saved layout; existing partial stations retain their positions.
+Added eight packaged decision checks and five layout/task regressions. No raw user
+logs or pasted HTML catalogue are committed. Live gameplay acceptance is pending.
+
+## 2026-11-04: Separate install artifact from rebuild bundle
+
+The combined preview download included both the current mod and the source ZIP,
+whose pinned baseline JAR could be mistaken for the installable build. Split CI
+uploads into a one-JAR install artifact and a separately labelled source bundle.
+The install filename includes the source revision. Runtime bytes are unchanged.
+
+## 2026-11-04: Reuse native acquisition for the fixed setup kit
+
+The follow-up confirms successful table reuse/station placement but retains final
+iron-output failures under the dynamic macro. The user's working diamond command
+points to the existing catalogue acquisition chain. Setup now uses that native
+chain directly for all fixed kit requests and station reacquisition, with route
+telemetry and a regression boundary that rejects any macro selection. No new
+furnace delay is added. Also replace base verification's unchanged-condition loop
+with actual safe support/headroom/access repair jobs and exact safety diagnostics;
+protect natural workshop support from path excavation. Clear stale recovery mode
+when its root ends. Tests remain separate from live gameplay acceptance.
+
+## 2026-11-04: Produce setup torches instead of stripping placed lights
+
+The new run reaches native torch acquisition but follows distant placed torches,
+collecting six individually before stalling. Clear native output-reclamation fields
+for fixed setup requests while retaining native ingredient tasks/crafting. Logs
+cannot identify the structure as a dungeon. Also constrain nearby bench/furnace
+selection and actual placement clicks to supported non-tree sites with usable
+standing space, and filter known unsuitable reused benches. Add 14 geometry checks
+and verify actual packaged hooks/native source fields. Full torch/iron gameplay
+acceptance remains pending; raw uploads remain outside the repository.

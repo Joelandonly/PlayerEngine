@@ -5,9 +5,9 @@ from hashlib import sha256
 import json
 
 ROOT = Path(__file__).resolve().parent
-JAR_NAME = 'PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-NATIVE-COMMANDS.jar'
+JAR_NAME = 'PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar'
 JAR = ROOT / 'dist' / JAR_NAME
-OUT = ROOT / 'dist' / 'PlayerEngine-Ellie-Player2-Native-Commands.zip'
+OUT = ROOT / 'dist' / 'PlayerEngine-Ellie-Player2-Shared-Recovery.zip'
 BASE = ROOT / 'baseline' / 'playerengine-acquisition-safety.jar'
 original = json.loads((ROOT / 'RELEASE_MANIFEST.json').read_text())
 if sha256(BASE.read_bytes()).hexdigest() != original['baseline_sha256']:
@@ -37,7 +37,7 @@ manifest = {
     'jar_sha256': sha256(files[JAR_NAME]).hexdigest(),
     'source_upload_jar_sha256': original.get('source_upload_jar_sha256', original['jar_sha256']),
     'build_kind': 'binary-overlay; complete Minecraft 1.21.1 source unavailable',
-    'release': 'Ellie Player2 compact setup, crafting recovery and native commands',
+    'release': 'Ellie Player2 shared target recovery, NPC crash and production handoffs',
     'craft_recovery_upload_jar_sha256': 'f36e4210a31024c113f7be6d2afa97385c878a15b1ab1d9f590a4ea745980b9f',
     'changed_existing_classes': [
         'com/player2/playerengine/supervisor/CoreGoalSupervisor.class',
@@ -46,7 +46,7 @@ manifest = {
         'com/player2/playerengine/supervisor/GoalLifecycle$Snapshot.class',
         'com/player2/playerengine/supervisor/GoalLifecycle$Status.class',
     ],
-    'tests': 'Run bash build.sh: supervisor, dispatcher, setup/base, crafting recovery and Player2 integrity checks; live Minecraft requires separate validation',
+    'tests': 'Run bash build.sh: supervisor, native commands, setup/base, production/NPC-use, shared recovery policy/runtime, packaged bytecode and Player2 integrity checks; live Minecraft requires separate validation',
 }
 with ZipFile(BASE) as base_archive, ZipFile(JAR) as jar_archive:
     previous={n:base_archive.read(n) for n in base_archive.namelist() if not n.endswith('/')}

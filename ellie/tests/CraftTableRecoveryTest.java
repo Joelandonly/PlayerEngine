@@ -25,20 +25,15 @@ public final class CraftTableRecoveryTest {
     public static void main(String[] args) {
         Ctrl ctrl=new Ctrl();
         Pos elevated=new Pos(0,68,1),local=new Pos(0,65,1);
-        expect(CraftTableApproachRecovery.filterReusable(ctrl,Optional.of(elevated)).isEmpty(),"elevated table not selected from ravine");
-        expect(CraftTableApproachRecovery.filterReachable(ctrl,Optional.of(new Target(elevated))).isEmpty(),"GPS memory also blocked across vertical gap");
-        expect(CraftTableApproachRecovery.filterReusable(ctrl,Optional.of(local)).isPresent(),"same-level table remains selectable");
-        FakeTask task=new FakeTask();task.craftingTablePos=elevated;
-        CraftTableApproachRecovery.craftTick(task,ctrl);
-        expect(task.craftingTablePos==null,"obsolete table cleared from active crafting task");
-        // A same-level goal that goes nowhere must also be dropped.
-        FakeTask stuck=new FakeTask();stuck.craftingTablePos=local;
-        for(int tick=0;tick<101;tick++)CraftTableApproachRecovery.craftTick(stuck,ctrl);
-        expect(stuck.craftingTablePos==null,"stationary approach reaches finite retry limit");
-        expect(CraftTableApproachRecovery.filterReusable(ctrl,Optional.of(local)).isEmpty(),"failed table not immediately reselected");
-        expect(CraftTableApproachRecovery.filterReusable(ctrl,Optional.of(new Pos(1,65,1))).isPresent(),"other nearby table still allowed");
-        ctrl.player.y=68;
-        expect(CraftTableApproachRecovery.filterReusable(ctrl,Optional.of(new Pos(2,68,2))).isPresent(),"elevation change permits matching-level new station");
-        System.out.println("CraftTableRecoveryTest: 7 checks passed");
+        expect(CraftTableApproachRecovery.filterReusable(ctrl,Optional.of(elevated)).isPresent(),"height alone cannot prove a table unreachable");
+        expect(CraftTableApproachRecovery.filterReachable(ctrl,Optional.of(new Target(local))).isPresent(),"native reachable candidate is retained");
+        com.player2.playerengine.reliability.SharedTargetRecovery.reject(ctrl,local);
+        expect(CraftTableApproachRecovery.filterReusable(ctrl,Optional.of(local)).isEmpty(),"shared rejection prevents immediate reselection");
+        expect(CraftTableApproachRecovery.filterReachable(ctrl,Optional.of(new Target(local))).isEmpty(),"GPS results use the same shared rejection");
+        expect(CraftTableApproachRecovery.filterReusable(new Ctrl(),Optional.of(local)).isPresent(),"other NPCs remain independent");
+        FakeTask task=new FakeTask();task.craftingTablePos=local;for(int i=0;i<200;i++)CraftTableApproachRecovery.craftTick(task,ctrl);
+        expect(task.craftingTablePos==local,"crafting no longer runs a competing watchdog");
+        expect(CraftTableApproachRecovery.filterReusable(ctrl,Optional.of(new Pos(1,65,1))).isPresent(),"other approaches remain available");
+        System.out.println("CraftTableRecoveryTest: 7 shared-policy delegation checks passed");
     }
 }

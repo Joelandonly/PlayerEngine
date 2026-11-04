@@ -405,48 +405,23 @@ TrackedTaskOutcomeProvider {
     }
 
     private Task resolve(Step step) throws ReflectiveOperationException {
-        Object object;
-        Class<?> clazz = Class.forName("com.player2.playerengine.TaskCatalogue");
-        Object object2 = null;
-        try {
-            object2 = clazz.getMethod("getItemTarget", String.class, Integer.TYPE).invoke(null, step.resource, step.amount);
-        }
-        catch (NoSuchMethodException noSuchMethodException) {
-            // empty catch block
-        }
-        if (object2 != null) {
-            Object object3;
-            try {
-                Object object4 = Class.forName("com.player2.playerengine.patch.ToolRequestRouting").getMethod("select", Object.class).invoke(null, object2);
-                if (object4 instanceof Task) {
-                    return (Task)object4;
-                }
-            }
-            catch (ClassNotFoundException | NoSuchMethodException reflectiveOperationException) {
-                // empty catch block
-            }
-            try {
-                for (Method method : Class.forName("com.player2.playerengine.tasks.crafting.CraftMacroTasks").getMethods()) {
-                    Object object5;
-                    if (!method.getName().equals("macroOutcome") || method.getParameterCount() != 2 || !method.getParameterTypes()[0].isInstance(this.controller) || !method.getParameterTypes()[1].isInstance(object2)) continue;
-                    object3 = method.invoke(null, this.controller, object2);
-                    if (object3 != null && "MACRO_CREATED".equals(String.valueOf(object3.getClass().getMethod("outcome", new Class[0]).invoke(object3, new Object[0]))) && (object5 = object3.getClass().getMethod("task", new Class[0]).invoke(object3, new Object[0])) instanceof Task) {
-                        return (Task)object5;
-                    }
-                    break;
-                }
-            }
-            catch (ClassNotFoundException | NoSuchMethodException reflectiveOperationException) {
-                // empty catch block
-            }
-            for (Method method : clazz.getMethods()) {
-                if (!method.getName().equals("getItemTask") || method.getParameterCount() != 1 || !method.getParameterTypes()[0].isInstance(object2)) continue;
-                object3 = method.invoke(null, object2);
-                if (!(object3 instanceof Task)) break;
-                return (Task)object3;
-            }
-        }
-        return (object = clazz.getMethod("getItemTask", String.class, Integer.TYPE).invoke(null, step.resource, step.amount)) instanceof Task ? (Task)object : null;
+        // The fixed setup kit uses the same native acquisition route as mining prerequisites.
+        // Do not opt into the dynamic macro resolver between furnace outputs.
+        Task result=nativeAcquisition(step.resource,step.amount);
+        EllieSetupTask.event("SETUP_ACQUISITION_ROUTE","native production (placed-output harvesting disabled): "+step.resource+" x"+step.amount+" -> "+result.getClass().getSimpleName());
+        return (Task)result;
+    }
+
+    public static Task nativeAcquisition(String resource,int amount)throws ReflectiveOperationException {
+        Class<?> catalogue=Class.forName("com.player2.playerengine.TaskCatalogue");
+        Object result=catalogue.getMethod("getItemTask",String.class,Integer.TYPE).invoke(null,resource,amount);
+        if(!(result instanceof Task))throw new IllegalStateException("No native acquisition task for "+resource);
+        try{
+            // A setup supplies order is a production request, not permission to strip distant placed output.
+            com.player2.playerengine.nativecommands.NativeAccess.set(result,"mineIfPresent",null);
+            com.player2.playerengine.nativecommands.NativeAccess.set(result,"mineLastClosest",null);
+        }catch(Exception error){throw new ReflectiveOperationException("Cannot apply setup production policy for "+resource,error);}
+        return (Task)result;
     }
 
     private int verifiedCount(String resource) throws ReflectiveOperationException {

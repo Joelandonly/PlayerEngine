@@ -64,6 +64,31 @@ public final class StarterBaseTest {
         World stalled=new World();StarterBaseTask waiting=new StarterBaseTask(stalled);
         for(int i=0;i<602&&!waiting.isTerminal();i++)tick(waiting);
         check(waiting.isTerminal()&&!waiting.isSuccessful(),"placement must not wait forever");passed++;
+        var reuseOrigin=new StarterBaseLayout.Pos(118,63,-3);
+        var existingBench=new StarterBaseLayout.Pos(118,63,-1);
+        StarterBaseLayout.Probe benchProbe=new StarterBaseLayout.Probe(){
+            public boolean air(StarterBaseLayout.Pos p){return !p.equals(existingBench);}
+            public boolean safeFloor(StarterBaseLayout.Pos p){return p.y()==62;}
+            public boolean matches(StarterBaseLayout.Placement p){return p.resource().equals("crafting_table")&&p.pos().equals(existingBench);}
+        };
+        var reusedPlan=StarterBaseLayout.reuse(reuseOrigin,benchProbe).orElseThrow();
+        check(reusedPlan.getFirst().pos().equals(existingBench)&&reusedPlan.size()==3,"supplied nearby table must anchor the complete workshop");passed++;
+        var oldPlan=StarterBaseLayout.at(new StarterBaseLayout.Pos(119,63,-6));
+        check(StarterBaseLayout.reuseUnstarted(oldPlan,reuseOrigin,benchProbe).equals(reusedPlan),"empty saved layout must recover around nearby bench");passed++;
+        StarterBaseLayout.Probe startedProbe=new StarterBaseLayout.Probe(){
+            public boolean air(StarterBaseLayout.Pos p)throws Exception{return benchProbe.air(p);}
+            public boolean safeFloor(StarterBaseLayout.Pos p)throws Exception{return benchProbe.safeFloor(p);}
+            public boolean matches(StarterBaseLayout.Placement p)throws Exception{return p.equals(oldPlan.get(1))||benchProbe.matches(p);}
+        };
+        check(StarterBaseLayout.reuseUnstarted(oldPlan,reuseOrigin,startedProbe).equals(oldPlan),"existing placed furnace must pin recorded project positions");passed++;
+        StarterBaseLayout.Probe inaccessible=new StarterBaseLayout.Probe(){
+            public boolean air(StarterBaseLayout.Pos p){return false;}
+            public boolean safeFloor(StarterBaseLayout.Pos p){return true;}
+            public boolean matches(StarterBaseLayout.Placement p)throws Exception{return benchProbe.matches(p);}
+        };
+        check(StarterBaseLayout.reuse(reuseOrigin,inaccessible).isEmpty(),"bench without standing clearance must not be called reusable");passed++;
+        World reuseWorld=new World();reuseWorld.inventory.remove("crafting_table");reuseWorld.placed.add(reuseWorld.plan.getFirst());StarterBaseTask reuseTask=new StarterBaseTask(reuseWorld);run(reuseTask);
+        check(reuseTask.isSuccessful()&&reuseWorld.acquisitions==0&&reuseWorld.placements==2,"placed bench must require only furnace and chest placement, without reacquisition");passed++;
         var dir=java.nio.file.Files.createTempDirectory("ellie-base-journal-test-");
         try {
             var journal=CoreGoalJournal.open(dir,"test-character","starter_base_layout");

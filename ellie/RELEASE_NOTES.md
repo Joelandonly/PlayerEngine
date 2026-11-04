@@ -1,3 +1,36 @@
+# Shared target recovery, NPC crash and production handoffs
+
+Latest follow-up: setup crafts requested supplies instead of chasing placed output
+blocks such as distant torches. Constrain nearby crafting-table/furnace placement
+and actual clicks to dry supported non-tree sites with standing access; reject
+known unsuitable bench reuse. Native ingredient gathering and furnace crafting remain.
+
+The preceding revision: setup uses the established native catalogue acquisition chain
+for its fixed kit, matching mining prerequisites instead of replanning through the
+dynamic crafting macro near the last furnace output. Add concrete base repair
+jobs and safety diagnostics, protect naturally supported workshop floors/stations,
+and clear stale recovery status after a task ends. Live setup acceptance is pending.
+
+The earlier table fix distinguishes a requested table item from a reusable world
+bench and preserves partial construction.
+
+- Guard NPC axe stripping from the null-player vanilla path in the supplied crash.
+- Preserve final furnace input/output handoff and refresh material accounting.
+- Resume the same physical build after accepted defense/gesture suspension.
+- Coordinate stalled navigation below tasks, with one recovery movement owner,
+  alternative interaction positions, conservative clearing, finite retries and air priority.
+- Delegate table rejection to the shared policy; remove the separate craft watchdog.
+- Record a construction worksite and verified nearby bench separately from personal home.
+- Add target/reach/blocker/look-writer and recovery-ownership Observatory diagnostics.
+
+Output: `PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar`.
+Native commands, original Player2 API and compact setup remain. Production recovery
+uses native APIs, with no teleport, item grants or direct world edits. Local
+simulations/bytecode checks do not replace live Minecraft acceptance. See
+`docs/ELLIE_SHARED_RECOVERY.md` and prior notes below.
+
+---
+
 # Player2 native commands on the crafting-recovery revision
 
 Based on the maintainer's reproducible craft-recovery source/JAR, retaining compact
