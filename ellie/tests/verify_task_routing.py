@@ -15,7 +15,7 @@ assert counts == expected, (counts, expected)
 assert not any(row['route'] == 'legacy-user-task' and row['caller'].split('#')[0] in expected for row in rows)
 # These paths must retain their baseline behavior; they are not project work.
 with zipfile.ZipFile(root / 'baseline/playerengine-acquisition-safety.jar') as baseline, \
-     zipfile.ZipFile(root / 'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-CRAFT-RECOVERY.jar') as built:
+     zipfile.ZipFile(root / 'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-NATIVE-COMMANDS.jar') as built:
     setup_changes = {
         'com/player2/playerengine/tasks/setup/EllieSetupTask.class',
         'com/player2/playerengine/tasks/setup/EllieSetupTask$Step.class',
@@ -23,6 +23,8 @@ with zipfile.ZipFile(root / 'baseline/playerengine-acquisition-safety.jar') as b
         'com/player2/playerengine/tasks/setup/CoreAcquisitionProgress$Sample.class',
         'com/player2/playerengine/tasks/crafting/CraftMacroResourceTask.class',
         'com/player2/playerengine/tasks/container/CraftInTableTask.class',
+        'com/player2/playerengine/tasks/construction/build_structure/BuildStructureTask.class',
+        'com/player2/playerengine/tasks/agentic/LabelChestTask.class',
         'com/player2/playerengine/tasks/crafting/CraftingTableLocator.class',
     }
     for entry in baseline.namelist():

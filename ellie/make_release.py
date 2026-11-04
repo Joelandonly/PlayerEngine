@@ -5,9 +5,9 @@ from hashlib import sha256
 import json
 
 ROOT = Path(__file__).resolve().parent
-JAR_NAME = 'PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-CRAFT-RECOVERY.jar'
+JAR_NAME = 'PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-NATIVE-COMMANDS.jar'
 JAR = ROOT / 'dist' / JAR_NAME
-OUT = ROOT / 'dist' / 'PlayerEngine-Ellie-Player2-Craft-Recovery.zip'
+OUT = ROOT / 'dist' / 'PlayerEngine-Ellie-Player2-Native-Commands.zip'
 BASE = ROOT / 'baseline' / 'playerengine-acquisition-safety.jar'
 original = json.loads((ROOT / 'RELEASE_MANIFEST.json').read_text())
 if sha256(BASE.read_bytes()).hexdigest() != original['baseline_sha256']:
@@ -17,7 +17,7 @@ for directory in ['src', 'tools', 'tests', 'baseline', 'provenance']:
     for p in sorted((ROOT / directory).rglob('*')):
         if p.is_file():
             files[p.relative_to(ROOT).as_posix()] = p.read_bytes()
-for name in ['README.md', 'UPSTREAM_README.md', 'RELEASE_NOTES.md',
+for name in ['README.md', 'UPSTREAM_README.md', 'RELEASE_NOTES.md', 'HISTORICAL_RELEASE_NOTES.md',
              'build.sh', 'make_release.py']:
     files[name] = (ROOT / name).read_bytes()
 # Include current guidance in the portable bundle; preserve imported docs as history.
@@ -37,7 +37,7 @@ manifest = {
     'jar_sha256': sha256(files[JAR_NAME]).hexdigest(),
     'source_upload_jar_sha256': original.get('source_upload_jar_sha256', original['jar_sha256']),
     'build_kind': 'binary-overlay; complete Minecraft 1.21.1 source unavailable',
-    'release': 'Ellie Player2 compact setup and crafting recovery',
+    'release': 'Ellie Player2 compact setup, crafting recovery and native commands',
     'craft_recovery_upload_jar_sha256': 'f36e4210a31024c113f7be6d2afa97385c878a15b1ab1d9f590a4ea745980b9f',
     'changed_existing_classes': [
         'com/player2/playerengine/supervisor/CoreGoalSupervisor.class',
@@ -48,27 +48,12 @@ manifest = {
     ],
     'tests': 'Run bash build.sh: supervisor, dispatcher, setup/base, crafting recovery and Player2 integrity checks; live Minecraft requires separate validation',
 }
-manifest['changed_existing_classes'] += [
-    'com/player2/playerengine/commands/' + name + '.class'
-    for name in (ROOT / 'tools/supervised-commands.txt').read_text().splitlines()
-]
-manifest['new_classes'] = ['com/player2/playerengine/supervisor/ProjectTaskGateway.class',
-                           'com/player2/playerengine/tasks/crafting/CraftTableApproachRecovery.class',
-                           'com/player2/playerengine/tasks/crafting/CraftTableApproachRecovery$Progress.class']
-manifest['changed_existing_classes'] += [
-    'com/player2/playerengine/commands/EllieSetupCommand.class',
-    'com/player2/playerengine/tasks/setup/EllieSetupTask.class',
-    'com/player2/playerengine/tasks/setup/EllieSetupTask$Step.class',
-    'com/player2/playerengine/tasks/setup/CoreAcquisitionProgress.class',
-    'com/player2/playerengine/tasks/setup/CoreAcquisitionProgress$Sample.class',
-    'com/player2/playerengine/tasks/crafting/CraftMacroResourceTask.class',
-    'com/player2/playerengine/tasks/container/CraftInTableTask.class',
-    'com/player2/playerengine/tasks/crafting/CraftingTableLocator.class',
-]
-manifest['new_classes'] += ['com/player2/playerengine/tasks/setup/'+name+'.class' for name in [
-    'StarterBaseLayout','StarterBaseLayout$Pos','StarterBaseLayout$Placement','StarterBaseLayout$Probe',
-    'StarterBaseTask','StarterBaseTask$Environment','StarterBaseWorld',
-    'SetupBuildZone','SetupBuildZone$Shape','SetupBuildZone$Origin']]
+with ZipFile(BASE) as base_archive, ZipFile(JAR) as jar_archive:
+    previous={n:base_archive.read(n) for n in base_archive.namelist() if not n.endswith('/')}
+    current={n:jar_archive.read(n) for n in jar_archive.namelist() if not n.endswith('/')}
+manifest['changed_existing_classes']=sorted(n for n in previous.keys() & current.keys() if n.endswith('.class') and previous[n]!=current[n])
+manifest['new_classes']=sorted(n for n in current.keys()-previous.keys() if n.endswith('.class'))
+manifest['removed_classes']=sorted(n for n in previous.keys()-current.keys() if n.endswith('.class'))
 files['RELEASE_MANIFEST.json'] = (json.dumps(manifest, indent=2) + '\n').encode()
 with ZipFile(OUT, 'w', ZIP_DEFLATED, compresslevel=6) as z:
     for name, data in sorted(files.items()):

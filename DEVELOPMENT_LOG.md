@@ -205,3 +205,18 @@ its source is retained under `ellie/legacy-chatgpt/`. Imported crafting-specific
 table rejection and selector hooks pass seven local checks but do not implement
 shared navigation recovery. Corrected stale release paths and current guidance;
 preserved upload manifest separately. Raw logs and generated artifacts stay ignored.
+
+## 2026-11-04: Deterministic command entry and execution
+
+Extended the owner-verified setup route to all 46 exact command IDs and supported
+local farm/build phrases. Preserved argument case and quotes. Replaced building's
+model orchestrator with local selection and the original physical layer builder;
+typed outcomes reject failed/unverified work. Agentic pickup/storage uses local
+plans even if model planning was enabled. Labels and GPS descriptions keep native
+templates. Fixed no-argument eat_food, absent-food silent returns, uppercase scan
+default/arguments, and command splitting on quoted semicolons. Removed only the
+provable no-op dummy class/task, leaving eight unregistered experimental/legacy
+commands visible in the audit. None are described as proven impossible to implement.
+Player2 API identity and the imported compact setup/table-recovery behavior remain.
+Shared navigation deadlock recovery is a separate pending architectural change;
+this revision does not claim it was implemented or all gameplay handlers tested.

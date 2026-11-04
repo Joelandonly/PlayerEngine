@@ -47,3 +47,12 @@ The imported crafting recovery temporarily rejects stalled/inaccessible tables;
 it is not a shared navigation recovery system. See
 [uploaded recovery notes](../docs/ELLIE_CRAFT_RECOVERY_UPLOAD.md).
 Local simulations and binary checks do not establish live gameplay success.
+
+## Native commands on this revision
+
+The integrated build writes `ELLIE-PLAYER2-NATIVE-COMMANDS.jar` and
+`PlayerEngine-Ellie-Player2-Native-Commands.zip`. Exact owner commands such as
+`Ellie, get cobblestone 64`, `Ellie, mine iron_ore 8`, `Ellie, setup_farm` and
+`Ellie, build a huge cobblestone village` use local routing. Supported blueprints,
+agentic drop/storage plans, labels and waypoint descriptions have no AI fallback.
+See [command changes and test limits](../docs/ELLIE_NATIVE_COMMANDS.md).
