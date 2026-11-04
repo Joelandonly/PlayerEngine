@@ -1,0 +1,14 @@
+{
+  "release": "Ellie ChatGPT Interpreter Preview / stream diagnostics hotfix",
+  "target": "Minecraft 1.21.1 Fabric, Java 21, Windows Node.js 22+",
+  "baseline_sha256": "8ae4c3da375b45ad60f94ddbd4d4c31328400cce0c4a720b1002dd8dee143d27",
+  "jar_sha256": "9464cebb201edf6ac720828bb445293195389c9123007a3319c12510857be2c8",
+  "changed_existing_classes": [
+    "com/player2/playerengine/player2api/Player2APIService.class"
+  ],
+  "new_classes": [
+    "com/player2/playerengine/interpreter/LocalChatGPTBridge.class"
+  ],
+  "tests": "24 Node tests (including structured upstream error and probe tests), 1 JVM config/fail-closed test, ASM method verification; no live OAuth or Minecraft runtime test",
+  "no_silent_fallback": true
+}

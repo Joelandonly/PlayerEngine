@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+python3 - <<'PY'
+import hashlib, json
+from pathlib import Path
+manifest = json.loads(Path('RELEASE_MANIFEST.json').read_text())
+baseline = Path('baseline/playerengine-acquisition-safety.jar')
+if hashlib.sha256(baseline.read_bytes()).hexdigest() != manifest['baseline_sha256']:
+    raise SystemExit('Baseline checksum mismatch; refusing to patch an unknown JAR')
+PY
+rm -rf build/classes build/patches build/tools build/testclasses
+mkdir -p build/{classes,patches,tools,testclasses} dist
+javac --release 21 -d build/classes $(find src -name '*.java' | LC_ALL=C sort)
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchInterpreter.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchInterpreter baseline/playerengine-acquisition-safety.jar build/patches
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree.analysis=ALL-UNNAMED -d build/tools tools/VerifyASM.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree.analysis=ALL-UNNAMED -cp build/tools VerifyASM $(find build/classes build/patches -name '*.class' | LC_ALL=C sort)
+javac --release 21 -cp build/classes -d build/testclasses tests/BridgeConfigTest.java
+java -cp build/classes:build/testclasses BridgeConfigTest
+node --test tests/*.test.mjs
+python3 tools/package.py

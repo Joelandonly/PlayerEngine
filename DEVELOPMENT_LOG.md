@@ -3,7 +3,7 @@
 A chronological record of **observations, decisions, preview artifacts and verification**, not a claim that the current GitHub source contains those binaries. See [Ellie Backlog](docs/ELLIE_BACKLOG.md) for actionable IDs and [Validation Matrix](docs/ELLIE_VALIDATION.md).
 
 ## Ground rules
-- Experimental Minecraft target: **1.21.1 Fabric, PlayerEngine 1.4.0**. Current GitHub main still advertises **1.20.1 Quilt**; until a source port is committed and rebuilt, treat binary-only previews as external to this repository.
+- Current target: **1.21.1 Fabric, PlayerEngine 1.4.0**, preserved as an explicit binary-overlay module in `ellie/`. Root source remains 1.20.1; matching complete 1.21.1 mod source is unavailable. Historical external-preview notes below describe their status at the time.
 - **OBSERVED** means user/log evidence; **INFERRED** means plausible but not proven; **PREVIEW** means produced an experimental JAR; **LIVE** means actual in-game result. Never equate mock tests or packaging audits with end-to-end survival validation.
 - No unredacted log files in this public repository. Local usernames, identifiers, paths, tokens and conversation payloads must not be published.
 - Preserve combat retaliation, independent Player2NPC teleport extension, Observatory shortcuts and successful building logic.
@@ -104,3 +104,20 @@ A chronological record of **observations, decisions, preview artifacts and verif
 **PREVIEW / MOCK, not live verified.** Implemented the no-vine-route decision and one concrete bridge reflection defect in the latest 1.21.1 Fabric preview JAR. Native route settings now disallow `Blocks.VINE`, and two movement-cost hooks stop using vines as walkable/pillar support; ordinary ladders and existing support-pillaring remain. Patched `WaterBridgeCoordinator` reflective access for non-public world classes. Existing User Task builder, EllieGPS workbench memory, Observatory and combat/retaliation logic preserved; Player2NPC unchanged.
 
 **Validation:** Java compile, navigation mock, bridge reflection red/green test, ABI and internal-class reference audit passed (1,780 classes, 0 unresolved). **Not run in Minecraft**, so there is no evidence yet of a completed crossing or a resolved jungle path in the real world. Filename `PlayerEngine-Fabric-1.21.1-1.4.0-BACKLOG-BATCH1-PREVIEW.jar`; SHA-256 `f02aa1bacd2e462f5f4775608f03184e0722853b84a9671757293e414f102d25`. ZIP bundle provided in chat with source helpers/tests. Code is **not** in the GitHub main source tree, still 1.20.1 Quilt. Issue register: ELLIE-001, ELLIE-022.
+
+## 2026-11-04: Preserve current interpreter bundle in the repository
+
+Imported the maintainer-supplied `PlayerEngine-Ellie-ChatGPT-Interpreter-STREAM-HOTFIX-FLAT.zip`
+as `ellie/`: bridge source, Node/JVM tests, launcher, ASM build tools and the pinned
+Acquisition Safety baseline. No interpreter or executor behavior is intentionally
+changed. Root source remains available as a clearly identified legacy build.
+
+Repository build changes: verify baseline hash before patching, clean generated
+class directories, and produce a portable release ZIP under `ellie/dist/` without
+overwriting the original provenance manifest. CI has separate Ellie and legacy jobs.
+This is not a full 1.21.1 source port and does not close existing gameplay issues.
+
+Local import validation: 24 Node tests, JVM configuration/fail-closed test and ASM
+verification passed. Rebuilt JAR exactly matches the uploaded artifact, SHA-256
+`9464cebb201edf6ac720828bb445293195389c9123007a3319c12510857be2c8`.
+No live account inference, Windows OAuth or Minecraft gameplay was run.

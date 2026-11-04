@@ -2,7 +2,7 @@
 
 _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [Development Log](../DEVELOPMENT_LOG.md) and [Validation Matrix](ELLIE_VALIDATION.md)._
 
-> **Source-of-truth warning:** The default branch here currently advertises Minecraft **1.20.1 / Quilt** in `gradle.properties`. Recent Ellie experiments used separately packaged **Minecraft 1.21.1 / Fabric, PlayerEngine 1.4.0** JAR patches. A downloadable preview is **not** a checked-in, reproducible source change. Do not infer that the current main branch includes any of the features below.
+> **Current organization:** The interpreter bundle is now preserved in [`ellie/`](../ellie/README.md), with bridge source, tests and a pinned 1.21.1 binary baseline. The root Gradle source remains 1.20.1. The complete 1.21.1 mod source is still unavailable; importing the bundle does not close any gameplay bug or establish live validation.
 
 > **GitHub Issues are disabled in this repository** (issue creation returned HTTP 410 on 2026-11-02). This is the issue register until Issues are enabled; preserve IDs during any migration.
 

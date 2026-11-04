@@ -1,5 +1,28 @@
 # PlayerEngine: The AI Embodiment Framework for Minecraft
 
+**Current direction: [Ellie for Minecraft 1.21.1](ellie/README.md).** The current
+ChatGPT interpreter preview, bridge source, tests, launcher, and pinned binary
+baseline live in [`ellie/`](ellie/). Start there for current development.
+
+| Workflow | Target | Build | Status |
+| --- | --- | --- | --- |
+| **Current Ellie preview** | Minecraft 1.21.1 Fabric, Java 21, Node 22+ | `cd ellie && bash build.sh` | Binary overlay; full matching mod source unavailable |
+| Legacy root source | Minecraft 1.20.1, Java 17, Fabric dependencies | `bash gradlew --no-daemon --max-workers=2 build` | Source build; does not produce the Ellie preview |
+
+## Start here
+
+- [Current Ellie setup, architecture, and build](ellie/README.md)
+- [Contribution guide and workflow selection](CONTRIBUTING.md)
+- [Known bugs and stable backlog IDs](docs/ELLIE_BACKLOG.md)
+- [Gameplay validation matrix](docs/ELLIE_VALIDATION.md)
+- [Development history](DEVELOPMENT_LOG.md)
+
+The imported bundle preserves the interpreter and earlier baseline behavior.
+It does not claim that reported crafting, navigation, or inference failures are
+fixed. Local tests and reproducible packaging are separate from live gameplay.
+
+## Historical framework overview (legacy source)
+
 [![Player2 AI Game Jam](https://img.shields.io/badge/Player2-AI_Game_Jam-blueviolet)](https://itch.io/jam/ai-npc-jam)
 [![Powered by Automatone](https://img.shields.io/badge/Powered%20by-Automatone-orange)](https://github.com/Ladysnake/Automatone/tree/1.20)
 [![Based on ChatClef](https://img.shields.io/badge/Based%20on-ChatClef-9cf)](https://github.com/elefant-ai/chatclef/tree/main)
@@ -61,7 +84,7 @@ This framework was created for the **Player2 AI Game Jam** and is designed to in
 PlayerEngine is a solo project developed by **Goodbird**.
 ## Experimental Ellie / Minecraft 1.21.1 tracking
 
-Recent Ellie companion experiments use separately distributed **Minecraft 1.21.1 Fabric / PlayerEngine 1.4.0 preview JARs**. They are **not yet represented by the source code on this branch** (which still advertises Minecraft 1.20.1 / Quilt). For open bugs, feature proposals, previews, live observations and test requirements, use:
+The current **Minecraft 1.21.1 Fabric / PlayerEngine 1.4.0 interpreter preview** is preserved in [ellie/](ellie/README.md), including bridge source and a pinned binary baseline. The root source still targets Minecraft 1.20.1; the complete matching 1.21.1 mod source remains unavailable. For open bugs, feature proposals, previews, live observations and test requirements, use:
 
 - [Ellie backlog and issue IDs](docs/ELLIE_BACKLOG.md)
 - [Chronological development log](DEVELOPMENT_LOG.md)

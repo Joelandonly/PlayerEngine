@@ -1,0 +1,28 @@
+name: Bug report
+description: Report a reproducible source or gameplay problem
+body:
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions and provenance
+      description: Include Minecraft, loader, Fabric API, consuming mod, and the exact commit or JAR filename. State whether this is the source branch or an Ellie preview.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include the command, world conditions, and whether the problem repeats in a disposable world.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs and validation
+      description: Remove credentials and personal information. Include any existing backlog ID and distinguish automated checks from live observations.

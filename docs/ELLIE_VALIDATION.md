@@ -1,6 +1,14 @@
 # Ellie Minecraft 1.21.1 Fabric validation matrix
 
-Experimental runtime: Minecraft 1.21.1, Fabric, PlayerEngine 1.4.0 and the existing Player2NPC companion/teleport extension. Current GitHub source remains an older 1.20.1 Quilt configuration. Results below distinguish **documented user sessions** from tests yet to run.
+Current runtime target: Minecraft 1.21.1, Fabric, PlayerEngine 1.4.0 and the existing Player2NPC companion/teleport extension. The current interpreter bundle is preserved in [`ellie/`](../ellie/README.md), with a pinned binary baseline and bridge source. The root Gradle source is legacy 1.20.1; the complete 1.21.1 mod source remains unavailable. Results below distinguish **documented user sessions** from tests yet to run.
+
+## Interpreter bundle import verification (2026-11-04)
+
+- Imported bridge source, sidecar and tests match the supplied STREAM-HOTFIX-FLAT ZIP.
+- 24 Node tests, the JVM configuration/fail-closed test, and ASM verification pass locally.
+- Rebuilt preview JAR matches the uploaded JAR **byte for byte**: SHA-256 `9464cebb201edf6ac720828bb445293195389c9123007a3319c12510857be2c8`.
+- Portable release packaging is separate from a full mod source build. T-22 remains blocked by the missing matching source.
+- Live Windows OAuth, authorized inference and Minecraft gameplay were not run in this import. Existing gameplay issues remain open.
 
 ## Evidence levels
 
