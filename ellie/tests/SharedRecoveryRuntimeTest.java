@@ -1,0 +1,66 @@
+package com.player2.playerengine.reliability;
+import com.player2.playerengine.PlayerEngineController;import com.player2.playerengine.tasks.base.*;import com.player2.playerengine.tasks.setup.SetupBuildZone;import com.player2.playerengine.nativecommands.NativeAccess;import com.player2.playerengine.observatory.ObservatoryTelemetry;
+import com.player2.playerengine.structureprotection.PlayerPlacedBlockStore;
+import net.minecraft.*;import java.util.*;
+/** Real patched Task.tick with substituted world, pathfinder and collision queries. */
+public final class SharedRecoveryRuntimeTest {
+ public static final class Player extends class_1297{double x=.5,y=64,z=.5;int air=300;boolean water;public double method_23317(){return x;}public double method_23318(){return y;}public double method_23321(){return z;}public class_243 method_5836(float partial){return new class_243(x,y+1.62,z);}public int method_5669(){return air;}public boolean method_5869(){return water;}}
+ public static final class Fluid{boolean empty;Fluid(boolean empty){this.empty=empty;}public boolean method_15769(){return empty;}}
+ public static final class Block{final String id;Block(String id){this.id=id;}public String toString(){return "Block{"+id+"}";}}
+ public static final class State{final String id;State(String id){this.id=id;}public boolean method_26215(){return id.equals("minecraft:air");}public Fluid method_26227(){return new Fluid(!id.equals("minecraft:water"));}public boolean method_26234(Object world,Object pos){return !id.equals("minecraft:air")&&!id.equals("minecraft:water");}public Block method_26204(){return new Block(id);}public float method_26214(Object world,Object pos){return 1;}public String toString(){return id;}}
+ public static final class Border{public boolean method_11952(class_2338 p){return true;}}
+ public static final class Dimension{public String method_29177(){return "minecraft:overworld";}}
+ public static final class Hit{final class_2338 pos;Hit(class_2338 p){pos=p;}public class_239.class_240 method_17783(){return class_239.class_240.field_1332;}public class_2338 method_17777(){return pos;}}public enum Kind{BLOCK}
+ public static final class World{long time;boolean pool;public class_2338 obstruction;public final Map<class_2338,String> blocks=new HashMap<>();World(){blocks.put(new class_2338(5,64,0),"minecraft:crafting_table");}public long method_8510(){return time;}public boolean method_22340(class_2338 p){return true;}public boolean method_24794(class_2338 p){return p.y()>0&&p.y()<128;}public Border method_8621(){return new Border();}public Dimension method_27983(){return new Dimension();}public State method_8320(class_2338 p){return new State(blocks.getOrDefault(p,p.y()<64?"minecraft:stone":pool&&p.y()<=65?"minecraft:water":"minecraft:air"));}public Object method_8321(class_2338 p){return null;}public Hit method_17742(class_3959 ray){if(obstruction!=null&&ray.from.field_1352<1.5)return new Hit(obstruction);return new Hit(new class_2338((int)Math.floor(ray.to.field_1352),(int)Math.floor(ray.to.field_1351),(int)Math.floor(ray.to.field_1350)));}}
+ public static final class Path{int cancels;public boolean isSafeToCancel(){return true;}public boolean cancelEverything(){cancels++;return true;}}
+ public static final class Input{int clears;public void clearAllKeys(){clears++;}}
+ public static final class Custom{public Object goal;int losses;public void setGoalAndPath(Object goal){this.goal=goal;}public Object getGoal(){return goal;}public void onLostControl(){goal=null;losses++;}}
+ public static final class Interaction{public boolean mining=false;}
+ public static final class PlayerController{public double getBlockReachDistance(){return 4.5;}public Interaction getInteractionManager(){return new Interaction();}}
+ public static final class EntityContext{public PlayerController playerController(){return new PlayerController();}}
+ public static final class Baritone{final Path path=new Path();final Input input=new Input();final Custom custom=new Custom();public final Builder builder=new Builder();public Builder getBuilderProcess(){return builder;}public Path getPathingBehavior(){return path;}public Input getInputOverrideHandler(){return input;}public Custom getCustomGoalProcess(){return custom;}public EntityContext getEntityContext(){return new EntityContext();}}
+ public static final class Builder{public Object schematic;public boolean isActive(){return schematic!=null;}}
+ public static final class InputOwner{public final Object baritone;InputOwner(Object baritone){this.baritone=baritone;}}
+ public static final class Inventory{public int method_5439(){return 0;}}
+ public static final class Controller extends PlayerEngineController{public boolean reachable;public int recoveryClears,recoveryClearStops;public final World world=new World();final Player player=new Player();public final Baritone baritone=new Baritone();Controller(){super(null);}public World getWorld(){return world;}public Player getPlayer(){return player;}public Baritone getBaritone(){return baritone;}public Inventory getInventory(){return new Inventory();}}
+ static class Probe extends Task{int ticks,starts,stops;final Task child;Probe(Task child){this.child=child;}protected void onStart(){starts++;}protected Task onTick(){ticks++;return child;}protected void onStop(Task next){stops++;}protected boolean isEqual(Task other){return this==other;}protected String toDebugString(){return "probe";}}
+ public static final class GetCloseToBlockTask extends Probe{private final class_2338 toApproach=new class_2338(5,64,0);boolean allowedLook;GetCloseToBlockTask(){super(null);}protected Task onTick(){allowedLook=SharedTargetRecovery.allowTaskLook(controller);return super.onTick();}}
+ static final class Chain extends TaskChain{final Task root;String name="User Tasks";Chain(Controller controller,Task root){super(new TaskRunner(controller));this.root=root;}protected void onStop(){}public void onInterrupt(TaskChain next){}protected void onTick(){root.tick(this);}public float getPriority(){return 50;}public boolean isActive(){return true;}public String getName(){return name;}}
+ static void check(boolean ok,String text){if(!ok)throw new AssertionError(text+" events="+ObservatoryTelemetry.events);}
+ static void advance(Controller c,Chain chain,int ticks){for(int i=0;i<ticks;i++){c.world.time++;chain.tick();}}
+ public static void main(String[] args)throws Exception{
+  Controller c=new Controller();GetCloseToBlockTask leaf=new GetCloseToBlockTask();Probe root=new Probe(leaf);Chain user=new Chain(c,root);
+  advance(c,user,110);check(c.baritone.custom.goal!=null&&root.ticks<110,"shared gate must acquire movement and pause the original task tree");
+  check(!leaf.allowedLook,"unreachable task look must yield orientation");
+  int heldTicks=root.ticks;Object goal=c.baritone.custom.goal;
+  c.player.x=((Number)NativeAccess.get(goal,"x")).intValue()+.5;c.player.y=((Number)NativeAccess.get(goal,"y")).intValue();c.player.z=((Number)NativeAccess.get(goal,"z")).intValue()+.5;c.reachable=true;
+  advance(c,user,1);check(root.ticks==heldTicks+1&&root.starts==1&&leaf.starts==2&&leaf.stops==1&&c.baritone.custom.goal==null,"verified approach resumes the same root and restarts only the native movement leaf");
+  c.reachable=false;SharedTargetRecovery.inputWrite(new InputOwner(c.baritone),"MOVE_FORWARD",true);c.player.x=.5;c.player.z=.5;advance(c,user,115);check(c.baritone.custom.goal!=null,"second obstruction must recover too");check(String.valueOf(ObservatoryTelemetry.fields.get("recoveryInputWriter")).contains("OUTSIDE_TASK:"),"input diagnostics must identify outside-task callers separately");
+  Object defenseGoal=new Object();c.baritone.custom.goal=defenseGoal;Probe defender=new Probe(null);Chain defense=new Chain(c,defender);defense.name="Mob Defense";defense.tick();check(defender.ticks==1&&c.baritone.custom.goal==defenseGoal,"recovery must yield without cancelling a replacement defense goal");
+  user.tick();root.stop();check(ObservatoryTelemetry.events.stream().anyMatch(e->e.startsWith("TARGET_RECOVERY:")),"recovery diagnostics must name target, reach, blocker and writer");
+  Controller air=new Controller();air.player.air=40;air.player.water=true;air.world.pool=true;air.world.blocks.put(new class_2338(0,66,0),"minecraft:stone");Probe airRoot=new Probe(new GetCloseToBlockTask());Chain airChain=new Chain(air,airRoot);advance(air,airChain,1);
+  check(airRoot.ticks==0&&air.baritone.custom.goal!=null,"critical air must override ordinary work before issuing more mining actions");
+  Object exit=air.baritone.custom.goal;check(((Number)NativeAccess.get(exit,"x")).intValue()!=0||((Number)NativeAccess.get(exit,"z")).intValue()!=0,"overhead obstruction needs a sideways breathable exit");
+  air.player.air=300;air.player.water=false;advance(air,airChain,1);check(airRoot.ticks==1,"breathing restored resumes original goal");airRoot.stop();
+  Controller clear=new Controller();RecoveryWorld world=new RecoveryWorld(clear);RecoveryWorld.Cell block=new RecoveryWorld.Cell(2,65,0),target=new RecoveryWorld.Cell(5,64,0);clear.world.blocks.put(new class_2338(2,65,0),"minecraft:stone");
+  check(world.safeClear(block,target),"ordinary reachable obstruction can be deliberately cleared");
+  PlayerPlacedBlockStore.protectedBlock=true;check(!world.safeClear(block,target),"player-placed structures remain protected");PlayerPlacedBlockStore.protectedBlock=false;
+  check(!world.safeClear(new RecoveryWorld.Cell(0,63,0),target),"support under the NPC must never be cleared");
+  clear.world.blocks.put(new class_2338(2,66,0),"minecraft:chest");check(!world.safeClear(block,target),"workstation/storage support must remain protected");clear.world.blocks.remove(new class_2338(2,66,0));
+  SetupBuildZone zone=new SetupBuildZone(clear,0,-1,7,3);check(!world.safeClear(block,target),"active blueprint footprint must never be cleared as a recovery obstruction");zone.close();
+  Controller surgery=new Controller();surgery.world.obstruction=new class_2338(2,65,0);surgery.world.blocks.put(surgery.world.obstruction,"minecraft:stone");Probe surgeryRoot=new Probe(new GetCloseToBlockTask());Chain surgeryChain=new Chain(surgery,surgeryRoot);
+  for(int i=0;i<250&&surgery.recoveryClears==0;i++)advance(surgery,surgeryChain,1);check(NativeAccess.get(surgeryRoot,"sharedRecoveryAction") instanceof Task,"root must keep the owned recovery action alive between ticks");advance(surgery,surgeryChain,1);check(surgery.recoveryClearStops==1&&NativeAccess.get(surgeryRoot,"sharedRecoveryAction")==null,"release must stop only the owned clear action and remove its root anchor");check(surgery.recoveryClears==1&&surgery.world.obstruction==null&&surgeryRoot.starts==1,"after an unsuccessful approach the same controller must clear a verified safe obstruction without restarting the project");surgeryRoot.stop();
+  var goals=new com.player2.playerengine.automaton.api.pathing.goals.GoalComposite(new com.player2.playerengine.automaton.api.pathing.goals.GoalBlock(5,64,0),new com.player2.playerengine.automaton.api.pathing.goals.GoalBlock(10,64,0));
+  check(SharedTargetRecovery.goalTarget(goals,new RecoveryWorld.Cell(5,64,0),0).equals(new RecoveryWorld.Cell(5,64,0)),"builder recovery must use the actual native path destination's matching goal");
+  check(SharedTargetRecovery.goalTarget(goals,new RecoveryWorld.Cell(2,64,0),0)==null,"unknown builder targets must not be guessed");
+  Controller exhausted=new Controller();GetCloseToBlockTask exhaustedLeaf=new GetCloseToBlockTask();Probe exhaustedRoot=new Probe(exhaustedLeaf);Chain exhaustedChain=new Chain(exhausted,exhaustedRoot);advance(exhausted,exhaustedChain,1000);
+  check(exhaustedRoot.starts==1&&exhaustedLeaf.starts==2&&SharedTargetRecovery.rejected(exhausted,new class_2338(5,64,0)),"three failed approaches must not create an endless leaf-reset loop");exhaustedRoot.stop();
+  Controller idleBench=new Controller();idleBench.reachable=true;Probe idleRoot=new Probe(new GetCloseToBlockTask());Chain idleChain=new Chain(idleBench,idleRoot);advance(idleBench,idleChain,110);
+  check(idleBench.baritone.custom.goal!=null&&idleRoot.ticks<110,"reachable bench with no verified crafting progress must still enter shared recovery");idleRoot.stop();
+  Controller site=new Controller();site.reachable=true;Object siteOwner=new Object();class_2338 bench=new class_2338(5,64,0);WorksiteAnchor.open(siteOwner,site,bench,"test blueprint");WorksiteAnchor.recordBench(site,bench);
+  check(WorksiteAnchor.preferBench(site,Optional.empty()).orElseThrow().equals(bench),"reachable worksite bench should be reused without changing personal home");
+  SharedTargetRecovery.reject(site,bench);check(WorksiteAnchor.preferBench(site,Optional.empty()).isEmpty(),"worksite preference must respect shared target rejection");WorksiteAnchor.close(siteOwner);
+  check(ObservatoryTelemetry.events.stream().noneMatch(e->e.startsWith("RECOVERY_BOUNDARY_UNAVAILABLE")),"runtime integration must not silently skip the native boundary");
+  System.out.println("SharedRecoveryRuntimeTest: 24 checks passed through real patched Task.tick; native world/pathfinding boundaries substituted");
+ }
+}

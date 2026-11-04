@@ -17,6 +17,48 @@ public final class PatchReliability implements Opcodes {
    LabelNode normal=new LabelNode();InsnList i=new InsnList();i.add(new VarInsnNode(ALOAD,0));i.add(new VarInsnNode(ALOAD,1));i.add(new MethodInsnNode(INVOKESTATIC,P+"reliability/ProductionHandoff","pending","(Ljava/lang/Object;Ljava/lang/Object;)L"+P+"tasks/base/Task;",false));i.add(new InsnNode(DUP));i.add(new JumpInsnNode(IFNULL,normal));i.add(new InsnNode(ARETURN));i.add(normal);i.add(new FrameNode(F_SAME1,0,null,1,new Object[]{P+"tasks/base/Task"}));i.add(new InsnNode(POP));m.instructions.insert(i);hooks++;
   }
   if(hooks!=1)throw new IllegalStateException("Expected one production handoff");save(macro,out);
+
+  ClassNode smelt=read(z,out,P+"tasks/container/SmeltInFurnaceTask");int smeltHooks=0;
+  for(MethodNode m:smelt.methods)if(m.name.equals("onResourceTick")){
+   InsnList before=new InsnList();before.add(new VarInsnNode(ALOAD,0));before.add(new VarInsnNode(ALOAD,1));before.add(new MethodInsnNode(INVOKESTATIC,P+"reliability/ProductionHandoff","beforeSmeltTick","(Ljava/lang/Object;Ljava/lang/Object;)V",false));m.instructions.insert(before);
+   for(AbstractInsnNode n:m.instructions.toArray())if(n.getOpcode()==ARETURN){InsnList fresh=new InsnList();fresh.add(new VarInsnNode(ALOAD,1));fresh.add(new MethodInsnNode(INVOKESTATIC,P+"reliability/ProductionHandoff","invalidate","(Ljava/lang/Object;)V",false));m.instructions.insertBefore(n,fresh);}
+   smeltHooks++;
+  }
+  if(smeltHooks!=1)throw new IllegalStateException("Expected native furnace handoff boundary");save(smelt,out);
+  String hook=P+"reliability/SharedTargetRecovery";
+  ClassNode task=read(z,out,P+"tasks/base/Task");task.fields.add(new FieldNode(ACC_PRIVATE,"sharedRecoveryAction","L"+P+"tasks/base/Task;",null,null));int gates=0,ticks=0;
+  for(MethodNode m:task.methods){
+   if(m.name.equals("tick")&&m.desc.equals("(L"+P+"tasks/base/TaskChain;)V")){
+    for(AbstractInsnNode n:m.instructions.toArray()){
+     if(n instanceof MethodInsnNode call&&call.name.equals("addTaskToChain")){
+      LabelNode normal=new LabelNode();InsnList gate=new InsnList();gate.add(new VarInsnNode(ALOAD,0));gate.add(new VarInsnNode(ALOAD,1));gate.add(new MethodInsnNode(INVOKESTATIC,hook,"beforeTask","(Ljava/lang/Object;Ljava/lang/Object;)Z",false));gate.add(new JumpInsnNode(IFEQ,normal));gate.add(new InsnNode(RETURN));gate.add(normal);gate.add(new FrameNode(F_SAME,0,null,0,null));gate.add(new VarInsnNode(ALOAD,0));gate.add(new MethodInsnNode(INVOKESTATIC,hook,"enter","(Ljava/lang/Object;)V",false));m.instructions.insert(n,gate);gates++;
+     }
+     if(n instanceof MethodInsnNode call&&call.owner.equals(P+"tasks/base/Task")&&call.name.equals("onTick")){
+      InsnList enter=new InsnList();enter.add(new InsnNode(DUP));enter.add(new MethodInsnNode(INVOKESTATIC,hook,"enter","(Ljava/lang/Object;)V",false));m.instructions.insertBefore(n,enter);
+      InsnList after=new InsnList();after.add(new VarInsnNode(ALOAD,0));after.add(new InsnNode(SWAP));after.add(new MethodInsnNode(INVOKESTATIC,hook,"after","(Ljava/lang/Object;L"+P+"tasks/base/Task;)L"+P+"tasks/base/Task;",false));m.instructions.insert(n,after);ticks++;
+     }
+    }
+   }
+   if(m.name.equals("stop")&&m.desc.equals("(L"+P+"tasks/base/Task;)V")){
+    InsnList stop=new InsnList();stop.add(new VarInsnNode(ALOAD,0));stop.add(new MethodInsnNode(INVOKESTATIC,hook,"stopped","(Ljava/lang/Object;)V",false));m.instructions.insert(stop);
+   }
+  }
+  if(gates!=1||ticks!=1)throw new IllegalStateException("Unreviewed Task.tick layout");save(task,out);
+  ClassNode look=read(z,out,P+"util/helpers/LookHelper");int lookHooks=0;
+  for(MethodNode m:look.methods)if(m.name.equals("lookAt")&&(m.desc.equals("(L"+P+"PlayerEngineController;L"+P+"automaton/api/utils/Rotation;)V")||m.desc.equals("(L"+P+"PlayerEngineController;L"+P+"automaton/api/utils/Rotation;Z)V"))){
+   LabelNode normal=new LabelNode();InsnList gate=new InsnList();gate.add(new VarInsnNode(ALOAD,0));gate.add(new MethodInsnNode(INVOKESTATIC,hook,"allowTaskLook","(Ljava/lang/Object;)Z",false));gate.add(new JumpInsnNode(IFNE,normal));gate.add(new InsnNode(RETURN));gate.add(normal);gate.add(new FrameNode(F_SAME,0,null,0,null));m.instructions.insert(gate);lookHooks++;
+  }
+  if(lookHooks!=2)throw new IllegalStateException("Expected both task-look boundaries");save(look,out);
+  ClassNode behavior=read(z,out,P+"automaton/behavior/LookBehavior");
+  for(MethodNode m:behavior.methods)if(m.name.equals("updateTarget")){InsnList record=new InsnList();record.add(new VarInsnNode(ALOAD,0));record.add(new MethodInsnNode(INVOKESTATIC,hook,"baritoneLook","(Ljava/lang/Object;)V",false));m.instructions.insert(record);}save(behavior,out);
+  ClassNode input=read(z,out,P+"automaton/utils/InputOverrideHandler");int inputHooks=0;
+  for(MethodNode m:input.methods)if(m.name.equals("setInputForceState")&&m.desc.equals("(L"+P+"automaton/api/utils/input/Input;Z)V")){InsnList record=new InsnList();record.add(new VarInsnNode(ALOAD,0));record.add(new VarInsnNode(ALOAD,1));record.add(new VarInsnNode(ILOAD,2));record.add(new MethodInsnNode(INVOKESTATIC,hook,"inputWrite","(Ljava/lang/Object;Ljava/lang/Object;Z)V",false));m.instructions.insert(record);inputHooks++;}
+  if(inputHooks!=1)throw new IllegalStateException("Expected native input-writer boundary");save(input,out);
+  ClassNode scanner=read(z,out,P+"commands/BlockScanner");int rejectHooks=0;
+  for(MethodNode m:scanner.methods)if(m.name.equals("isUnreachable")&&m.desc.equals("(Lnet/minecraft/class_2338;)Z")){
+   LabelNode normal=new LabelNode();InsnList gate=new InsnList();gate.add(new VarInsnNode(ALOAD,0));gate.add(new FieldInsnNode(GETFIELD,scanner.name,"mod","L"+P+"PlayerEngineController;"));gate.add(new VarInsnNode(ALOAD,1));gate.add(new MethodInsnNode(INVOKESTATIC,hook,"rejected","(Ljava/lang/Object;Ljava/lang/Object;)Z",false));gate.add(new JumpInsnNode(IFEQ,normal));gate.add(new InsnNode(ICONST_1));gate.add(new InsnNode(IRETURN));gate.add(normal);gate.add(new FrameNode(F_SAME,0,null,0,null));m.instructions.insert(gate);rejectHooks++;
+  }
+  if(rejectHooks!=1)throw new IllegalStateException("Expected scanner rejection boundary");save(scanner,out);
   System.out.println("Reliability: NPC axe-use guard and in-flight native production handoff installed");
  }}
 }

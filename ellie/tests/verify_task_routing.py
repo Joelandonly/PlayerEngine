@@ -15,7 +15,7 @@ assert counts == expected, (counts, expected)
 assert not any(row['route'] == 'legacy-user-task' and row['caller'].split('#')[0] in expected for row in rows)
 # These paths must retain their baseline behavior; they are not project work.
 with zipfile.ZipFile(root / 'baseline/playerengine-acquisition-safety.jar') as baseline, \
-     zipfile.ZipFile(root / 'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-NATIVE-COMMANDS.jar') as built:
+     zipfile.ZipFile(root / 'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar') as built:
     setup_changes = {
         'com/player2/playerengine/tasks/setup/EllieSetupTask.class',
         'com/player2/playerengine/tasks/setup/EllieSetupTask$Step.class',
@@ -25,6 +25,8 @@ with zipfile.ZipFile(root / 'baseline/playerengine-acquisition-safety.jar') as b
         'com/player2/playerengine/tasks/container/CraftInTableTask.class',
         'com/player2/playerengine/tasks/construction/build_structure/BuildStructureTask.class',
         'com/player2/playerengine/tasks/agentic/LabelChestTask.class',
+        'com/player2/playerengine/tasks/base/Task.class',
+        'com/player2/playerengine/tasks/container/SmeltInFurnaceTask.class',
         'com/player2/playerengine/tasks/crafting/CraftingTableLocator.class',
     }
     for entry in baseline.namelist():
@@ -35,4 +37,4 @@ with zipfile.ZipFile(root / 'baseline/playerengine-acquisition-safety.jar') as b
             'com/player2/playerengine/PlayerEngineController.class',
             'com/player2/playerengine/executor/TaskStepExecutorAdapter.class'):
             assert baseline.read(entry) == built.read(entry), entry
-print(f'Task routing verified: {len(commands)} command classes, {sum(counts.values())} supervised call sites; unmodified native chain/task classes preserved')
+print(f'Task routing verified: {len(commands)} command classes, {sum(counts.values())} supervised call sites; reviewed recovery/production hooks allowed; remaining native chains/tasks preserved')

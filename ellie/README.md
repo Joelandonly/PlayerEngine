@@ -1,4 +1,4 @@
-# Ellie: Player2 compact setup and crafting recovery
+# Ellie: Player2 native commands and shared recovery
 
 Current target: **Minecraft 1.21.1 Fabric, PlayerEngine 1.4.0, Java 21**.
 Keep the existing Player2NPC and companion Fabric mods. This is a binary overlay;
@@ -43,8 +43,8 @@ The required survival kit remains. It intentionally supersedes the old eight-che
 See [setup contract](../docs/ELLIE_SETUP.md) and
 [compact-platform changes](../docs/ELLIE_COMPACT_PLATFORM_UPLOAD.md).
 
-The imported crafting recovery temporarily rejects stalled/inaccessible tables;
-it is not a shared navigation recovery system. See
+The imported crafting-specific watchdog has been superseded by shared task-layer
+recovery. Its earlier behavior remains documented as upload history. See
 [uploaded recovery notes](../docs/ELLIE_CRAFT_RECOVERY_UPLOAD.md).
 Local simulations and binary checks do not establish live gameplay success.
 
@@ -56,3 +56,12 @@ The integrated build writes `ELLIE-PLAYER2-NATIVE-COMMANDS.jar` and
 `Ellie, build a huge cobblestone village` use local routing. Supported blueprints,
 agentic drop/storage plans, labels and waypoint descriptions have no AI fallback.
 See [command changes and test limits](../docs/ELLIE_NATIVE_COMMANDS.md).
+
+## Current shared-recovery test build
+
+Install `ELLIE-PLAYER2-SHARED-RECOVERY.jar` from the current CI artifact, replacing the
+previous engine JAR and keeping Player2NPC. This adds the NPC axe-use crash guard,
+production/furnace handoffs, defense-safe build resume, common movement recovery,
+look diagnostics and a separate persistent worksite/bench record. Personal home
+is untouched. See [findings, architecture and live gates](../docs/ELLIE_SHARED_RECOVERY.md).
+The portable bundle is `PlayerEngine-Ellie-Player2-Shared-Recovery.zip`.

@@ -3,7 +3,7 @@ from zipfile import ZipFile,ZipInfo,ZIP_DEFLATED
 from hashlib import sha256
 ROOT=Path(__file__).resolve().parents[1]
 base=ROOT/'baseline/playerengine-acquisition-safety.jar'
-out=ROOT/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-NATIVE-COMMANDS.jar'
+out=ROOT/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar'
 changes={p.relative_to(ROOT/'build/classes').as_posix():p.read_bytes() for p in (ROOT/'build/classes').rglob('*.class')}
 changes.update({p.relative_to(ROOT/'build/patches').as_posix():p.read_bytes() for p in (ROOT/'build/patches').rglob('*.class')})
 expected_existing={
@@ -25,21 +25,20 @@ expected_existing.update({
 })
 expected_existing.update('com/player2/playerengine/commands/'+name+'.class' for name in (ROOT/'tools/supervised-commands.txt').read_text().splitlines())
 expected_existing.update('com/player2/playerengine/'+name+'.class' for name in [
-    'automaton/api/entity/LivingEntityInteractionManager',
+    'tasks/container/SmeltInFurnaceTask','automaton/api/entity/LivingEntityInteractionManager','automaton/utils/InputOverrideHandler','automaton/behavior/LookBehavior','commands/BlockScanner','tasks/base/Task','util/helpers/LookHelper',
     'agentic/AgenticPlannerService','agentic/elliegps/WaypointIngestionService',
     'commands/BuildStructureCommand','commands/AgenticCommand','commands/random/ScanCommand','commands/base/CommandExecutor',
     'player2api/SetupDirectRoute','tasks/agentic/LabelChestTask',
     'tasks/construction/build_structure/BuildStructureTask'])
 expected_new={'com/player2/playerengine/supervisor/ProjectTaskGateway.class',
-              'com/player2/playerengine/tasks/crafting/CraftTableApproachRecovery.class',
-              'com/player2/playerengine/tasks/crafting/CraftTableApproachRecovery$Progress.class'}
+              'com/player2/playerengine/tasks/crafting/CraftTableApproachRecovery.class'}
 expected_new.update('com/player2/playerengine/tasks/setup/'+name+'.class' for name in [
     'StarterBaseLayout','StarterBaseLayout$Pos','StarterBaseLayout$Placement','StarterBaseLayout$Probe',
     'StarterBaseTask','StarterBaseTask$Environment','StarterBaseWorld',
     'SetupBuildZone','SetupBuildZone$Shape','SetupBuildZone$Origin'])
 expected_new.update('com/player2/playerengine/nativecommands/'+name+'.class' for name in [
     'NativeAccess','NativeBuildSupport','NativeFood','NativeCommandText'])
-expected_new.update('com/player2/playerengine/reliability/'+name+'.class' for name in ['NpcItemUse','ProductionHandoff'])
+expected_new.update('com/player2/playerengine/reliability/'+name+'.class' for name in ['NpcItemUse','ProductionHandoff','TargetRecoveryPolicy','RecoveryWorld','RecoveryWorld$Cell','SharedTargetRecovery','SharedTargetRecovery$Session','WorksiteAnchor','WorksiteAnchor$Site'])
 removed={'com/player2/playerengine/commands/random/DummyTaskCommand.class',
          'com/player2/playerengine/commands/random/DummyTaskCommand$DummyTask.class'}
 assert set(changes)==expected_existing|expected_new,(set(changes)-(expected_existing|expected_new),(expected_existing|expected_new)-set(changes))

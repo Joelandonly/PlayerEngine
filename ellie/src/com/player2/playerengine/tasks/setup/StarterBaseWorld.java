@@ -13,6 +13,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     private final StarterBaseLayout.Pos origin;
     private final String expectedDimension;
     private SetupBuildZone zone;
+    private boolean worksiteRegistered;
     private boolean platformMode;
     private final Set<StarterBaseLayout.Pos> reservedSupport=new HashSet<>();
     private java.util.function.Predicate<Object> supportBreakGuard;
@@ -75,6 +76,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     public void protect(List<StarterBaseLayout.Placement> plan) throws Exception {
         if(!Objects.equals(expectedDimension,dimension(controller)))throw new IllegalStateException("Setup build zone changed dimension");
         var anchor=plan.getFirst().pos();
+        if(!worksiteRegistered){com.player2.playerengine.reliability.WorksiteAnchor.open(this,controller,pos(anchor),"starter_setup");worksiteRegistered=true;}
         if(zone==null)zone=new SetupBuildZone(controller,anchor.x()-1,anchor.z()-1,7,3);
         else zone.ensure();
         if(platformMode && supportBreakGuard==null){
@@ -96,6 +98,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         }
     }
     public void releaseProtection(){
+        com.player2.playerengine.reliability.WorksiteAnchor.close(this);worksiteRegistered=false;
         if(supportBreakGuard!=null){
             try {
                 Object mutex=call(guardedBaritoneSettings,"getBreakMutex");

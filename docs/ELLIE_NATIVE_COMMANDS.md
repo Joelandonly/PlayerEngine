@@ -60,9 +60,9 @@ crafting-recovery, supervisor, ASM and packaging checks remain required.
 
 This is not a live pass of every Minecraft action. Navigation deadlocks, resource
 availability, complete farms/builds and the speedrun need in-world reproduction.
-The requested shared recovery controller remains pending: one movement owner per
-NPC, validated interaction approaches, obstruction/progress diagnostics, protected
-block/support exclusions, temporary target rejection, and critical-air survival
-priority. The imported 90-tick crafting-specific recovery is retained as history;
-it is not presented as that shared architecture. The next supplied failure should
-be reproduced on this crafting-recovery lineage before changing that layer.
+The subsequent shared-recovery build implements a common task gate, interaction
+approaches, conservative obstruction handling, temporary rejection, look diagnostics
+and critical-air override during user work. It also adds worksite/bench memory and
+fixes the supplied NPC axe crash and furnace handoff. See
+[shared recovery and live limits](ELLIE_SHARED_RECOVERY.md). These remain candidates
+for live Minecraft acceptance, not a claim that every terrain/tool combination works.

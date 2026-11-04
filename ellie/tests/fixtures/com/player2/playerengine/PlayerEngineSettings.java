@@ -1,6 +1,7 @@
 package com.player2.playerengine;
 /** Only the configured prefix boundary is substituted for dispatcher tests. */
 public final class PlayerEngineSettings {
+    public double getCraftingTableReuseRadius(){return 16;}
     public String getCommandPrefix() { return "@"; }
     public boolean isEnableAgenticPlanner(){throw new AssertionError("Native planning must ignore AI settings");}
     public boolean isAgenticEnableLabelChest(){return true;}

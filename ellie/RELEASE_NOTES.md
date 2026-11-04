@@ -1,3 +1,22 @@
+# Shared target recovery, NPC crash and production handoffs
+
+- Guard NPC axe stripping from the null-player vanilla path in the supplied crash.
+- Preserve final furnace input/output handoff and refresh material accounting.
+- Resume the same physical build after accepted defense/gesture suspension.
+- Coordinate stalled navigation below tasks, with one recovery movement owner,
+  alternative interaction positions, conservative clearing, finite retries and air priority.
+- Delegate table rejection to the shared policy; remove the separate craft watchdog.
+- Record a construction worksite and verified nearby bench separately from personal home.
+- Add target/reach/blocker/look-writer and recovery-ownership Observatory diagnostics.
+
+Output: `PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar`.
+Native commands, original Player2 API and compact setup remain. Production recovery
+uses native APIs, with no teleport, item grants or direct world edits. Local
+simulations/bytecode checks do not replace live Minecraft acceptance. See
+`docs/ELLIE_SHARED_RECOVERY.md` and prior notes below.
+
+---
+
 # Player2 native commands on the crafting-recovery revision
 
 Based on the maintainer's reproducible craft-recovery source/JAR, retaining compact

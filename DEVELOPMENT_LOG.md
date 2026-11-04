@@ -220,3 +220,26 @@ commands visible in the audit. None are described as proven impossible to implem
 Player2 API identity and the imported compact setup/table-recovery behavior remain.
 Shared navigation deadlock recovery is a separate pending architectural change;
 this revision does not claim it was implemented or all gameplay handlers tested.
+
+## 2026-11-04: Supplied NPC crash, final-ingot race and shared target recovery
+
+The new native-command log identifies a null PlayerEntity in vanilla axe stripping,
+a five-of-six bucket material failure at the nominal furnace-batch boundary, and
+our wrapper incorrectly failing a physical child after defense suspension. Guarded
+the known NPC-only item-use boundary, retained in-flight native furnace production,
+prevented an expired timer from skipping final output collection, refreshed inventory
+accounting, and repaired accepted build resume without changing operator-stop semantics.
+
+Implemented one shared recovery owner at Task.tick: verified progress/novel-position
+sampling, alternative interaction poses, conservative native excavation, finite target
+rejection, safety-chain yield and critical-air routing. Task look calls are gated
+by interaction reach and actual look writers are recorded. Scanner/table selectors
+share rejection; the craft-only watchdog is retired. Native re-entry balances leaf
+cleanup while preserving the project. Worksites/verified benches are journalled
+separately from personal home and revalidated for nearby reuse. Unknown builder
+targets and persistence failures remain explicit; no chat-command injection.
+
+Tests run real patched Task.tick with substituted world/pathfinder boundaries,
+alongside production/NPC-use regressions and all earlier checks. Live Minecraft
+physics, complete armour setup and construction still require acceptance. Raw uploads
+and logs stay outside the repository. See docs/ELLIE_SHARED_RECOVERY.md.
