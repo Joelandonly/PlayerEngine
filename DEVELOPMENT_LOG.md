@@ -126,3 +126,18 @@ Upstream discovery: Goodbird-git/PlayerEngine has a public `1.21.1-arch` branch,
 commit `aa4ad2d5ec2a834107c76cdb58af732acb192ecc`, advertising version 1.21.1-1.1.11.
 It is a source-recovery candidate, not yet verified as equivalent to the custom
 Ellie 1.4.0 baseline. See `docs/ELLIE_SOURCE_PROVENANCE.md`.
+
+## 2026-11-04: In-game project supervisor reliability preview
+
+Recovered `CoreGoalSupervisor` and `GoalLifecycle` against the pinned baseline's
+API. Initial regression harness reproduced eight failures in twelve scenarios:
+receipt races, stale continuations, contradictory success and invalid lifecycle
+inputs. Added fixes, a reviewed project gateway for 20 command classes / 22 call
+sites, and packaged-bytecode routing verification. Native task, survival-chain,
+controller, executor, gesture and unpause classes remain unchanged.
+
+Validation: 15 supervisor scenarios, bridge JVM test, 24 Node tests, ASM and exact
+class-change inventory. The artifact is distinctly named PROJECT-SUPERVISOR-PREVIEW;
+it intentionally differs from the original interpreter JAR. Full task-graph
+persistence, bounded recovery and live building verification remain outstanding.
+See `docs/ELLIE_PROJECT_MANAGER.md`; no gameplay backlog items are closed.

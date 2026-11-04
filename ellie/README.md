@@ -1,9 +1,10 @@
-# Ellie: current 1.21.1 interpreter preview
+# Ellie: 1.21.1 project supervisor preview
 
-This is the project's current development direction, imported from
+This is the project's current development direction, based on
 `PlayerEngine-Ellie-ChatGPT-Interpreter-STREAM-HOTFIX-FLAT.zip` supplied by the
-maintainer. It preserves the working preview rather than replacing it with the
-older Minecraft 1.20.1 code in the repository root.
+maintainer. The project supervisor now has readable recovered source, regression
+coverage and reviewed tool routing. It retains the older Minecraft 1.20.1 code
+in the repository root as legacy reference.
 
 **Target:** Minecraft 1.21.1 Fabric, PlayerEngine 1.4.0, Java **21 JDK**, Node.js
 **22+**, Python **3**. Runtime installation currently targets Windows / Shadow PC
@@ -14,8 +15,8 @@ and still requires the separately installed Player2NPC integration.
 | Path | Purpose |
 | --- | --- |
 | `sidecar/` | Local ChatGPT sign-in, inference, stream handling, encrypted-session support |
-| `src/` | Java bridge source |
-| `tests/` | Node tests and JVM configuration/fail-closed test |
+| `src/` | Java bridge, recovered supervisor/lifecycle source, project task gateway |
+| `tests/` | Node tests, JVM bridge test, supervisor harness and routing verification |
 | `tools/` | Exact-method ASM patching, verification, deterministic JAR packaging |
 | `baseline/` | Required Acquisition Safety baseline binary, pinned by SHA-256 |
 | `Start-Ellie-ChatGPT.ps1` | Windows bridge launcher |
@@ -43,8 +44,10 @@ python3 make_release.py
 ```
 
 The build verifies the baseline checksum, starts from clean generated class
-directories, compiles the bridge, patches exactly one existing method, runs ASM
-verification, the JVM test and all Node tests, and packages the preview JAR.
+directories, compiles the bridge and supervisor, patches the interpreter and reviewed command
+submission points, runs ASM verification, JVM and Node tests, and packages the
+preview JAR. The generated `build/reports/task-routing.tsv` inventories static
+submission routes; it does not prove runtime execution.
 Packaging verifies that every unrelated baseline archive entry is unchanged.
 It never requires account credentials or a live OpenAI request.
 
@@ -61,6 +64,8 @@ the [original Windows install guide](UPSTREAM_README.md#quick-install-windows--s
 Replace the existing PlayerEngine JAR rather than installing a duplicate, retain
 Player2NPC, and keep the sidecar beside the PowerShell launcher. Use a backed-up,
 disposable world first.
+For this build, install the `ELLIE-PROJECT-SUPERVISOR-PREVIEW.jar` from `dist/`;
+the interpreter filename in the historical guide refers to the original upload.
 
 In the bridge terminal, use `login`, `status`, and `probe` before testing chat in
 Minecraft. `probe` performs a real account/model inference; it is not a local test.
@@ -78,7 +83,8 @@ this import does not turn that into a complete gameplay pass. See the
 [validation matrix](../docs/ELLIE_VALIDATION.md) and
 [backlog](../docs/ELLIE_BACKLOG.md).
 
-Next: capture an exact runtime failure and diagnostic code, fix it with regression
-coverage, recover/port the full 1.21.1 source, and verify the reported crafting,
-navigation, and furnace issues in-game. This organization pass preserves interpreter
-behavior and does not claim those issues are fixed.
+See [project manager verification and remaining gates](../docs/ELLIE_PROJECT_MANAGER.md).
+The hardened JAR has a distinct `ELLIE-PROJECT-SUPERVISOR-PREVIEW` filename and is
+not byte-identical to the original interpreter upload. ChatGPT bridge behavior is
+unchanged; the supervisor and reviewed command routes intentionally change.
+Navigation, crafting and furnace bugs are not claimed fixed.

@@ -40,6 +40,13 @@ jobs:
         run: bash build.sh
       - name: Package portable preview
         run: python3 make_release.py
+      - name: Upload task routing report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ellie-task-routing
+          path: ellie/build/reports/
+          if-no-files-found: ignore
       - name: Upload Ellie preview
         uses: actions/upload-artifact@v4
         with:

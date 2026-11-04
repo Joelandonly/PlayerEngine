@@ -5,9 +5,9 @@ from hashlib import sha256
 import json
 
 ROOT = Path(__file__).resolve().parent
-JAR_NAME = 'PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-CHATGPT-INTERPRETER-PREVIEW.jar'
+JAR_NAME = 'PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PROJECT-SUPERVISOR-PREVIEW.jar'
 JAR = ROOT / 'dist' / JAR_NAME
-OUT = ROOT / 'dist' / 'PlayerEngine-Ellie-ChatGPT-Interpreter.zip'
+OUT = ROOT / 'dist' / 'PlayerEngine-Ellie-Project-Supervisor.zip'
 BASE = ROOT / 'baseline' / 'playerengine-acquisition-safety.jar'
 original = json.loads((ROOT / 'RELEASE_MANIFEST.json').read_text())
 if sha256(BASE.read_bytes()).hexdigest() != original['baseline_sha256']:
@@ -25,8 +25,23 @@ manifest = {
     'jar_sha256': sha256(files[JAR_NAME]).hexdigest(),
     'source_upload_jar_sha256': original['jar_sha256'],
     'build_kind': 'binary-overlay; complete Minecraft 1.21.1 source unavailable',
-    'tests': 'Run bash build.sh; account inference and live Minecraft require separate validation',
+    'release': 'Ellie project supervisor hardening preview',
+    'changed_existing_classes': [
+        'com/player2/playerengine/player2api/Player2APIService.class',
+        'com/player2/playerengine/supervisor/CoreGoalSupervisor.class',
+        'com/player2/playerengine/supervisor/CoreGoalSupervisor$Slot.class',
+        'com/player2/playerengine/supervisor/GoalLifecycle.class',
+        'com/player2/playerengine/supervisor/GoalLifecycle$Snapshot.class',
+        'com/player2/playerengine/supervisor/GoalLifecycle$Status.class',
+    ],
+    'tests': 'Run bash build.sh: bridge, supervisor and Node tests; live Minecraft requires separate validation',
 }
+manifest['changed_existing_classes'] += [
+    'com/player2/playerengine/commands/' + name + '.class'
+    for name in (ROOT / 'tools/supervised-commands.txt').read_text().splitlines()
+]
+manifest['new_classes'] = ['com/player2/playerengine/interpreter/LocalChatGPTBridge.class',
+                           'com/player2/playerengine/supervisor/ProjectTaskGateway.class']
 files['RELEASE_MANIFEST.json'] = (json.dumps(manifest, indent=2) + '\n').encode()
 with ZipFile(OUT, 'w', ZIP_DEFLATED, compresslevel=6) as z:
     for name, data in sorted(files.items()):
