@@ -238,6 +238,10 @@ public final class BasicSetupTask extends Task
     private static void event(String type,String detail) {
         com.player2.playerengine.observatory.ObservatoryTelemetry.event(type,detail);
     }
+    /** Shared recovery owns target rescue, while setup owns its terminal receipt. */
+    public void blockFromRecovery(String detail) {
+        if(!isTerminal()) block(detail);
+    }
     private Task block(String detail){
         blocked=true;reason="Basic setup BLOCKED: "+detail;
         if(environment!=null)environment.release();
