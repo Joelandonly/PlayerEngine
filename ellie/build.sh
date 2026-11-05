@@ -137,3 +137,15 @@ java -cp build/inventory-testclasses:build/testclasses:build/native-testclasses:
 mkdir -p build/legacy-testclasses
 javac --release 21 -d build/legacy-testclasses legacy-chatgpt/src/com/player2/playerengine/interpreter/LocalChatGPTBridge.java tests/BridgeConfigTest.java
 java -cp build/legacy-testclasses BridgeConfigTest
+
+# Production setup entry plus survival assessment, food/fuel, cover and final verification.
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/SetupShelterTest.java tests/SurvivalSetupTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SetupShelterTest
+mkdir -p build/survival-testclasses
+javac --release 21 -d build/survival-testclasses tests/survivalfixtures/com/player2/playerengine/tasks/deferred/DeferredJobStore.java
+java -cp build/survival-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SurvivalSetupTest
+
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/SetupStorageScopeTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SetupStorageScopeTest
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifySurvivalSetup.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifySurvivalSetup dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar

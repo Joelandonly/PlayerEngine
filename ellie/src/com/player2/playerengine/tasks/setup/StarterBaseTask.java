@@ -15,6 +15,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
         default Task prepareTerrain(StarterBaseLayout.Placement job)throws Exception { throw new UnsupportedOperationException(); }
         default List<StarterBaseLayout.Placement> repairPlan(StarterBaseLayout.Placement station)throws Exception {return List.of();}
         default String unsafeReason(StarterBaseLayout.Placement station)throws Exception {return "support, headroom or standing access is unsafe";}
+        default Task approach(List<StarterBaseLayout.Placement> plan)throws Exception {return null;}
         List<StarterBaseLayout.Placement> loadOrSelect() throws Exception;
         boolean matches(StarterBaseLayout.Placement placement) throws Exception;
         boolean safe(StarterBaseLayout.Placement placement) throws Exception;
@@ -37,6 +38,8 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     private int layerRepairs;
     private Task active;
     private boolean acquiring;
+    private Task access;
+    private int accessTicks;
     private int index, ticks, stageTicks;
     private boolean done, failed;
     private String reason="Starter base not yet verified";
@@ -49,6 +52,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
         onStart();
         if (plan==null) plan=List.copyOf(environment.loadOrSelect());
     }
+    public List<StarterBaseLayout.Placement> layout(){if(plan==null)throw new IllegalStateException("Workshop site not selected");return plan;}
     public void prepareExisting() throws Exception {
         onStart();
         List<StarterBaseLayout.Placement> existing=environment.loadExisting();
@@ -62,6 +66,13 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
                 plan=List.copyOf(environment.loadOrSelect());
                 if (plan.size()!=3) return blocked("Starter base requires one table, one furnace and one chest");
             }
+            Task needed=environment.approach(plan);
+            if(needed!=null){
+                if(++accessTicks>2400)return blocked("Cannot reach the saved workshop chest within the bounded return window");
+                if(access==null||access.stopped()||access.isFinished()){access=needed;access.controller=controller;}
+                return access;
+            }
+            access=null;accessTicks=0;
             if(terrain==null)terrain=List.copyOf(environment.terrainPlan(plan));
             environment.protect(plan);
             while(terrainIndex<terrain.size()) {

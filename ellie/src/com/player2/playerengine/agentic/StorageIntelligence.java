@@ -16,6 +16,35 @@ public final class StorageIntelligence {
  private static final String STORAGE="com.player2.playerengine.containeraccess.";
  private static final Map<Object,Heartbeat> HEARTBEATS=Collections.synchronizedMap(new WeakHashMap<>());
  private static long lastError;
+ private static final Map<Object,Object> setupChests=Collections.synchronizedMap(new WeakHashMap<>());
+ public static void setupChest(Object controller,Object pos){if(pos==null)setupChests.remove(controller);else setupChests.put(controller,pos);}
+ public static boolean allowedSetupStorage(Object controller,Object pos){
+  Object allowed=setupChests.get(controller);if(allowed==null)return true;
+  try{return Arrays.equals(coords(allowed),coords(pos));}catch(Exception invalid){return false;}
+ }
+ /** Fresh verified stock only; passive sightings never count as supplies. */
+ public static int availableSetupItem(Object controller,String id){
+  try{
+   Object position=setupChests.get(controller);if(position==null)return 0;
+   Object world=call(controller,"getWorld");if(!Boolean.TRUE.equals(call(world,"method_22340",position))||!storageBlock(world,position))return 0;
+   Object store=callStatic(GPS+"EllieGPSStore","get");Object record=call(store,"byPosition",dimension(controller),position);
+   if(record==null||Boolean.TRUE.equals(get(record,"stale"))||!"inventory".equals(get(record,"type")))return 0;
+   Object data=call(record,"inventoryData");if(data==null)return 0;Object snapshot=get(data,"snapshot");if(snapshot==null)return 0;
+   if(!fresh(gameTime(controller),((Number)get(snapshot,"gameTime")).longValue(),FRESH_TICKS))return 0;
+   int count=0;for(Object item:(List<?>)get(snapshot,"items"))if(("minecraft:"+id).equals(String.valueOf(call(item,"registryId"))))count+=((Number)call(item,"count")).intValue();
+   return Math.max(0,count);
+  }catch(Exception|LinkageError failure){warn("setup stock",failure);return 0;}
+ }
+ public static void refreshSetupChest(Object controller,Object pos){
+  try{
+   Object world=call(controller,"getWorld");if(!Boolean.TRUE.equals(call(world,"method_22340",pos))||!storageBlock(world,pos))return;
+   double[] at={num(call(call(controller,"getPlayer"),"method_23317")),num(call(call(controller,"getPlayer"),"method_23318")),num(call(call(controller,"getPlayer"),"method_23321"))};
+   if(squared(at[0],at[1],at[2],coords(pos))>64)return;
+   Object mode=Class.forName(STORAGE+"ScanMode").getField("LIGHT").get(null);
+   Object scan=callStatic(STORAGE+"ContainerScanService","scan",controller,pos,mode,null);
+   if(Boolean.TRUE.equals(call(scan,"ok"))&&call(scan,"snapshot")!=null)remember(controller,call(scan,"snapshot"),"heuristic_pass");
+  }catch(Exception|LinkageError e){warn("setup chest scan",e);}
+ }
  private static final int MAX_WITHDRAW_ATTEMPTS=4,MAX_WAYPOINTS=160;
  private static final long FRESH_TICKS=6000;
  private static final double MAX_DISTANCE_SQUARED=96*96;
@@ -96,6 +125,7 @@ public final class StorageIntelligence {
     if(!fresh(now,when,FRESH_TICKS))continue;
     Object pos=call(record,"canonicalBlockPos");if(pos==null||!Boolean.TRUE.equals(call(world,"method_22340",pos)))continue;
     if(!storageBlock(world,pos))continue;
+    if(!allowedSetupStorage(controller,pos))continue;
     String place=key(dim,pos);if(s.tried.contains(place))continue;
     int[] xyz=coords(pos);double distance=squared(px,py,pz,xyz);if(distance>MAX_DISTANCE_SQUARED)continue;
     List<?> items=(List<?>)get(snapshot,"items");if(items==null)continue;

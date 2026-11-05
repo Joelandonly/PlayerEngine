@@ -1,3 +1,36 @@
+# Chest-anchored survival setup v4
+
+Build ID: `20261105-survival-setup-v4`. Minecraft 1.21.1 Fabric, pinned
+PlayerEngine 1.4.0 binary overlay, Java 21. **Gameplay remains UNVERIFIED.**
+
+- Expand the existing setup task with assessment, food, shelter, fuel and
+  equipment stages; no second runner, model planner or engine migration.
+- Keep the required kit and station verification. Torch placement/light surveys
+  remain excluded; all 32 torches stay in inventory.
+- Reuse the saved workshop chest and recorded shelter coordinates. Return to a
+  remote saved base instead of silently selecting another site.
+- Use fresh verified base-chest stock before collecting matching supplies;
+  setup cannot withdraw from unrelated remembered storage. Prefer carried or
+  stored wood and nearby trees when choosing shelter materials.
+- Use the existing native physical builder for a checked 5x5 local-wood
+  enclosure, with actual floor/wall/roof/door/interior/entrance verification.
+  Refuse foreign/protected obstructions instead of bulldozing them.
+- Hungry NPCs obtain/eat food; ordinary work can pause for cover/rest/daylight.
+  Native food and defense chains retain priority. Waiting and retry budgets are
+  bounded, including worlds with a stopped daylight cycle.
+- Require 32 safe carried food nutrition units, eight coal/charcoal fuel items,
+  and verified sword/main-hand and shield/off-hand equipment before completion.
+  Use charcoal as a fuel option; food/fuel have bounded alternate native routes.
+  Beds remain opportunistic information only: no mandatory wool hunt or sleep.
+- Correct the old setup help text that still advertised buckets and armor.
+- Verify packaged entry points and native ABI boundaries, and run full setup
+  orchestration/geometry/storage-scope/lifecycle scenarios in addition to the
+  existing regression suite. Substituted worlds do not prove live behavior.
+
+See `docs/ELLIE_SURVIVAL_SETUP.md` for exact stages, limits and fresh-world gates.
+
+---
+
 # Setup11: tools first, no automatic torch placement
 
 Build ID: `20261105-setup11-tools-first-no-torch-placement-v3`.

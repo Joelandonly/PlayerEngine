@@ -38,7 +38,9 @@ expected_new.update('com/player2/playerengine/tasks/setup/'+name+'.class' for na
     'StarterBaseLayout','StarterBaseLayout$Pos','StarterBaseLayout$Placement','StarterBaseLayout$Probe',
     'StarterBaseTask','StarterBaseTask$Environment','StarterBaseWorld','StarterBaseWorld$1',
     'SurfaceLightingPlan','SurfaceLightingPlan$Probe','SurfaceLightingPlan$Survey',
-    'SetupBuildZone','SetupBuildZone$Shape','SetupBuildZone$Origin'])
+    'SetupBuildZone','SetupBuildZone$Shape','SetupBuildZone$Origin',
+    'SetupSurvival','SetupSurvival$Environment','SetupSurvival$Action','SetupSurvival$Snapshot',
+    'SetupSurvivalWorld','SetupSurvivalWorld$1','SetupShelter','SetupShelter$Plan','SetupShelter$Probe'])
 expected_new.update('com/player2/playerengine/nativecommands/'+name+'.class' for name in [
     'NativeAccess','NativeBuildSupport','NativeFood','NativeCommandText','CompactVillageBlueprint','CompactVillageBlueprint$Cell'])
 expected_new.update('com/player2/playerengine/agentic/'+name+'.class' for name in ['StorageIntelligence','StorageIntelligence$Session','StorageIntelligence$Heartbeat','StorageIntelligence$Choice','InventorySpace','InventorySpace$Snapshot','ResourceAgenticIntegration','ResourceAgenticIntegration$Parsed'])
@@ -56,10 +58,10 @@ source_digest=sha256()
 for p in sorted([ROOT/'build.sh',ROOT/'tools/package.py',*list((ROOT/'src').rglob('*.java')),*list((ROOT/'tools').glob('*.java')),*list((ROOT/'tests').rglob('*'))]):
     if p.is_file():
         source_digest.update(p.relative_to(ROOT).as_posix().encode()+b'\0'+p.read_bytes())
-metadata={'build_id':'20261105-setup11-tools-first-no-torch-placement-v3','source_revision':revision,'source_sha256':source_digest.hexdigest(),'baseline_sha256':sha256(base.read_bytes()).hexdigest(),'live_minecraft_validated':False}
+metadata={'build_id':'20261105-survival-setup-v4','source_revision':revision,'source_sha256':source_digest.hexdigest(),'baseline_sha256':sha256(base.read_bytes()).hexdigest(),'live_minecraft_validated':False}
 with ZipFile(out,'w',compression=ZIP_DEFLATED,compresslevel=6) as z:
     info=ZipInfo('META-INF/ELLIE_BUILD_REVISION.txt',date_time=(2026,11,5,0,0,0));info.compress_type=ZIP_DEFLATED
-    z.writestr(info,'20261105-setup11-tools-first-no-torch-placement-v3\n'+revision+'\n')
+    z.writestr(info,'20261105-survival-setup-v4\n'+revision+'\n')
     info=ZipInfo('META-INF/ELLIE_BUILD.json',date_time=(2026,11,5,0,0,0));info.compress_type=ZIP_DEFLATED
     z.writestr(info,json.dumps(metadata,sort_keys=True,indent=2)+'\n')
     for key in sorted((set(orig)|set(changes))-removed):

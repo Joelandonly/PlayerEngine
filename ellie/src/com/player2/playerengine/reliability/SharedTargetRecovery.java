@@ -12,6 +12,11 @@ public final class SharedTargetRecovery {
  private static final Map<Object,String> failures=Collections.synchronizedMap(new WeakHashMap<>());
  public static String failure(Object root){return failures.get(root);}
  public static void begin(Object root){failures.remove(root);}
+ /** Called only after a stage observes a new high-water count of actual world outputs. */
+ public static void verifiedWorldOutput(Object controller,String evidence){
+  try{Session s=sessions.get(controller);if(s==null)return;s.lastWork=new RecoveryWorld(controller).tick();ObservatoryTelemetry.set("recentVerifiedOutput",evidence);}
+  catch(Exception|LinkageError e){warn(e);}
+ }
  private static final class Session {
   WeakReference<Object> world=new WeakReference<>(null),root=new WeakReference<>(null),owner=new WeakReference<>(null),action=new WeakReference<>(null),baritone=new WeakReference<>(null),clearBuilder=new WeakReference<>(null),clearSchematic=new WeakReference<>(null);
   final TargetRecoveryPolicy policy=new TargetRecoveryPolicy();
@@ -61,6 +66,7 @@ public final class SharedTargetRecovery {
       +" NO_WORK_TICKS="+(now-s.lastWork)+" ATTEMPT="+s.policy.attempts()+"/3 MODE="+s.mode;
     ObservatoryTelemetry.set("reliabilityProgress",detail);ObservatoryTelemetry.event("TASK_PROGRESS",detail);
    }
+   if(task instanceof com.player2.playerengine.tasks.setup.EllieSetupTask setup&&setup.isWaitingForSafety())s.lastWork=now;
    if(s.resourceJob&&now-s.lastWork>=2400){
     String reason="No verified resource or world output for "+(now-s.lastWork)+" ticks; target="+(s.target==null?"none (resource search exhausted)":s.target.key())
       +" subtask="+((Task)task).getTaskTree()+" attempts="+s.policy.attempts()+"/3; try a different resource location or remove the reported obstruction";

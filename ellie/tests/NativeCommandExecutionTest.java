@@ -19,7 +19,7 @@ public final class NativeCommandExecutionTest {
   check(SetupDirectRoute.tryRoute(data,new Event.UserMessage("Ellie, gamer",owner))&&probe.calls==1,"unavailable command must be consumed without a model request");
   check(!SetupDirectRoute.tryRoute(data,new Event.UserMessage("Ellie, hello there",owner)),"ordinary chat remains separate");
   AtomicInteger errors=new AtomicInteger();EatFoodCommand eat=new EatFoodCommand();eat.run(mod,"eat_food",()->{throw new AssertionError("empty inventory reported success");},error->errors.incrementAndGet());check(errors.get()==1,"empty inventory must report an error, never silently return");
-  mod.inventory.stacks.add(new Stack("minecraft:rotten_flesh"));mod.inventory.stacks.add(new Stack("minecraft:bread"));
+  mod.inventory.stacks.add(new Stack("minecraft:rotten_flesh"));mod.inventory.stacks.add(new Stack("minecraft:chicken"));mod.inventory.stacks.add(new Stack("minecraft:bread"));
   check(((EatFoodTask)NativeFood.task(mod,"")).item.name().equals("minecraft:bread"),"no-argument selection must choose carried suitable food");
   check(((EatFoodTask)NativeFood.task(mod,"bread")).item.name().equals("minecraft:bread"),"explicit carried food");
   try{NativeFood.task(mod,"apple");throw new AssertionError("absent item was accepted");}catch(IllegalArgumentException expected){}
@@ -41,6 +41,12 @@ public final class NativeCommandExecutionTest {
   var outcome=SetupDirectRoute.class.getDeclaredMethod("outcomeText",String.class,String.class,com.player2.playerengine.supervisor.GoalLifecycle.Snapshot.class,com.player2.playerengine.supervisor.GoalLifecycle.Snapshot.class);outcome.setAccessible(true);
   var rejected=new com.player2.playerengine.supervisor.GoalLifecycle.Snapshot(1,"test","mine",com.player2.playerengine.supervisor.GoalLifecycle.Status.FAILED,"blocked target");
   check(((String)outcome.invoke(null,"mine","completed",null,rejected)).contains("Completion was not verified"),"failed native receipt cannot be reported as completion");
+  var shelterPlan=new com.player2.playerengine.tasks.setup.SetupShelter.Plan(new com.player2.playerengine.tasks.setup.StarterBaseLayout.Pos(10,63,-5),"spruce");
+  String setupCode=com.player2.playerengine.tasks.setup.SetupShelter.code(shelterPlan);
+  check(com.player2.playerengine.tasks.construction.build_structure.StructureFromCode.compile(setupCode)!=null,"setup shelter code must pass the real existing structure parser");
+  BuildStructureTask setupBuild=new BuildStructureTask(new class_2338(10,63,-5),"small shelter","setup shelter using local wood",mod);
+  NativeBuildSupport.blueprint(setupBuild,setupCode);Object setupChild=tick(setupBuild);
+  check(setupCode.equals(NativeAccess.get(setupChild,"code")),"setup must reuse the existing physical builder with the exact local palette and recorded position");
   System.out.println("NativeCommandExecutionTest: 15 checks pass: real owner route, food selection/errors, real patched builder orchestration; game boundaries substituted");
  }
 }

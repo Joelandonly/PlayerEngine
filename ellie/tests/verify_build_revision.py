@@ -7,6 +7,8 @@ import json, os, subprocess
 root=Path(__file__).resolve().parents[1]
 jar=root/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar'
 revision=os.environ.get('ELLIE_REVISION') or subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+actual_head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()
+assert revision==actual_head,'Build must check out the exact recorded source revision'
 with ZipFile(jar) as z:
     metadata=json.loads(z.read('META-INF/ELLIE_BUILD.json'))
     assert metadata['source_revision']==revision, metadata
@@ -14,7 +16,7 @@ with ZipFile(jar) as z:
     for p in sorted([root/'build.sh',root/'tools/package.py',*list((root/'src').rglob('*.java')),*list((root/'tools').glob('*.java')),*list((root/'tests').rglob('*'))]):
         if p.is_file():digest.update(p.relative_to(root).as_posix().encode()+b'\0'+p.read_bytes())
     assert metadata['source_sha256']==digest.hexdigest(),'JAR sources differ from current build inputs'
-    assert metadata['build_id']=='20261105-setup11-tools-first-no-torch-placement-v3'
+    assert metadata['build_id']=='20261105-survival-setup-v4'
     assert metadata['live_minecraft_validated'] is False
     assert metadata['baseline_sha256']==sha256((root/'baseline/playerengine-acquisition-safety.jar').read_bytes()).hexdigest()
     assert revision in z.read('META-INF/ELLIE_BUILD_REVISION.txt').decode()

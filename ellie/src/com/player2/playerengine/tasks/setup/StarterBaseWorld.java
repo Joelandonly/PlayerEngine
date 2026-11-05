@@ -53,14 +53,8 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         String[] coords=journal.get("detail","").split(",");
         if(coords.length!=3) throw new IllegalStateException("Invalid saved base anchor");
         var plan=StarterBaseLayout.at(new StarterBaseLayout.Pos(Integer.parseInt(coords[0]),Integer.parseInt(coords[1]),Integer.parseInt(coords[2])));
-        var reused=StarterBaseLayout.reuseUnstarted(plan,origin,this);
-        if(!reused.equals(plan)){
-            var anchor=reused.getFirst().pos();
-            journal.put("BASE_LAYOUT_COMPACT_V3",0,expectedDimension,anchor.x()+","+anchor.y()+","+anchor.z());
-            if(!journal.isPersistent())throw new IllegalStateException("Cannot save reused workstation anchor");
-            platformMode=false;plan=reused;
-            com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_WORKSTATION_REUSED","Reanchored unstarted base around existing table "+anchor);
-        }
+        // A recorded site is persistent intent, even while its chunk is unloaded.
+        // Never silently move the base just because a remote block lookup returned air.
         protect(plan);
         return plan;
     }
@@ -117,6 +111,12 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
             supportBreakGuard=null;guardedBaritoneSettings=null;reservedSupport.clear();reservedStations.clear();
         }
         if(zone!=null){zone.close();zone=null;}
+    }
+    public Task approach(List<StarterBaseLayout.Placement> plan)throws Exception {
+        var chest=plan.get(2).pos();Object player=call(controller,"getPlayer");
+        double dx=number(player,"method_23317","getX")-chest.x(),dz=number(player,"method_23321","getZ")-chest.z();
+        if(dx*dx+dz*dz<=144&&(Boolean)call(call(controller,"getWorld"),"method_22340",pos(chest)))return null;
+        return (Task)Class.forName("com.player2.playerengine.tasks.movement.GetToBlockTask").getConstructor(blockPos).newInstance(pos(chest.offset(0,0,1)));
     }
     public boolean air(StarterBaseLayout.Pos pos) throws Exception { return (Boolean)helper("isAir",controller,pos(pos)); }
     private Object state(StarterBaseLayout.Pos p)throws Exception {return call(call(controller,"getWorld"),"method_8320",pos(p));}
