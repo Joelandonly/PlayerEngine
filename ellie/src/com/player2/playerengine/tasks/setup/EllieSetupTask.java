@@ -22,7 +22,7 @@ public final class EllieSetupTask
 extends Task
 implements TransientlyResumableTask,
 TrackedTaskOutcomeProvider {
-    public static final String ELLIE_BUILD_REVISION = "20261105-setup11-shared-reliability-v2";
+    public static final String ELLIE_BUILD_REVISION = "20261105-setup11-tools-first-no-torch-placement-v3";
     // No optional items in setup. Every entry must have real verified output.
     // Diamonds, iron armor, spare iron tools and empty buckets belong to later explicit goals.
     private static final Step[] PLAN = new Step[]{
@@ -33,10 +33,10 @@ TrackedTaskOutcomeProvider {
         new Step("workshop", "crafting_table", 1, true, 2400),
         new Step("workshop", "furnace", 1, true, 2400),
         new Step("storage reserve", "chest", 1, true, 2400),
-        new Step("supplies", "torch", 32, true, 2400),
         new Step("equipment", "shield", 1, true, 2400),
         new Step("equipment", "iron_pickaxe", 1, true, 3600),
-        new Step("equipment", "iron_sword", 1, true, 3600)
+        new Step("equipment", "iron_sword", 1, true, 3600),
+        new Step("supplies", "torch", 32, true, 2400)
     };
     static {
         for (Step step : PLAN) if (!step.required) throw new IllegalStateException("Setup cannot have optional objectives");
@@ -105,7 +105,7 @@ TrackedTaskOutcomeProvider {
             if (this.journal.error() != null) {
                 EllieSetupTask.event("SETUP_JOURNAL_WARNING", this.journal.error());
             }
-            EllieSetupTask.event("SETUP_START", "Ellie build=" + ELLIE_BUILD_REVISION + "; required survival kit with compact workshop and surface-only perimeter lighting");
+            EllieSetupTask.event("SETUP_START", "Ellie build=" + ELLIE_BUILD_REVISION + "; required survival kit with compact workshop; shield and iron tools before torch supplies; no torch placement");
         } else if (this.pendingGestureResume) {
             this.pendingGestureResume = false;
             TaskSuspensionCause taskSuspensionCause = this.pendingResumeCause;
@@ -126,14 +126,14 @@ TrackedTaskOutcomeProvider {
         // Establish the workshop/storage after bootstrap and before iron upgrades.
         // Preparing the remembered plan on start also credits already placed stations
         // on rerun, instead of needlessly gathering another chest item.
-        if (this.index >= 8 && this.baseTask != null && !this.baseAccepted) {
+        if (this.index >= 7 && this.baseTask != null && !this.baseAccepted) {
             if (!this.baseTask.isTerminal()) return this.baseTask;
             if (!this.baseTask.isSuccessful()) {
                 this.stopStep(new Step("starter base", "base", 1, true, 12000), this.baseTask.controlledReason());
                 return null;
             }
             this.baseAccepted = true;
-            this.checkpoint("RUNNING", "starter_base", "Workstations, one chest and surface perimeter lighting verified; continuing required kit");
+            this.checkpoint("RUNNING", "starter_base", "Workstations and one chest verified; continuing required kit");
         }
         ++this.allTicks;
         if (this.index >= PLAN.length) {
@@ -177,12 +177,12 @@ TrackedTaskOutcomeProvider {
                 }
                 this.baseTask = new StarterBaseTask(this.baseOrigin, this.baseDimension);
                 this.baseTask.controller = this.controller;
-                this.checkpoint("RUNNING", "starter_base", "Full kit verified; placing workstations, storage and surface lighting");
+                this.checkpoint("RUNNING", "starter_base", "Full kit verified; placing workstations and storage");
                 return this.baseTask;
             }
             this.completed = true;
-            this.checkpoint("COMPLETED", "setup", "All required inventory, workstation and surface-lighting objectives verified");
-            String string = "Starter setup complete: required kit, crafting table, furnace, chest and surface base lighting verified. No shelter or farm is implied.";
+            this.checkpoint("COMPLETED", "setup", "All required inventory and workstation objectives verified");
+            String string = "Starter setup complete: required kit, crafting table, furnace and chest verified; 32 torches retained for manual placement. No shelter or farm is implied.";
             EllieSetupTask.event("SETUP_SUPPLIES_READY", string);
             this.report(string);
             return null;
@@ -431,7 +431,7 @@ TrackedTaskOutcomeProvider {
             String suffix = resource.substring(5);
             count += this.countInventory("diamond_" + suffix) + this.countInventory("netherite_" + suffix);
         }
-        if (this.baseTask != null && (resource.equals("chest") || resource.equals("crafting_table") || resource.equals("furnace") || resource.equals("torch"))) {
+        if (this.baseTask != null && (resource.equals("chest") || resource.equals("crafting_table") || resource.equals("furnace"))) {
             count += this.baseTask.verifiedPlacedCount(resource);
         }
         return count;
@@ -662,7 +662,7 @@ TrackedTaskOutcomeProvider {
             return "Setup interrupted before verifying all required items";
         }
         if (this.completed) {
-            return "Required survival kit, workstation/storage and surface perimeter lighting verified";
+            return "Required survival kit, workstation/storage and torch supplies verified; torch placement excluded";
         }
         return "Setup still running";
     }
@@ -677,7 +677,7 @@ TrackedTaskOutcomeProvider {
 
     public String outcomeForCommand() {
         if (this.isSuccessfullyCompleted()) {
-            return "Setup COMPLETED: required tools, shield and supplies verified; crafting table, furnace, chest and outdoor perimeter lighting physically verified.";
+            return "Setup COMPLETED: required tools, shield and supplies verified; crafting table, furnace and chest physically verified; torches retained for manual placement.";
         }
         if (this.failed) {
             return "Setup BLOCKED, not complete: " + this.failureReason;
@@ -691,7 +691,7 @@ TrackedTaskOutcomeProvider {
 
     protected String toDebugString() {
         if (this.index >= 7 && this.baseTask != null && !this.baseAccepted && !this.failed) {
-            return "Setup workshop and surface lighting: " + this.baseTask;
+            return "Setup workshop: " + this.baseTask;
         }
         if (this.failed) {
             return "Setup BLOCKED: " + this.failureReason;

@@ -39,24 +39,17 @@ public final class SurfaceLightingTest {
  }
  public static void main(String[] args)throws Exception {
   World w=new World();var t=new StarterBaseTask(w);run(t);
-  ok(t.isSuccessful(),"worksite and outdoor lights must complete");
-  ok(w.torchPlaced>0 && w.torchPlaced<=SurfaceLightingPlan.MAX_NEW_TORCHES,"torch count bounded");
-  ok(w.blocks.stream().filter(p->p.resource().equals("torch")).allMatch(p->p.pos().y()>=ANCHOR.y()),"never descend below base");
-  ok(w.blocks.stream().filter(p->p.resource().equals("torch")).noneMatch(p -> BASE.stream().anyMatch(q ->
-      Math.abs(p.pos().x()-q.pos().x())+Math.abs(p.pos().z()-q.pos().z())<=1)),"torch cannot occupy a workstation service lane");
-  ok(w.blockLight(new StarterBaseLayout.Pos(10,64,10))>0,"block light is provided around workshop");
-  ok(t.verifiedPlacedCount("torch")==w.torchPlaced,"physical torch count must be verifiable");
-  int count=w.torchPlaced;run(t);ok(w.torchPlaced==count,"completion must be stable");
-  w.blocks.removeIf(p->p.resource().equals("torch"));
-  ok(!t.isSuccessful(),"removed light sources must invalidate final success");
-  World impossible=new World();impossible.lightingAllowed=false;var blocked=new StarterBaseTask(impossible);run(blocked);
-  ok(blocked.isTerminal()&&!blocked.isSuccessful(),"cannot claim a secured surface when no torches can be placed");
+  ok(t.isSuccessful(),"workstations complete without lighting");
+  ok(w.torchPlaced==0 && w.inventory.get("torch")==32,"setup retains torch supplies without placement");
+  w.lightingAllowed=false;ok(t.isSuccessful(),"lighting cannot invalidate verified stations");
+  World impossible=new World();impossible.lightingAllowed=false;var unlit=new StarterBaseTask(impossible);run(unlit);
+  ok(unlit.isSuccessful()&&impossible.torchPlaced==0,"unplaceable dark samples do not block setup");
   var noCaves=SurfaceLightingPlan.inspect(BASE,new SurfaceLightingPlan.Probe(){
    public StarterBaseLayout.Pos surface(int x,int z,int baseY){return new StarterBaseLayout.Pos(x,baseY-3,z);}
    public int blockLight(StarterBaseLayout.Pos p){return 0;}
    public boolean canPlace(StarterBaseLayout.Pos p){return true;}
   },Set.of());
   ok(noCaves.eligible()==0&&noCaves.next().isEmpty(),"underground candidates must never be selected");
-  System.out.println("SurfaceLightingTest: workshop lighting, bounded torches, live reverify, no caves, failure cases passed");
+  System.out.println("SurfaceLightingTest: setup never places torches or gates completion on lighting; retained planner excludes caves");
  }
 }

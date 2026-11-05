@@ -4,7 +4,7 @@ import com.player2.playerengine.tasks.setup.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-/** Executes the production setup and workshop/lighting state machines together.
+/** Executes the production setup and workshop state machines together.
  * Inventory, acquisition, placement and light propagation are substituted boundaries.
  * This is NOT evidence of Minecraft pathfinding, recipe execution or survival success.
  */
@@ -32,6 +32,7 @@ public final class SetupChainTest {
         public boolean prepared(StarterBaseLayout.Placement p) { return repaired; }
         public boolean canPrepare(StarterBaseLayout.Placement p) { return !obstructed; }
         public Task prepareTerrain(StarterBaseLayout.Placement p) { return new SurfaceLightingTest.Op(()->{repaired=true;repairs++;}); }
+        public SurfaceLightingPlan.Survey surveyLighting(List<StarterBaseLayout.Placement> p,Set<StarterBaseLayout.Pos> skip) { throw new AssertionError("setup must not survey or place surface lighting"); }
         public boolean canPlace(StarterBaseLayout.Pos p) { return !noLighting && super.canPlace(p); }
     }
     static class Run {
@@ -65,16 +66,17 @@ public final class SetupChainTest {
     static void check(boolean ok,String reason) { if(!ok)throw new AssertionError(reason); }
     public static void main(String[] args) throws Exception {
         Run fresh=new Run();fresh.run();
-        check(fresh.task.isSuccessful(),"fresh kit, three stations and measured outdoor lighting complete together");
+        check(fresh.task.isSuccessful(),"fresh kit and three verified stations complete together");
         check(fresh.requests.equals(Arrays.stream(EllieSetupTask.plannedSteps()).map(s->s.resource).toList()),"all eleven requests retain exact order; no excluded acquisitions");
         check(fresh.world.blocks.stream().filter(p->!p.resource().equals("torch")).count()==3,"all stations physically verified");
-        check(fresh.world.torchPlaced>0 && fresh.world.torchPlaced<=12,"bounded lights installed and verified in full chain");
+        check(fresh.world.torchPlaced==0 && fresh.c.getItemStorage().counts.get("torch")==32,"all 32 torches remain in inventory; none placed");
+        check(fresh.requests.indexOf("shield")<fresh.requests.indexOf("torch") && fresh.requests.indexOf("iron_sword")<fresh.requests.indexOf("torch"),"shield and iron tools precede torch acquisition");
         Run partial=new Run();partial.c.getItemStorage().counts.put("stone_axe",1);partial.c.getItemStorage().counts.put("stone_pickaxe",2);
         partial.world.blocks.addAll(SurfaceLightingTest.BASE);partial.run();
         check(partial.task.isSuccessful()&&!partial.requests.contains("stone_axe")&&!partial.requests.contains("stone_pickaxe"),"partial inventory reused without repeating owned tools");
         check(!partial.requests.contains("chest")&&!partial.requests.contains("furnace"),"existing placed stations credit consumed inventory");
         Run uneven=new Run();uneven.world.uneven=true;uneven.run();
-        check(uneven.task.isSuccessful()&&uneven.world.repairs==1,"uneven ground is repaired before station and lighting verification");
+        check(uneven.task.isSuccessful()&&uneven.world.repairs==1,"uneven ground is repaired before station verification");
         Run missing=new Run();missing.missingIron=true;missing.run();
         check(missing.task.isBlocked()&&missing.task.controlledReason().contains("iron_pickaxe"),"missing iron ends specifically BLOCKED, never skipped or completed");
         Run obstructed=new Run();obstructed.world.obstructed=true;obstructed.run();
@@ -82,7 +84,7 @@ public final class SetupChainTest {
         Run falsePlace=new Run();falsePlace.world.neverPlace=true;falsePlace.run();
         check(falsePlace.task.isBlocked()&&!falsePlace.task.isSuccessful(),"finished child without a verified placed block cannot complete setup");
         Run dark=new Run();dark.world.noLighting=true;dark.run();
-        check(dark.task.isBlocked()&&dark.task.controlledReason().contains("surface torch"),"dark outdoor samples with no safe placement block setup");
+        check(dark.task.isSuccessful()&&dark.world.torchPlaced==0,"dark outdoor samples with no safe torch position cannot block setup");
         System.out.println("SetupChainTest: 7 complete-chain scenarios passed (game boundaries substituted; no live survival claim)");
     }
 }

@@ -1,9 +1,9 @@
 # Ellie: Setup11 survival reliability
 
-Current revision: `20261105-setup11-shared-reliability-v2`. **Live survival gameplay is UNVERIFIED.**
+Current revision: `20261105-setup11-tools-first-no-torch-placement-v3`. **Live survival gameplay is UNVERIFIED.**
 See [reliability validation](../docs/ELLIE_SETUP11_RELIABILITY.md) for exact automated coverage, budgets, and the required fresh-world run.
 
-The required sequence is wooden pickaxe, early stone axe, two stone pickaxes, stone shovel, crafting table, furnace, chest, 32 torches, shield, iron pickaxe, iron sword. Every objective is required. Surface block-light coverage is verified around the three-station workshop before iron upgrades; installed verified torches count toward supplies. Setup never requests buckets, iron armor, spare iron tools, bed, bread or diamonds. Existing better tools may satisfy quantities without requesting a downgrade.
+The required sequence is wooden pickaxe, early stone axe, two stone pickaxes, stone shovel, crafting table, furnace, chest, shield, iron pickaxe, iron sword, 32 torches. Every objective is required. Setup places and verifies the three workshop stations, then prioritizes the shield and iron tools before acquiring 32 torches. Torches remain in inventory for manual placement. Surface lighting is not surveyed or required for setup completion. Setup never requests buckets, iron armor, spare iron tools, bed, bread or diamonds. Existing better tools may satisfy quantities without requesting a downgrade.
 
 
 Current target: **Minecraft 1.21.1 Fabric, PlayerEngine 1.4.0, Java 21**.

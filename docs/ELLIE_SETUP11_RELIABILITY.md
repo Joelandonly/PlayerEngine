@@ -3,7 +3,10 @@
 Baseline: `codex/shared-recovery-crash`, `ae24a84cc9fde89dda55a23a4ecb53b4c25e9056`.
 Owner upload: `Ellie-1.21.1-Setup11-Lean-Source-20261105.zip`, SHA-256
 `08597b502d3f6b6fe8a243edd35576b17683907031f4c68a67ffa2458ea5ff20`.
-Build ID: `20261105-setup11-shared-reliability-v2`.
+Build ID: `20261105-setup11-tools-first-no-torch-placement-v3`.
+
+Owner update after live testing: automatic torch placement and surface lighting
+are removed from setup. Shield and iron tools precede acquiring torch supplies.
 
 This remains the existing binary-overlay project, with source overrides and
 audited patches against the checksum-pinned PlayerEngine 1.4.0 baseline. Goodbird
@@ -13,18 +16,17 @@ source migration. The output is not claimed byte-identical to the uploaded JAR.
 ## Required setup contract
 
 In order: wooden pickaxe; early stone axe; two stone pickaxes; stone shovel;
-crafting table; furnace; chest; 32 torches; shield; iron pickaxe; iron sword.
+crafting table; furnace; chest; shield; iron pickaxe; iron sword; 32 torches.
 All are required. Better tools already owned may satisfy the corresponding
 quantity without downgrading; setup does not acquire diamonds. No optional
 skipping, buckets, iron armor, spare iron tools, bed or bread are in this plan.
 
-After torch acquisition, verify the three-station workshop and its surface
-lighting before iron upgrades. Survey outdoor, sky-exposed ground at/above the
-worksite level within its bounded margin, using **block light**, not sunlight.
-Every eligible sample must have block light above zero (the normal hostile-mob
-spawning threshold for this version). No cave descent or underground lighting.
-At most 12 new torches; exclude station service lanes. Remeasure after placement
-and again before completion. World-verified installed torches count toward 32.
+Verify the three-station workshop before the equipment stages. Acquire the
+shield and iron tools before torches. Keep all 32 torches in inventory for manual
+placement. **No automatic torch placement or light survey is run by setup.**
+Completion verifies the kit and stations; it makes no lighting/spawn-safety claim.
+Existing station positions are retained on rerun, including after the live
+"No safe surface torch position can cover 1 dark samples" failure.
 
 ## Shared progress and ownership
 
@@ -41,8 +43,8 @@ retains evidence across **all target switches**, including slow A/B revisits.
   window. Returning to an old position or changing targets is not progress.
 - Crafting: inventory gains or a new monotonic phase milestone count. Repeating
   earlier phases does not count. Existing setup material/phase checks remain.
-- Placement: actual target block changes are observed; workshop and lighting
-  completion additionally require the expected block and measured light.
+- Placement: actual target block changes are observed; workshop completion additionally requires the expected station blocks.
+  Lighting is excluded from setup.
 - Inventory: read exactly 36 main/hotbar stacks directly. Armor/offhand and stale
   tracker maps cannot supply fictitious capacity. Do not dump inventory.
 
@@ -54,7 +56,7 @@ verified output for 2,400 active server ticks terminates with a specific BLOCKED
 reason; this prevents endlessly scanning or waiting for blacklist expiry.
 At nominal 20 TPS these limits are 5 seconds for a stall, 2 minutes without
 resource output, and 2 minutes of target rejection. They are tick-based where
-noted, so wall time grows on a lagging server. Existing setup/station/lighting
+noted, so wall time grows on a lagging server. Existing setup/station
 budgets provide additional bounds. Long travel without resource output can
 therefore be reported blocked; move to a suitable resource area and retry.
 
@@ -83,8 +85,9 @@ sidecar, not a new runtime dependency.
 
 `SetupChainTest` runs production setup plus workshop/lighting state machines
 through all eleven objectives, including fresh and partial inventory, existing
-stations, repairable uneven ground, missing iron, blocked stations, false child
-placement completion, and unavailable surface lighting. Acquisition, inventory,
+stations, repairable uneven ground, missing iron, blocked stations and false
+child placement completion. An unavailable light-survey boundary must never be
+called; dark samples cannot block completion. Acquisition, inventory,
 placement and light propagation are **substituted game boundaries**.
 
 `SharedRecoveryRuntimeTest` runs the real patched Task.tick against substituted
@@ -110,8 +113,7 @@ false`. CI verifies the packaged bytes and revision before upload.
 
 Use a backed-up fresh survival world and the existing Player2NPC/companion mods.
 Install exactly one PlayerEngine JAR. Check SETUP_START for this build ID, run
-the same `setup` command, and retain observatory events through iron sword and
-surface-light verification. Test real iron absence/inaccessible ore and an
+the same `setup` command, and retain observatory events through iron sword and the 32-torch inventory check. Test real iron absence/inaccessible ore and an
 obstructed table: accept a different successful strategy or a specific BLOCKED
 outcome, never repeated A/B mining or completion without outputs. Re-run with
 partial inventory and placed stations. Check defense interruptions, commands,

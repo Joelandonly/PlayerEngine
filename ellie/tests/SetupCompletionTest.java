@@ -36,7 +36,7 @@ public final class SetupCompletionTest {
         for (int i = 0; i < 3; i++) { field(unstable,"index",EllieSetupTask.plannedSteps().length); tick(unstable); }
         check(unstable.isBlocked() && !unstable.isSuccessful(),"repair must have a finite budget"); passed++;
         check(java.util.Arrays.stream(EllieSetupTask.plannedSteps()).allMatch(s->s.required),"setup must not contain optional objectives"); passed++;
-        String[] expected = {"wooden_pickaxe", "stone_axe", "stone_pickaxe", "stone_shovel", "crafting_table", "furnace", "chest", "torch", "shield", "iron_pickaxe", "iron_sword"};
+        String[] expected = {"wooden_pickaxe", "stone_axe", "stone_pickaxe", "stone_shovel", "crafting_table", "furnace", "chest", "shield", "iron_pickaxe", "iron_sword", "torch"};
         check(java.util.Arrays.equals(java.util.Arrays.stream(EllieSetupTask.plannedSteps()).map(s->s.resource).toArray(String[]::new), expected),
             "setup must require stone shovel, early axe, shield and iron sword, with no buckets, armor or diamonds"); passed++;
         EllieSetupTask placed=ready();
