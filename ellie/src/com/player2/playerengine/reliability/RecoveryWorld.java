@@ -76,8 +76,18 @@ final class RecoveryWorld {
  }
  String progressSafely(Cell target)throws Exception{
   StringBuilder out=new StringBuilder(String.valueOf(state(target)));
-  try{Object inventory=call(controller,"getInventory");for(int i=0;i<((Number)call(inventory,"method_5439")).intValue();i++){Object s=call(inventory,"method_5438",i);if(!Boolean.TRUE.equals(call(s,"method_7960")))out.append('|').append(call(s,"method_7909")).append(':').append(call(s,"method_7947"));}}catch(Exception ignored){}
-  return out.toString();
+  out.append(inventorySignature());return out.toString();
+ }
+ String inventorySignature(){
+  // Aggregate item identity/count, not slot ordering or equipment state. Moving
+  // stacks, consuming items and swapping tools cannot renew the watchdog.
+  try{Object entity=call(controller,"getEntity"),inventory=call(entity,"getLivingInventory");
+   Object main=get(inventory,"main");if(!(main instanceof List<?> stacks)||stacks.size()!=36)return "";
+   Map<String,Integer> totals=new TreeMap<>();
+   for(Object stack:stacks)if(stack!=null&&!Boolean.TRUE.equals(call(stack,"method_7960")))
+    totals.merge(String.valueOf(call(stack,"method_7909")),((Number)call(stack,"method_7947")).intValue(),Integer::sum);
+   StringBuilder out=new StringBuilder();totals.forEach((item,count)->out.append('|').append(item).append('=').append(count));return out.toString();
+  }catch(Exception|LinkageError unavailable){return "";}
  }
  double breakingProgress(Cell target){
   try{Object manager=call(call(call(baritone,"getEntityContext"),"playerController"),"getInteractionManager");

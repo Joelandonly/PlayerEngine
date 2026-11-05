@@ -1,56 +1,32 @@
-# Shared target recovery, NPC crash and production handoffs
+# Setup11 shared survival reliability v2
 
-Latest follow-up: setup crafts requested supplies instead of chasing placed output
-blocks such as distant torches. Constrain nearby crafting-table/furnace placement
-and actual clicks to dry supported non-tree sites with standing access; reject
-known unsuitable bench reuse. Native ingredient gathering and furnace crafting remain.
+Build ID: `20261105-setup11-shared-reliability-v2`.
+Minecraft 1.21.1 Fabric / PlayerEngine baseline 1.4.0 / Java 21.
+**Automated preview; live Minecraft survival behavior remains UNVERIFIED.**
 
-The preceding revision: setup uses the established native catalogue acquisition chain
-for its fixed kit, matching mining prerequisites instead of replanning through the
-dynamic crafting macro near the last furnace output. Add concrete base repair
-jobs and safety diagnostics, protect naturally supported workshop floors/stations,
-and clear stale recovery status after a task ends. Live setup acceptance is pending.
+Reconciles the owner's checksum-verified Setup11 source ZIP against
+`codex/shared-recovery-crash` at `ae24a84`. No Goodbird engine replacement or
+full source migration. Imported storage, native commands, village handling,
+observatory and server-tick diagnostics remain covered by regression checks.
 
-The earlier table fix distinguishes a requested table item from a reusable world
-bench and preserves partial construction.
+- All eleven setup objectives are required, with the early stone axe and stone
+  shovel. No bucket, iron-armor, diamond, bed or bread objectives.
+- Three verified stations and outdoor-only block-light coverage. Existing placed
+  stations and installed torches credit real outputs; sunlight does not count.
+- Shared recovery retains progress and retry history across target changes.
+  A/B selection, inventory reshuffling, reachability, repeated crafting phases
+  and damage lost/regained below the high-water mark do not replenish retries.
+- Scanner rejection selects alternative locations. Three recovery attempts and
+  a 2,400 active-server-tick no-output limit bound unsuccessful resource jobs.
+  Higher-priority safety chains retain control; there is no second craft watchdog.
+- Canonical inventory capacity reads the actual 36 main/hotbar stacks, bypassing
+  cached AIR counts and slot maps. Unknown layouts are not reported as full.
+  No automatic dumping is added.
+- `TASK_PROGRESS` logs identify objective, subtask, target, occupied/free slots,
+  no-output age and recovery owner/attempt. `TASK_BLOCKED` preserves failure
+  evidence through the supervisor even if a native receipt claims success.
+- The JAR embeds build ID, exact Git revision, source-input digest and baseline
+  checksum. CI verifies these and uploads one revision-named install JAR plus
+  checksum, separately from a source bundle containing zero binaries.
 
-- Guard NPC axe stripping from the null-player vanilla path in the supplied crash.
-- Preserve final furnace input/output handoff and refresh material accounting.
-- Resume the same physical build after accepted defense/gesture suspension.
-- Coordinate stalled navigation below tasks, with one recovery movement owner,
-  alternative interaction positions, conservative clearing, finite retries and air priority.
-- Delegate table rejection to the shared policy; remove the separate craft watchdog.
-- Record a construction worksite and verified nearby bench separately from personal home.
-- Add target/reach/blocker/look-writer and recovery-ownership Observatory diagnostics.
-
-Output: `PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar`.
-Native commands, original Player2 API and compact setup remain. Production recovery
-uses native APIs, with no teleport, item grants or direct world edits. Local
-simulations/bytecode checks do not replace live Minecraft acceptance. See
-`docs/ELLIE_SHARED_RECOVERY.md` and prior notes below.
-
----
-
-# Player2 native commands on the crafting-recovery revision
-
-Based on the maintainer's reproducible craft-recovery source/JAR, retaining compact
-setup, one table/furnace/chest, conditional supports and table-rejection behavior.
-
-- Exact authenticated-owner commands bypass model selection for all 46 NPC IDs.
-- Builds use shipped local templates and the unchanged physical layer builder;
-  unsupported requests fail without AI retries. Builder outcomes are verified.
-- Agentic pickup/storage plans, chest labels and GPS descriptions use local logic.
-- Fix no-argument eating, missing-food silent returns, uppercase scan identifiers,
-  and semicolons inside quoted arguments.
-- Remove the permanent no-op dummy task. Eight unverified/unregistered commands
-  remain unavailable; the speedrun is not described as impossible or tested.
-- Keep the original Player2 API binary and companion integration. No ChatGPT
-  interpreter hook or Node process is required by this build.
-
-Output: `PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-NATIVE-COMMANDS.jar`.
-See `docs/ELLIE_NATIVE_COMMANDS.md` in the portable bundle or the repository docs.
-
-Local command/planner/orchestration simulations, bytecode checks and compatibility
-checks are separate from live Minecraft acceptance. Shared navigation recovery is
-not implemented by the imported crafting-specific fix and remains pending.
-Previous interpreter release notes are retained in `HISTORICAL_RELEASE_NOTES.md`.
+See `docs/ELLIE_SETUP11_RELIABILITY.md` for test boundaries and live acceptance.

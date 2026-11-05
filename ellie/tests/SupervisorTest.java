@@ -133,6 +133,18 @@ public final class SupervisorTest {
             check(life.resume(second) == null,"cancelled goal resumed");
             check(life.finish(second,GoalLifecycle.Status.SUCCEEDED,"late") == null,"cancelled result overwritten");
         });
+        scenario("shared recovery exhaustion overrides a nominally successful native receipt", () -> {
+            try {
+                Adapter adapter=new Adapter();PlayerEngineController controller=new PlayerEngineController(adapter);
+                Outcome task=new Outcome();submit(controller,task,null);
+                var field=com.player2.playerengine.reliability.SharedTargetRecovery.class.getDeclaredField("failures");field.setAccessible(true);
+                @SuppressWarnings("unchecked") var failures=(Map<Object,String>)field.get(null);
+                failures.put(task,"No verified resource output; inaccessible iron targets exhausted");
+                adapter.completions.getFirst().run();
+                check(CoreGoalSupervisor.snapshot(controller).status()==GoalLifecycle.Status.BLOCKED,"shared exhaustion cannot become SUCCEEDED");
+                check(CoreGoalSupervisor.snapshot(controller).detail().contains("inaccessible iron"),"specific failure reason retained");
+            } catch(ReflectiveOperationException e){throw new AssertionError(e);}
+        });
         System.out.println("SupervisorTest: " + passed + " passed, " + failed + " failed");
         if (failed > 0) throw new AssertionError("supervisor regressions");
     }

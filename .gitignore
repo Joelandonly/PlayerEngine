@@ -27,3 +27,6 @@ classes/
 # Copyright Files
 !/.idea/copyright/Baritone.xml
 !/.idea/copyright/profiles_settings.xml
+
+# Local Ellie regression telemetry (never an install artifact)
+ellie/logs/

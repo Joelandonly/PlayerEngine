@@ -14,7 +14,7 @@ public final class SetupProgressTest {
         var signature=setup.getClass().getDeclaredMethod("progressSignature",com.player2.playerengine.tasks.base.Task.class,
             com.player2.playerengine.tasks.setup.EllieSetupTask.Step.class);
         signature.setAccessible(true);
-        var step=new com.player2.playerengine.tasks.setup.EllieSetupTask.Step("equipment upgrade","iron_chestplate",1,true,3000);
+        var step=new com.player2.playerengine.tasks.setup.EllieSetupTask.Step("equipment upgrade","iron_sword",1,true,3000);
         var task=new com.player2.playerengine.tasks.base.Task();
         setup.controller.getItemStorage().counts.put("cobblestone",149);
         String first=(String)signature.invoke(setup,task,step);

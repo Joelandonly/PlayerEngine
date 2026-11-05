@@ -24,13 +24,21 @@ with zipfile.ZipFile(root / 'baseline/playerengine-acquisition-safety.jar') as b
         'com/player2/playerengine/tasks/crafting/CraftMacroResourceTask.class',
         'com/player2/playerengine/tasks/container/CraftInTableTask.class',
         'com/player2/playerengine/tasks/construction/build_structure/BuildStructureTask.class',
+        'com/player2/playerengine/tasks/construction/build_structure/VillageSiteGuard.class',
+        'com/player2/playerengine/tasks/construction/build_structure/VillageSiteGuard$Site.class',
         'com/player2/playerengine/tasks/agentic/LabelChestTask.class',
         'com/player2/playerengine/tasks/base/Task.class',
+        'com/player2/playerengine/PlayerEngineController.class',
+        'com/player2/playerengine/tasks/ResourceTask.class',
+        'com/player2/playerengine/tasks/container/ScanContainerTask.class',
+        'com/player2/playerengine/tasks/container/BoundedContainerTransferTask.class',
         'com/player2/playerengine/tasks/container/SmeltInFurnaceTask.class', 'com/player2/playerengine/tasks/construction/PlaceBlockNearbyTask.class',
         'com/player2/playerengine/tasks/crafting/CraftingTableLocator.class',
     }
     for entry in baseline.namelist():
-        if entry in setup_changes: continue
+        if entry in setup_changes:
+            assert baseline.read(entry) != built.read(entry), 'Expected reviewed autonomy hook missing: '+entry
+            continue
         if entry.startswith(('com/player2/playerengine/chains/', 'com/player2/playerengine/tasks/')) or entry in (
             'com/player2/playerengine/commands/BodyLanguageCommand.class',
             'com/player2/playerengine/commands/UnPauseCommand.class',

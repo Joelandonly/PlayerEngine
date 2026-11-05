@@ -38,6 +38,7 @@ public final class CoreGoalSupervisor {
                     || previous.status() == GoalLifecycle.Status.SUSPENDED)) {
                 event("CORE_GOAL_SUPERSEDED", "old_generation=" + previous.generation() + " new=" + kind);
             }
+            com.player2.playerengine.reliability.SharedTargetRecovery.begin(task);
             GoalLifecycle.Snapshot started = slot.lifecycle.begin(commandId, kind);
             checkpoint(slot, started);
             event("CORE_GOAL_SUBMIT", "generation=" + started.generation() + " kind=" + kind);
@@ -87,6 +88,7 @@ public final class CoreGoalSupervisor {
     }
 
     private static GoalLifecycle.Status terminalStatus(Task task, StepExecution execution) {
+        if (com.player2.playerengine.reliability.SharedTargetRecovery.failure(task) != null) return GoalLifecycle.Status.BLOCKED;
         StepState state = execution.getState();
         String log = execution.getLastLogEntry();
         if (log != null && log.contains("CANCELLED_")) return GoalLifecycle.Status.CANCELLED;
@@ -107,6 +109,8 @@ public final class CoreGoalSupervisor {
     }
 
     private static String outcomeDetail(Task task, StepExecution execution) {
+        String sharedFailure = com.player2.playerengine.reliability.SharedTargetRecovery.failure(task);
+        if (sharedFailure != null) return sharedFailure;
         // Keep the executor's cancellation/failure reason even if the task claims success.
         if (execution.getState() != StepState.SUCCEEDED) {
             String log = execution.getLastLogEntry();

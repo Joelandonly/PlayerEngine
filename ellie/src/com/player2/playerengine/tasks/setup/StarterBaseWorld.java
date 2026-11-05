@@ -211,6 +211,50 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     public Task acquire(String resource) throws Exception {
         return EllieSetupTask.nativeAcquisition(resource,1);
     }
+    /** Scan actual block light on surface cells at/above the base. No cave searches. */
+    public SurfaceLightingPlan.Survey surveyLighting(List<StarterBaseLayout.Placement> plan,
+            Set<StarterBaseLayout.Pos> excluded) throws Exception {
+        if (!Objects.equals(expectedDimension, dimension(controller)))
+            throw new IllegalStateException("Outdoor lighting dimension changed");
+        var surveyProbe = new SurfaceLightingPlan.Probe() {
+            public StarterBaseLayout.Pos surface(int x, int z, int baseY) throws Exception {
+                Object world = call(controller, "getWorld");
+                Class<?> heightmap = Class.forName("net.minecraft.class_2902$class_2903");
+                Object surfaceType = heightmap.getField("field_13203").get(null); // MOTION_BLOCKING_NO_LEAVES
+                int y = ((Number)call(world, "method_8624", surfaceType, x, z)).intValue();
+                // Never light below the workshop or follow a heightmap into a cave.
+                if (y < baseY || y > baseY + 3) return null;
+                var spot = new StarterBaseLayout.Pos(x, y, z);
+                if (!withinLimits(spot) || !air(spot) || !air(spot.offset(0, 1, 0))
+                        || !safeFloor(spot.offset(0, -1, 0))) return null;
+                if (!(Boolean)call(world, "method_8311", pos(spot))) return null; // direct sky view
+                return spot;
+            }
+            public int blockLight(StarterBaseLayout.Pos spot) throws Exception {
+                Object type = Class.forName("net.minecraft.class_1944").getField("field_9282").get(null); // BLOCK, not SKY
+                return ((Number)call(call(controller, "getWorld"), "method_8314", type, pos(spot))).intValue();
+            }
+            public boolean canPlace(StarterBaseLayout.Pos spot) throws Exception {
+                // Torches stand on solid ground near the workshop, not on protected
+                // machinery, in water or on a cliff with no interaction pose.
+                if (retained.containsKey(spot) || !air(spot) || !safeFloor(spot.offset(0, -1, 0))) return false;
+                for (var station : plan) {
+                    var machine = station.pos();
+                    if (spot.y() == machine.y()
+                            && Math.abs(spot.x() - machine.x()) + Math.abs(spot.z() - machine.z()) <= 1)
+                        return false; // preserve the native workstation standing/interaction lanes
+                }
+                return StarterBaseLayout.hasAccess(spot, StarterBaseWorld.this);
+            }
+        };
+        return SurfaceLightingPlan.inspect(plan, surveyProbe, excluded);
+    }
+    public void retainTorch(StarterBaseLayout.Placement placement) {
+        if (!placement.resource().equals("torch")) return;
+        // Reuse the already-installed native break guard for verified torches.
+        retained.put(placement.pos(), placement);
+        reservedStations.add(placement.pos());
+    }
     public Task place(StarterBaseLayout.Placement placement) throws Exception {
         Class<?> blockType=Class.forName("net.minecraft.class_2248");
         return (Task)Class.forName("com.player2.playerengine.tasks.construction.PlaceItemBlockAtPosTask")

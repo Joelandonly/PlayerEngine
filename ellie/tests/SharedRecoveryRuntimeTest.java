@@ -25,6 +25,28 @@ public final class SharedRecoveryRuntimeTest {
  public static final class Controller extends PlayerEngineController{public boolean reachable;public int recoveryClears,recoveryClearStops;public final World world=new World();final Player player=new Player();public final Baritone baritone=new Baritone();Controller(){super(null);}public World getWorld(){return world;}public Player getPlayer(){return player;}public Baritone getBaritone(){return baritone;}public Inventory getInventory(){return new Inventory();}}
  static class Probe extends Task{int ticks,starts,stops;final Task child;Probe(Task child){this.child=child;}protected void onStart(){starts++;}protected Task onTick(){ticks++;return child;}protected void onStop(Task next){stops++;}protected boolean isEqual(Task other){return this==other;}protected String toDebugString(){return "probe";}}
  public static final class GetCloseToBlockTask extends Probe{private final class_2338 toApproach=new class_2338(5,64,0);boolean allowedLook;GetCloseToBlockTask(){super(null);}protected Task onTick(){allowedLook=SharedTargetRecovery.allowTaskLook(controller);return super.onTick();}}
+ public static final class DestroyBlockTask extends Probe {
+  private final class_2338 pos;
+  DestroyBlockTask(class_2338 pos){super(null);this.pos=pos;}
+ }
+ static final class MiningJob extends com.player2.playerengine.tasks.ResourceTask {
+  final DestroyBlockTask a=new DestroyBlockTask(new class_2338(8,64,-23)),b=new DestroyBlockTask(new class_2338(-1,64,-32)),c=new DestroyBlockTask(new class_2338(20,64,0));
+  int selects,alternatives;boolean alternateSucceeds,finished;
+  protected void onStart(){}
+  protected Task onTick(){
+   selects++;var selected=selects%2==0?a:b;
+   if(SharedTargetRecovery.rejected(controller,selected.pos))selected=selected==a?b:a;
+   if(SharedTargetRecovery.rejected(controller,selected.pos)){
+    alternatives++;selected=c;
+    if(alternateSucceeds){((Controller)controller).world.blocks.put(c.pos,"minecraft:air");finished=true;}
+   }
+   return selected;
+  }
+  public boolean isFinished(){return finished;}
+  protected void onStop(Task next){}
+  protected boolean isEqual(Task other){return this==other;}
+  protected String toDebugString(){return "mine iron for native resource job";}
+ }
  static final class Chain extends TaskChain{final Task root;String name="User Tasks";Chain(Controller controller,Task root){super(new TaskRunner(controller));this.root=root;}protected void onStop(){}public void onInterrupt(TaskChain next){}protected void onTick(){root.tick(this);}public float getPriority(){return 50;}public boolean isActive(){return true;}public String getName(){return name;}}
  static void check(boolean ok,String text){if(!ok)throw new AssertionError(text+" events="+ObservatoryTelemetry.events);}
  static void advance(Controller c,Chain chain,int ticks){for(int i=0;i<ticks;i++){c.world.time++;chain.tick();}}
@@ -61,6 +83,16 @@ public final class SharedRecoveryRuntimeTest {
   check(WorksiteAnchor.preferBench(site,Optional.empty()).orElseThrow().equals(bench),"reachable worksite bench should be reused without changing personal home");
   SharedTargetRecovery.reject(site,bench);check(WorksiteAnchor.preferBench(site,Optional.empty()).isEmpty(),"worksite preference must respect shared target rejection");WorksiteAnchor.close(siteOwner);
   check(ObservatoryTelemetry.events.stream().noneMatch(e->e.startsWith("RECOVERY_BOUNDARY_UNAVAILABLE")),"runtime integration must not silently skip the native boundary");
-  System.out.println("SharedRecoveryRuntimeTest: 25 checks passed through real patched Task.tick; native world/pathfinding boundaries substituted");
+  Controller loop=new Controller();MiningJob mine=new MiningJob();Chain miningChain=new Chain(loop,mine);
+  for(var p:List.of(mine.a.pos,mine.b.pos,mine.c.pos))loop.world.blocks.put(p,"minecraft:iron_ore");
+  for(int i=0;i<2700&&!mine.stopped();i++)advance(loop,miningChain,1);
+  check(mine.stopped()&&SharedTargetRecovery.failure(mine)!=null,"unproductive native resource collection must terminate BLOCKED through the shared task gate");
+  check(mine.alternatives>0,"rejected A/B ore must select a genuinely different resource location");
+  check(SharedTargetRecovery.failure(mine).contains("No verified resource or world output"),"failure names missing evidence rather than calling target switches progress");
+  Controller alternative=new Controller();MiningJob rescued=new MiningJob();rescued.alternateSucceeds=true;Chain rescuedChain=new Chain(alternative,rescued);
+  for(var p:List.of(rescued.a.pos,rescued.b.pos,rescued.c.pos))alternative.world.blocks.put(p,"minecraft:iron_ore");
+  for(int i=0;i<2400&&!rescued.isFinished()&&!rescued.stopped();i++)advance(alternative,rescuedChain,1);
+  check(rescued.isFinished()&&rescued.alternatives>0&&SharedTargetRecovery.failure(rescued)==null,"successful alternate ore location can finish without false blocking");rescued.stop();
+  System.out.println("SharedRecoveryRuntimeTest: 29 checks passed through real patched Task.tick; native world/pathfinding boundaries substituted");
  }
 }

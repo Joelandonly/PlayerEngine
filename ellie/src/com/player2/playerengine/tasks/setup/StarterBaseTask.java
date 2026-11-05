@@ -21,6 +21,12 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
         int count(String resource) throws Exception;
         Task acquire(String resource) throws Exception;
         Task place(StarterBaseLayout.Placement placement) throws Exception;
+        // Test environments without a game surface preserve the legacy station-only fixture.
+        default SurfaceLightingPlan.Survey surveyLighting(List<StarterBaseLayout.Placement> plan,
+                Set<StarterBaseLayout.Pos> excluded) throws Exception {
+            return new SurfaceLightingPlan.Survey(1, 0, Optional.empty());
+        }
+        default void retainTorch(StarterBaseLayout.Placement placement) {}
     }
     private Environment environment;
     private final StarterBaseLayout.Pos origin;
@@ -32,6 +38,12 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     private Task active;
     private boolean acquiring;
     private int index, ticks, stageTicks;
+    private final List<StarterBaseLayout.Placement> installedTorches = new ArrayList<>();
+    private final Set<StarterBaseLayout.Pos> rejectedTorchPositions = new HashSet<>();
+    private Task lightingTask;
+    private StarterBaseLayout.Placement lightingTarget;
+    private boolean lightingAcquiring;
+    private int lightingTicks, lightingPlaced;
     private boolean done, failed;
     private String reason="Starter base not yet verified";
     public StarterBaseTask(StarterBaseLayout.Pos origin,String dimension) { this.origin=Objects.requireNonNull(origin); this.dimension=Objects.requireNonNull(dimension); }
@@ -85,7 +97,8 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
                 for (int i=0;i<plan.size();i++) if (!environment.matches(plan.get(i))||!environment.safe(plan.get(i))) {
                     index=i;return repair(plan.get(i));
                 }
-                done=true; reason="Starter base verified: crafting table, furnace, one chest and usable support";
+                Task lighting = tickSurfaceLighting();
+                if (lighting != null || !done && !failed) return lighting;
                 return null;
             }
             var target=plan.get(index);
@@ -109,6 +122,65 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
             return blocked("Starter base verification/task unavailable: "+error.getClass().getSimpleName()+detail);
         }
     }
+    private Task tickSurfaceLighting() throws Exception {
+        if (lightingTask != null) {
+            if (++lightingTicks > (lightingAcquiring ? 2400 : 600)) {
+                if (lightingAcquiring) return blocked("Unable to acquire a torch for outdoor base lighting");
+                rejectTorch("native placement timed out");
+            } else if (!lightingTask.isFinished() && !lightingTask.stopped()) {
+                return lightingTask;
+            } else if (lightingAcquiring) {
+                if (environment.count("torch") < 1)
+                    return blocked("Outdoor torch acquisition ended without a verified torch");
+                lightingTask = null;
+                lightingAcquiring = false;
+                lightingTicks = 0;
+            } else if (lightingTarget != null && environment.matches(lightingTarget)) {
+                installedTorches.add(lightingTarget);
+                environment.retainTorch(lightingTarget);
+                lightingPlaced++;
+                com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_OUTDOOR_TORCH",
+                    "Verified torch #" + lightingPlaced + " at " + lightingTarget.pos());
+                lightingTask = null;
+                lightingTarget = null;
+                lightingTicks = 0;
+            } else {
+                rejectTorch("native task stopped without placing torch");
+            }
+        }
+        var survey = environment.surveyLighting(plan, rejectedTorchPositions);
+        if (survey.eligible() <= 0)
+            return blocked("No eligible outdoor ground found near workshop; refusing to light underground caves");
+        if (survey.complete()) {
+            done = true;
+            reason = "Outdoor base verified: crafting table, furnace, chest and surface light coverage";
+            com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_SURFACE_LIT",
+                "Outdoor samples=" + survey.eligible() + ", torches placed=" + lightingPlaced + ", no underground targets");
+            return null;
+        }
+        if (lightingPlaced >= SurfaceLightingPlan.MAX_NEW_TORCHES)
+            return blocked("Outdoor lighting budget exhausted with " + survey.dark() + " dark surface samples");
+        if (survey.next().isEmpty())
+            return blocked("No safe surface torch position can cover " + survey.dark() + " dark samples");
+        lightingTarget = survey.next().get();
+        lightingAcquiring = environment.count("torch") <= 0;
+        lightingTask = lightingAcquiring ? environment.acquire("torch") : environment.place(lightingTarget);
+        if (lightingTask == null) return blocked("No native task for outdoor torch placement");
+        lightingTicks = 0;
+        lightingTask.controller = controller;
+        com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_SURFACE_LIGHTING",
+            "dark=" + survey.dark() + "/" + survey.eligible() + ", target=" + lightingTarget.pos()
+                + ", action=" + (lightingAcquiring ? "acquire torch" : "place torch"));
+        return lightingTask;
+    }
+    private void rejectTorch(String reason) {
+        if (lightingTarget != null) rejectedTorchPositions.add(lightingTarget.pos());
+        com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_SURFACE_LIGHT_REJECT",
+            String.valueOf(lightingTarget) + ": " + reason);
+        lightingTarget = null;
+        lightingTask = null;
+        lightingTicks = 0;
+    }
     private Task repair(StarterBaseLayout.Placement target)throws Exception {
         var jobs=environment.repairPlan(target);var pending=new ArrayList<StarterBaseLayout.Placement>();
         for(var job:jobs)if(!environment.prepared(job))pending.add(job);
@@ -125,7 +197,9 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     public void releaseProtection(){if(environment!=null)environment.releaseProtection();}
     public int verifiedPlacedCount(String resource) {
         if (environment==null || plan==null) return 0;
-        try { int count=0;for(var p:plan) if(p.resource().equals(resource)&&environment.matches(p))count++;return count; }
+        try { int count=0;for(var p:plan) if(p.resource().equals(resource)&&environment.matches(p))count++;
+            if (resource.equals("torch")) for(var p:installedTorches) if(environment.matches(p)) count++;
+            return count; }
         catch (Exception | LinkageError error) { return 0; }
     }
     public boolean isTerminal() { return done||failed; }
@@ -136,20 +210,25 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
                 reason="Base changed after verification: missing or obstructed "+p.resource()+" at "+p.pos();
                 return false;
             }
+            if (!environment.surveyLighting(plan, Set.of()).complete()) {
+                reason="Outdoor base lighting changed after verification";
+                return false;
+            }
             return true;
-        } catch(Exception|LinkageError error) { reason="Final base world verification unavailable"; return false; }
+        } catch(Exception|LinkageError error) { reason="Final base world/lighting verification unavailable"; return false; }
     }
     public String controlledReason() { return reason; }
     public boolean isFinished() { return isTerminal(); }
     protected boolean isEqual(Task other) { return this==other; }
     protected String toDebugString() {
         if(terrain!=null&&terrainIndex<terrain.size())return "Starter base site preparation "+terrainIndex+"/"+terrain.size();
+        if (index == 3 && !done) return "Outdoor lighting " + lightingPlaced + "/" + SurfaceLightingPlan.MAX_NEW_TORCHES;
         return "Starter base "+index+"/3: "+reason;
     }
     protected void onStop(Task next) { if(!done&&!failed)blocked("Starter base interrupted; recorded positions will be reverified on setup rerun"); }
     public boolean prepareForTransientResume(TaskSuspensionCause cause) {
         return !isTerminal() && (cause==TaskSuspensionCause.GESTURE_OVERLAY||cause==TaskSuspensionCause.HIGHER_PRIORITY_CHAIN);
     }
-    public void afterChildrenStopped() { active=null; }
+    public void afterChildrenStopped() { active=null; lightingTask=null; }
     public void onTransientResumeAbandoned() { blocked("Starter base resume abandoned"); }
 }

@@ -9,7 +9,7 @@ baseline = Path('baseline/playerengine-acquisition-safety.jar')
 if hashlib.sha256(baseline.read_bytes()).hexdigest() != manifest['baseline_sha256']:
     raise SystemExit('Baseline checksum mismatch; refusing to patch an unknown JAR')
 PY
-rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses
+rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses build/distance-testclasses build/game-hooks build/inventory-testclasses
 mkdir -p build/{classes,patches,tools,testclasses} dist
 javac --release 21 -cp baseline/playerengine-acquisition-safety.jar -d build/classes $(find src -name '*.java' | LC_ALL=C sort)
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchNativeCommands.java
@@ -20,8 +20,16 @@ javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-e
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchCraftApproach baseline/playerengine-acquisition-safety.jar build/patches
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchCraftTableRecovery.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchCraftTableRecovery baseline/playerengine-acquisition-safety.jar build/patches
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchAutonomy.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchAutonomy baseline/playerengine-acquisition-safety.jar build/patches
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchReliability.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchReliability baseline/playerengine-acquisition-safety.jar build/patches
+# Independent server heartbeat / real entity age / chunk ticket diagnostics (read-only).
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchDistanceDiagnostics.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchDistanceDiagnostics baseline/playerengine-acquisition-safety.jar build/patches
+# Repair the upstream false-full inventory check at its common source.
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchInventoryTracker.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchInventoryTracker baseline/playerengine-acquisition-safety.jar build/patches
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree.analysis=ALL-UNNAMED -d build/tools tools/VerifyASM.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree.analysis=ALL-UNNAMED -cp build/tools VerifyASM $(find build/classes build/patches -name '*.class' | LC_ALL=C sort)
 javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses $(find tests/fixtures -name '*.java' | LC_ALL=C sort) tests/SupervisorTest.java
@@ -37,6 +45,8 @@ javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acq
 java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar CommandDispatchTest build/reports/commands.tsv
 javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/StarterBaseTest.java tests/SetupCompletionTest.java tests/SetupProgressTest.java
 java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar StarterBaseTest
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/SurfaceLightingTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SurfaceLightingTest
 java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SetupCompletionTest
 java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SetupProgressTest
 javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/SetupSiteRegressionTest.java
@@ -55,10 +65,19 @@ java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safet
 javac --release 21 -cp build/testclasses:build/classes:build/patches:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/NativeCommandTextTest.java tests/NativePlannerTest.java tests/TargetRecoveryPolicyTest.java
 java -cp build/testclasses:build/classes:build/patches:baseline/playerengine-acquisition-safety.jar NativeCommandTextTest
 java -cp build/testclasses:build/classes:build/patches:baseline/playerengine-acquisition-safety.jar NativePlannerTest
+javac --release 21 -cp build/testclasses:build/classes:build/patches:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/AutonomyIntegrationTest.java
+java -cp build/testclasses:build/classes:build/patches:baseline/playerengine-acquisition-safety.jar AutonomyIntegrationTest
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifyAutonomy.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyAutonomy dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifyNativeCommands.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyNativeCommands dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
 
 mkdir -p build/native-testclasses
+# The packaged controller hook references real Minecraft classes; the native fixtures have
+# their own PlayerEngineController stub. Keep the verified packaged class untouched.
+mkdir -p build/game-hooks/com/player2/playerengine
+cp build/patches/com/player2/playerengine/PlayerEngineController.class build/game-hooks/com/player2/playerengine/PlayerEngineController.class
+rm build/patches/com/player2/playerengine/PlayerEngineController.class
 javac --release 21 -cp build/patches:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/native-testclasses $(find tests/nativefixtures -name '*.java' | LC_ALL=C sort) tests/NativeCommandExecutionTest.java tests/ProductionAndNpcUseTest.java
 java -cp build/native-testclasses:build/patches:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar NativeCommandExecutionTest
 java -cp build/native-testclasses:build/patches:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar ProductionAndNpcUseTest
@@ -79,3 +98,42 @@ java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-ex
 
 javac --release 21 -cp build/testclasses:build/classes:build/native-testclasses:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/SetupNativeAcquisitionTest.java
 java -cp build/testclasses:build/classes:build/native-testclasses:baseline/playerengine-acquisition-safety.jar SetupNativeAcquisitionTest
+
+# Deterministic village regression: real structure parser, footprint and protected source boundaries.
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/CompactVillageBlueprintTest.java
+java -cp build/native-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar CompactVillageBlueprintTest
+
+# Independent, read-only server-clock diagnostics regression and packaged hook audit.
+mkdir -p build/distance-testclasses
+javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/distance-testclasses tests/DistanceDiagnosticsTest.java
+java -cp build/distance-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar DistanceDiagnosticsTest
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifyDistanceDiagnostics.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyDistanceDiagnostics dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
+
+# Fresh inventory, agentic quote, early axe, and chunk watchdog regression.
+javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/distance-testclasses tests/InventorySpaceTest.java tests/ChunkTicketWatchdogTest.java
+java -cp build/distance-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar InventorySpaceTest
+java -cp build/distance-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar ChunkTicketWatchdogTest
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifyInventoryTracker.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyInventoryTracker dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
+
+# Alternating-target history regression.
+javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/distance-testclasses tests/TargetOscillationGuardTest.java
+java -cp build/distance-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar TargetOscillationGuardTest
+
+# Full setup orchestration, including workshop and light verification, with explicit game boundaries.
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/SetupChainTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SetupChainTest
+
+cp build/game-hooks/com/player2/playerengine/PlayerEngineController.class build/patches/com/player2/playerengine/PlayerEngineController.class
+python3 tests/verify_build_revision.py
+
+# Execute the packaged canonical inventory tracker, not merely its hook audit.
+mkdir -p build/inventory-testclasses
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/inventory-testclasses tests/PackagedInventorySlotTest.java
+java -cp build/inventory-testclasses:build/testclasses:build/native-testclasses:build/patches:build/classes:baseline/playerengine-acquisition-safety.jar PackagedInventorySlotTest
+
+# Retained historical bridge is tested separately and never added to packaged class outputs.
+mkdir -p build/legacy-testclasses
+javac --release 21 -d build/legacy-testclasses legacy-chatgpt/src/com/player2/playerengine/interpreter/LocalChatGPTBridge.java tests/BridgeConfigTest.java
+java -cp build/legacy-testclasses BridgeConfigTest
