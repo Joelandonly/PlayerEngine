@@ -8,6 +8,11 @@ import static com.player2.playerengine.nativecommands.NativeAccess.*;
 /** Shared setup-platform material policy: actual full cubes, not a cobblestone-only recipe. */
 public final class StructuralMaterials {
     private StructuralMaterials(){}
+    /** TaskCatalogue keys are bare vanilla names, while block/item identifiers may be namespaced. */
+    public static String catalogueName(String registryId){
+        Objects.requireNonNull(registryId,"registryId");
+        return registryId.startsWith("minecraft:")?registryId.substring("minecraft:".length()):registryId;
+    }
     public static boolean safe(String id,boolean full,boolean falling,boolean blockEntity){
         return full&&!falling&&!blockEntity&&!List.of("tnt","magma","campfire","cactus","fire","powder_snow","_ore","diamond","emerald","netherite","gold_block","iron_block","raw_iron_block","raw_gold_block","ancient_debris","respawn_anchor","note_block","coal_block","redstone_block","obsidian").stream().anyMatch(id::contains);
     }
@@ -26,7 +31,7 @@ public final class StructuralMaterials {
         Map<String,Integer> stock=new LinkedHashMap<>(carried(controller));
         Map<String,Integer> stored=StorageIntelligence.setupStock(controller);
         for(var item:stored.entrySet())try{
-            Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",item.getKey());
+            Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",catalogueName(item.getKey()));
             if(Array.getLength(matches)==1&&usable(controller,Array.get(matches,0),item.getKey()))stock.merge(item.getKey(),item.getValue(),Integer::sum);
         }catch(Exception ignored){}
         return stock;

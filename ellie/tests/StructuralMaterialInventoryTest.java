@@ -15,6 +15,10 @@ public final class StructuralMaterialInventoryTest {
     static void check(boolean ok,String reason){if(!ok)throw new AssertionError(reason);}
     public static void main(String[] args)throws Exception{
         Controller c=new Controller();
+        check(StructuralMaterials.catalogueName("minecraft:dirt").equals("dirt"),"soil fallback must resolve against actual TaskCatalogue key");
+        check(StructuralMaterials.catalogueName("minecraft:cobblestone").equals("cobblestone"),"rock fallback must resolve against catalogue");
+        check(StructuralMaterials.catalogueName("dirt").equals("dirt"),"bare catalogue keys stay unchanged");
+        check(StructuralMaterials.catalogueName("othermod:stone").equals("othermod:stone"),"do not silently remove non-vanilla namespaces");
         c.inv.main.set(0,new Stack(new Item("minecraft:dirt",new Block(new State(true,false))),16));
         c.inv.main.set(1,new Stack(new Item("minecraft:cobblestone",new Block(new State(true,false))),8));
         c.inv.main.set(2,new Stack(new Item("minecraft:red_terracotta",new Block(new State(true,false))),3));
@@ -30,6 +34,6 @@ public final class StructuralMaterialInventoryTest {
         check(!stock.containsKey("minecraft:sand")&&!stock.containsKey("minecraft:chest")&&!stock.containsKey("minecraft:torch")&&!stock.containsKey("minecraft:diamond_block"),"actual falling/type/shape/entity/utility exclusions applied");
         c.inv.main.set(0,new Stack(new Sword(),0));
         check(StructuralMaterials.preferred(StructuralMaterials.carried(c),"minecraft:dirt").equals("minecraft:cobblestone"),"selection refreshes actual inventory rather than stale tracker counts");
-        System.out.println("StructuralMaterialInventoryTest: 4 real-adapter checks passed (BlockItem/world boundaries substituted)");
+        System.out.println("StructuralMaterialInventoryTest: 8 checks passed (BlockItem/world boundaries substituted)");
     }
 }
