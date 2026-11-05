@@ -163,3 +163,7 @@ java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safet
 
 javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/WorkshopOutputHandoffTest.java
 java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar WorkshopOutputHandoffTest
+
+# New owner-facing basic setup, including batched material bills and native HOME workstation contract.
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/BasicSetupTaskTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar BasicSetupTaskTest
