@@ -8,22 +8,22 @@ import com.player2.playerengine.commands.base.Command;
 import com.player2.playerengine.commands.base.CommandException;
 import com.player2.playerengine.executor.RollbackPolicy;
 import com.player2.playerengine.tasks.base.Task;
-import com.player2.playerengine.tasks.setup.EllieSetupTask;
+import com.player2.playerengine.tasks.setup.BasicSetupTask;
 
 public final class EllieSetupCommand
 extends Command {
     public EllieSetupCommand() {
-        super("setup", "Prepare a persistent chest-anchored survival base: tools, enclosed shelter, accessible workshop, shield/iron equipment, food and fuel reserves, and 32 unplaced torches. Reuse actual inventory and verified base storage, take cover when needed, and report blocked stages honestly. No buckets, armor, diamonds, farms or automatic lighting.", new ArgBase[0]);
+        super("setup", "Gather wood and stone in batches, make wooden and stone tools, craft 64 torches, and place a furnace and chest beside a verified crafting bench registered as HOME. No shelter, iron kit, lighting placement, or unrelated survival goals.", new ArgBase[0]);
     }
 
     @Override
     protected void call(PlayerEngineController playerEngineController, ArgParser argParser) throws CommandException {
-        EllieSetupTask ellieSetupTask = new EllieSetupTask();
+        BasicSetupTask ellieSetupTask = new BasicSetupTask();
         playerEngineController.runUserTaskTracked("ellie_starter_setup", "setup", (Task)ellieSetupTask, RollbackPolicy.NONE, () -> {
-            String string = ellieSetupTask.outcomeForCommand();
-            if (ellieSetupTask.isSuccessfullyCompleted()) {
+            String string = ellieSetupTask.controlledReason();
+            if (ellieSetupTask.isSuccessful()) {
                 this.finishWithNote("[info-result]" + string);
-            } else if (ellieSetupTask.isBlocked()) {
+            } else if (ellieSetupTask.isTerminal()) {
                 this.finishWithError(string);
             } else {
                 this.finishWithNote(string);
