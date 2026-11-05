@@ -28,8 +28,11 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
             return new SurfaceLightingPlan.Survey(1, 0, Optional.empty());
         }
         default void retainTorch(StarterBaseLayout.Placement placement) {}
+        /** Persist HOME only after the table exists in the world. */
+        default void rememberHome(StarterBaseLayout.Placement bench) throws Exception {}
     }
     private Environment environment;
+    private final int stationLimit;
     private final StarterBaseLayout.Pos origin;
     private final String dimension;
     private List<StarterBaseLayout.Placement> plan;
@@ -43,8 +46,13 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     private int index, ticks, stageTicks, outputWaitTicks;
     private boolean done, failed;
     private String reason="Starter base not yet verified";
-    public StarterBaseTask(StarterBaseLayout.Pos origin,String dimension) { this.origin=Objects.requireNonNull(origin); this.dimension=Objects.requireNonNull(dimension); }
-    public StarterBaseTask(Environment environment) { this.environment=Objects.requireNonNull(environment); this.origin=null; this.dimension=null; }
+    public StarterBaseTask(StarterBaseLayout.Pos origin,String dimension) { this(origin,dimension,3); }
+    public StarterBaseTask(StarterBaseLayout.Pos origin,String dimension,int stations) {
+        if(stations!=1&&stations!=3)throw new IllegalArgumentException("Workshop stage must be 1 or 3 stations");
+        this.stationLimit=stations;
+        this.origin=Objects.requireNonNull(origin);this.dimension=Objects.requireNonNull(dimension);
+    }
+    public StarterBaseTask(Environment environment) { this.environment=Objects.requireNonNull(environment); this.origin=null; this.dimension=null;this.stationLimit=3; }
     protected void onStart() {
         if (environment==null) environment=new StarterBaseWorld(controller,origin,dimension);
     }
@@ -97,13 +105,15 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
                 reason="Repairing changed prepared layer at "+terrain.get(i).pos();
                 return null;
             }
-            while(index<plan.size() && environment.matches(plan.get(index))) { index++; active=null; stageTicks=0; }
-            if (index==plan.size()) {
-                for (int i=0;i<plan.size();i++) if (!environment.matches(plan.get(i))||!environment.safe(plan.get(i))) {
+            while(index<stationLimit && environment.matches(plan.get(index))) { index++; active=null; stageTicks=0; }
+            // The first verified table becomes the permanent setup HOME, before tools.
+            if(index>0 && environment.matches(plan.getFirst())) environment.rememberHome(plan.getFirst());
+            if (index==stationLimit) {
+                for (int i=0;i<stationLimit;i++) if (!environment.matches(plan.get(i))||!environment.safe(plan.get(i))) {
                     index=i;return repair(plan.get(i));
                 }
                 done=true;
-                reason="Crafting table, furnace and chest physically verified; torch placement is not part of setup";
+                reason=stationLimit==1?"Home crafting bench physically verified":"Home bench, furnace and chest physically verified";
                 return null;
             }
             var target=plan.get(index);
@@ -160,10 +170,11 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     public boolean isSuccessful() {
         if (!done||failed) return false;
         try {
-            for(var p:plan) if(!environment.matches(p)||!environment.safe(p)) {
+            for(int i=0;i<stationLimit;i++) {var p=plan.get(i);if(!environment.matches(p)||!environment.safe(p)) {
                 reason="Base changed after verification: missing or obstructed "+p.resource()+" at "+p.pos();
                 return false;
-            }
+            }}
+            if(!environment.matches(plan.getFirst()))return false;
             return true;
         } catch(Exception|LinkageError error) { reason="Final base world verification unavailable"; return false; }
     }
@@ -172,7 +183,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     protected boolean isEqual(Task other) { return this==other; }
     protected String toDebugString() {
         if(terrain!=null&&terrainIndex<terrain.size())return "Starter base site preparation "+terrainIndex+"/"+terrain.size();
-        return "Starter base "+index+"/3: "+reason;
+        return "Starter base "+index+"/"+stationLimit+": "+reason;
     }
     protected void onStop(Task next) { if(!done&&!failed)blocked("Starter base interrupted; recorded positions will be reverified on setup rerun"); }
     public boolean prepareForTransientResume(TaskSuspensionCause cause) {
