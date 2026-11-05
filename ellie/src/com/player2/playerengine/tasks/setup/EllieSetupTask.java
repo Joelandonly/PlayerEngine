@@ -22,7 +22,7 @@ public final class EllieSetupTask
 extends Task
 implements TransientlyResumableTask,
 TrackedTaskOutcomeProvider {
-    public static final String ELLIE_BUILD_REVISION = "20261105-base-catalogue-dirt-fix-v8";
+    public static final String ELLIE_BUILD_REVISION = "20261105-basic-batched-home-v9";
     // No optional items in setup. Every entry must have real verified output.
     // Diamonds, iron armor, spare iron tools and empty buckets belong to later explicit goals.
     private static final Step[] PLAN = new Step[]{
