@@ -1,0 +1,97 @@
+{
+  "reviewed_revision": "5ff6cbde8c9a512e02453ff8223ef78e0eed3ec7",
+  "baseline_sha256": "8ae4c3da375b45ad60f94ddbd4d4c31328400cce0c4a720b1002dd8dee143d27",
+  "current_run_events": [
+    {
+      "time": "2026-11-05T21:09:57.356702900Z",
+      "type": "SETUP_START",
+      "detail": "Ellie build=20261105-setup-output-handoff-v7; chest-anchored survival setup: assess food/health/daylight, verify shelter and workshop, required kit, food/fuel reserves and equipment; lighting remains manual"
+    },
+    {
+      "time": "2026-11-05T21:10:17.323084100Z",
+      "type": "CRAFT_TABLE_CHOICE",
+      "detail": "place_or_craft_local @[70, 121, 47]"
+    },
+    {
+      "time": "2026-11-05T21:10:27.303810500Z",
+      "type": "SETUP_STEP_DONE",
+      "detail": "bootstrap: wooden_pickaxe 1/1 (acquired or replenished)"
+    },
+    {
+      "time": "2026-11-05T21:10:38.307946700Z",
+      "type": "SETUP_STEP_DONE",
+      "detail": "bootstrap: stone_axe 1/1 (acquired or replenished)"
+    },
+    {
+      "time": "2026-11-05T21:10:51.821240500Z",
+      "type": "CRAFT_TABLE_CHOICE",
+      "detail": "local_scan @[72, 121, 47]"
+    },
+    {
+      "time": "2026-11-05T21:10:54.498066Z",
+      "type": "SETUP_STEP_DONE",
+      "detail": "bootstrap: stone_pickaxe 2/2 (acquired or replenished)"
+    },
+    {
+      "time": "2026-11-05T21:11:04.843324800Z",
+      "type": "SETUP_STEP_DONE",
+      "detail": "bootstrap: stone_shovel 1/1 (acquired or replenished)"
+    },
+    {
+      "time": "2026-11-05T21:11:05.343849400Z",
+      "type": "SETUP_OUTPUT_SETTLE",
+      "detail": "Awaiting actual crafting_table output at Pos[x=64, y=131, z=37] (1/40 ticks)"
+    },
+    {
+      "time": "2026-11-05T21:11:07.392882200Z",
+      "type": "SETUP_BLOCKED",
+      "detail": "base: Native acquisition ended without crafting_table after 40 ticks awaiting actual inventory output at Pos[x=64, y=131, z=37]"
+    },
+    {
+      "time": "2026-11-05T21:11:07.451044800Z",
+      "type": "CORE_GOAL_TERMINAL",
+      "detail": "generation=1 status=FAILED detail=[RUNNING -> FAILED] FATAL:Setup blocked at base: Native acquisition ended without crafting_table after 40 ticks awaiting actual inventory output at Pos[x=64, y=131, z=37]"
+    },
+    {
+      "time": "2026-11-05T21:11:23.646890900Z",
+      "type": "SETUP_START",
+      "detail": "Ellie build=20261105-setup-output-handoff-v7; chest-anchored survival setup: assess food/health/daylight, verify shelter and workshop, required kit, food/fuel reserves and equipment; lighting remains manual"
+    },
+    {
+      "time": "2026-11-05T21:11:23.653940600Z",
+      "type": "SETUP_STEP_DONE",
+      "detail": "bootstrap: wooden_pickaxe 1/1 (already owned)"
+    },
+    {
+      "time": "2026-11-05T21:11:23.680198500Z",
+      "type": "SETUP_STEP_DONE",
+      "detail": "bootstrap: stone_axe 1/1 (already owned)"
+    },
+    {
+      "time": "2026-11-05T21:11:23.705966600Z",
+      "type": "SETUP_STEP_DONE",
+      "detail": "bootstrap: stone_pickaxe 2/2 (already owned)"
+    },
+    {
+      "time": "2026-11-05T21:11:23.743897200Z",
+      "type": "SETUP_STEP_DONE",
+      "detail": "bootstrap: stone_shovel 1/1 (already owned)"
+    },
+    {
+      "time": "2026-11-05T21:11:24.793880700Z",
+      "type": "SETUP_OUTPUT_SETTLE",
+      "detail": "Awaiting actual crafting_table output at Pos[x=64, y=131, z=37] (1/40 ticks)"
+    },
+    {
+      "time": "2026-11-05T21:11:26.843928300Z",
+      "type": "SETUP_BLOCKED",
+      "detail": "base: Native acquisition ended without crafting_table after 40 ticks awaiting actual inventory output at Pos[x=64, y=131, z=37]"
+    },
+    {
+      "time": "2026-11-05T21:11:26.899037600Z",
+      "type": "CORE_GOAL_TERMINAL",
+      "detail": "generation=2 status=FAILED detail=[RUNNING -> FAILED] FATAL:Setup blocked at base: Native acquisition ended without crafting_table after 40 ticks awaiting actual inventory output at Pos[x=64, y=131, z=37]"
+    }
+  ],
+  "scope": "Static source and pinned bytecode audit plus supplied live telemetry; no live world execution; no new runtime patch."
+}
