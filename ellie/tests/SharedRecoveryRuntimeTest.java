@@ -93,6 +93,30 @@ public final class SharedRecoveryRuntimeTest {
   for(var p:List.of(rescued.a.pos,rescued.b.pos,rescued.c.pos))alternative.world.blocks.put(p,"minecraft:iron_ore");
   for(int i=0;i<2400&&!rescued.isFinished()&&!rescued.stopped();i++)advance(alternative,rescuedChain,1);
   check(rescued.isFinished()&&rescued.alternatives>0&&SharedTargetRecovery.failure(rescued)==null,"successful alternate ore location can finish without false blocking");rescued.stop();
-  System.out.println("SharedRecoveryRuntimeTest: 29 checks passed through real patched Task.tick; native world/pathfinding boundaries substituted");
+  // Run the real patched Task.tick / shared recovery gate against the *new*
+  // owner-facing setup root, not just a standalone native ResourceTask.
+  Controller basicController=new Controller();
+  var basic=new com.player2.playerengine.tasks.setup.BasicSetupTask(
+    new com.player2.playerengine.tasks.setup.BasicSetupTask.Environment(){
+      public int inventoryCount(String resource){return 0;}
+      public Task acquire(String resource,int missing){return new Probe(null);}
+      public Task placeWorkshop(int stations){return new Probe(null);}
+      public boolean workshopVerified(int stations){return false;}
+      public boolean homeVerified(){return false;}
+      public void release(){}
+    });
+  basic.controller=basicController;
+  Chain basicChain=new Chain(basicController,basic);
+  for(int i=0;i<2500&&!basic.isTerminal();i++)advance(basicController,basicChain,1);
+  check(basic.isTerminal()&&!basic.isSuccessful(),
+        "unproductive BasicSetupTask must terminate through job-wide shared recovery");
+  check(SharedTargetRecovery.failure(basic)!=null
+        &&basic.controlledReason().contains("No verified resource or world output"),
+        "BasicSetupTask must retain the shared watchdog's concrete BLOCKED reason");
+  check(basic.controlledReason().contains("Basic setup BLOCKED"),
+        "shared recovery cannot bypass the setup terminal receipt");
+  check(ObservatoryTelemetry.events.stream().anyMatch(e->e.startsWith("TASK_BLOCKED:")),
+        "new setup root must emit shared task-blocked telemetry");
+  System.out.println("SharedRecoveryRuntimeTest: 33 checks passed through real patched Task.tick; native world/pathfinding boundaries substituted");
  }
 }
