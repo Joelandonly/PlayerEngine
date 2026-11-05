@@ -1,6 +1,6 @@
 # Chest-anchored survival setup
 
-Build ID: `20261105-survival-shelter-protection-v6`.
+Build ID: `20261105-setup-output-handoff-v7`.
 Development baseline: `b8c3dbb`, the tools-first/no-torch-placement Ellie revision,
 which includes the owner's Setup11 overlay on `codex/shared-recovery-crash`.
 This is still a checksum-pinned PlayerEngine 1.4.0 binary overlay, not Goodbird
@@ -130,3 +130,10 @@ Compact V3 shelter checkpoints fit the actual journal's 360-character limit;
 truncated V2 records retain validated coordinates and reconstruct materials
 and access from observed world state. Five tests exercise the real journal
 writer and reader, including the truncation and restart failure.
+
+## Output handoff (v7)
+
+Native workshop acquisition completion waits at most 40 ticks for observed
+main-slot output before BLOCKED. Shelter plans retain interior/approach air
+obligations. A partially successful build may repair its remaining cells once;
+no-gain completion blocks immediately, with the actual mismatched cell logged.

@@ -1,6 +1,6 @@
 # Ellie: chest-anchored survival setup
 
-Current build: `20261105-survival-shelter-protection-v6`. **Live Minecraft survival completion remains unverified.**
+Current build: `20261105-setup-output-handoff-v7`. **Live Minecraft survival completion remains unverified.**
 See [survival setup behavior and validation](../docs/ELLIE_SURVIVAL_SETUP.md).
 
 `setup` now assesses hunger, health, daylight and nearby hostiles; returns to the

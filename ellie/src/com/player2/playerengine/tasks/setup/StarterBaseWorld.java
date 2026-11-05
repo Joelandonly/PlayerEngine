@@ -208,7 +208,15 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     public int count(String resource) throws Exception {
         if(resource.equals("cobblestone"))return com.player2.playerengine.reliability.StructuralMaterials.carried(controller).values().stream().mapToInt(Integer::intValue).sum();
         Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",resource);
-        return ((Number)call(controller.getItemStorage(),"getItemCountInventoryOnly",matches)).intValue();
+        List<?> main=(List<?>)com.player2.playerengine.nativecommands.NativeAccess.get(call(controller,"getInventory"),"main");
+        if(main.size()!=36)throw new IllegalStateException("Expected 36 actual workshop inventory slots");
+        int total=0;
+        for(Object stack:main){
+            if(Boolean.TRUE.equals(call(stack,"method_7960")))continue;
+            Object item=call(stack,"method_7909");
+            for(int i=0;i<Array.getLength(matches);i++)if(item.equals(Array.get(matches,i))){total+=((Number)call(stack,"method_7947")).intValue();break;}
+        }
+        return total;
     }
     public Task acquire(String resource) throws Exception {
         if(resource.equals("cobblestone"))resource=com.player2.playerengine.reliability.StructuralMaterials.preferred(com.player2.playerengine.reliability.StructuralMaterials.available(controller),com.player2.playerengine.reliability.StructuralMaterials.fallback(controller));

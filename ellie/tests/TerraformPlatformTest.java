@@ -49,7 +49,7 @@ public final class TerraformPlatformTest {
         String mixed=SetupShelter.code(PLAN,materials(flat,flatPath),flatPath,flat);
         check(mixed.contains("minecraft:dirt")&&mixed.contains("minecraft:cobblestone")&&mixed.contains("minecraft:stone"),"mixed safe carried/stored blocks are used before collecting a single prescribed material");
         check(commands(mixed).keySet().stream().noneMatch(p->p.y()==64),"existing natural floor reused, not turned into a stone/silk-touch acquisition request");
-        connected(mixed,flat);flat.apply(mixed);check(SetupShelter.verified(PLAN,flat)&&SetupShelter.accessVerified(flatPath,flat),"mixed-material enclosure verified by actual resulting voxel geometry");scenarios++;
+        connected(mixed,flat);check(commands(mixed).get(PLAN.center()).equals("air"),"already-clear interior remains an explicit blueprint obligation so temporary scaffolds cannot be ignored");flat.apply(mixed);check(SetupShelter.verified(PLAN,flat)&&SetupShelter.accessVerified(flatPath,flat),"mixed-material enclosure verified by actual resulting voxel geometry");scenarios++;
         World hill=new World((x,z)->x>=3?66:64);
         check(SetupShelter.buildable(PLAN,hill),"natural uneven hillside is preparable instead of rejected for lacking a flat 5x5 pad");
         var hillPath=SetupShelter.access(PLAN,hill).orElseThrow();String carve=SetupShelter.code(PLAN,materials(hill,hillPath),hillPath,hill);

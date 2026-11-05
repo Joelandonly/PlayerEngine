@@ -92,6 +92,16 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
     public boolean baseNearby()throws Exception{return baseDistance()<=24&&loaded(chest);}
     public double baseDistance()throws Exception{return Math.sqrt(squared(coordinates(call(controller,"getPlayer")),new double[]{chest.x()+.5,chest.y(),chest.z()+.5}));}
     public boolean shelterVerified()throws Exception{return shelter!=null&&SetupShelter.verified(shelter,this)&&(shelterAccess.isEmpty()||SetupShelter.accessVerified(shelterAccess,this));}
+    public String shelterFailure()throws Exception {
+        if(shelter==null)return "No recorded shelter plan";
+        for(var cell:SetupShelter.cells(shelter)){
+            boolean valid=cell.resource().equals("air")?open(cell.pos()):cell.resource().endsWith("_door")?door(cell.pos()):solid(cell.pos());
+            if(!valid)return "Shelter mismatch at "+key(cell.pos())+" expected="+cell.resource()+" actual="+(loaded(cell.pos())?String.valueOf(state(cell.pos())):"unloaded");
+        }
+        for(Pos p:SetupShelter.accessBlocks(shelterAccess))if(!solid(p))return "Entrance support missing at "+key(p);
+        for(Pos p:shelterAccess)for(int y=1;y<=2;y++)if(!open(p.offset(0,y,0)))return "Entrance clearance blocked at "+key(p.offset(0,y,0))+" actual="+state(p.offset(0,y,0));
+        return "Native builder did not report successful completion despite verified geometry";
+    }
     public boolean inside()throws Exception {
         if(!shelterVerified())return false;
         double[] at=coordinates(call(controller,"getPlayer"));Pos p=shelter.floor();

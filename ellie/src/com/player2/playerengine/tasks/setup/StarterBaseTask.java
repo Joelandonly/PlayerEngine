@@ -40,7 +40,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     private boolean acquiring;
     private Task access;
     private int accessTicks;
-    private int index, ticks, stageTicks;
+    private int index, ticks, stageTicks, outputWaitTicks;
     private boolean done, failed;
     private String reason="Starter base not yet verified";
     public StarterBaseTask(StarterBaseLayout.Pos origin,String dimension) { this.origin=Objects.requireNonNull(origin); this.dimension=Objects.requireNonNull(dimension); }
@@ -113,10 +113,19 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
             if (active!=null) {
                 if (++stageTicks > (acquiring ? 2400 : 600)) return blocked("No verified base output within the bounded native task window at "+target.pos());
                 if (!active.isFinished() && !active.stopped()) return active;
-                if (acquiring && environment.count(target.resource())==0) return blocked("Native acquisition ended without "+target.resource());
+                if (acquiring && environment.count(target.resource())==0) {
+                    // Native crafting can finish before the inventory output arrives.
+                    // Wait for observed output; never turn a callback into ownership.
+                    if(++outputWaitTicks<=40){
+                        reason="Awaiting actual "+target.resource()+" output at "+target.pos()+" ("+outputWaitTicks+"/40 ticks)";
+                        if(outputWaitTicks==1)com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_OUTPUT_SETTLE",reason);
+                        return null;
+                    }
+                    return blocked("Native acquisition ended without "+target.resource()+" after 40 ticks awaiting actual inventory output at "+target.pos());
+                }
                 if (!acquiring && !environment.matches(target)) return blocked("Native placement stopped without verifying "+target.resource()+" at "+target.pos());
                 active=null;
-                stageTicks=0;
+                stageTicks=0;outputWaitTicks=0;
             }
             acquiring=environment.count(target.resource())==0;
             active=Objects.requireNonNull(acquiring?environment.acquire(target.resource()):environment.place(target),"Missing native base task");

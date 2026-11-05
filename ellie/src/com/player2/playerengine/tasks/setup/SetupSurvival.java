@@ -20,6 +20,7 @@ public final class SetupSurvival implements AutoCloseable {
         boolean inside() throws Exception;
         boolean doorClosed() throws Exception;
         int shelterProgress() throws Exception;
+        default String shelterFailure()throws Exception{return "enclosure or entrance is incomplete";}
         Task task(Action action,int target,int strategy) throws Exception;
         String location();
         default void close() {}
@@ -67,6 +68,14 @@ public final class SetupSurvival implements AutoCloseable {
                 else if(idle>2400||ticks>(action==Action.SHELTER?12000:4800))failure="bounded work budget exhausted without verified output";
                 if(failure!=null) {
                     Action failed=action;int goal=target;active=null;
+                    if(failed==Action.SHELTER){
+                        String missing=world.shelterFailure();
+                        if(attempts.getOrDefault(failed,0)<2&&progress>startProgress){
+                            event("SETUP_SHELTER_REPAIR","Builder ended with verified cell gain; repair remaining world mismatch once: "+missing);
+                            return start(failed,goal,s);
+                        }
+                        failure+="; "+missing;
+                    }
                     // Only food and fuel have an existing, genuinely different second strategy.
                     if(failed==Action.EAT&&progress>startProgress&&s.food()<1)return start(Action.FOOD,12,s);
                     if(failed==Action.EAT&&progress>startProgress&&attempts.getOrDefault(failed,0)<8){

@@ -1,3 +1,25 @@
+# Setup output handoff v7
+
+Build ID: `20261105-setup-output-handoff-v7`. Gameplay UNVERIFIED.
+
+Addresses the supplied v6 failures at workshop crafting-table acquisition and
+night-time shelter final verification. Workshop material counts read actual
+36 main slots. A native acquisition completion without observed output gets
+one bounded 40-tick settling window; no repeated acquisition or false success.
+The three placed stations and required kit remain mandatory.
+
+Shelter blueprints explicitly retain all interior/entrance air obligations,
+including cells that are clear before construction but can receive temporary
+scaffolding during building. A builder that ends with verified cell gain but
+incomplete geometry gets one remaining-cell repair; no-gain/repeated failures
+block with the first mismatched cell and observed state. Nested mining guards
+and compact checkpoint migration are retained. Torch placement remains off.
+
+Adds delayed-output/false-completion handoff tests, an explicit interior-air
+blueprint assertion and a partial-shelter repair full-chain scenario. Full
+regressions substitute game boundaries; live crafting/placement/repair and
+complete survival setup remain unverified. No chat/follow/hunting fix included.
+
 # Survival shelter protection v6
 
 Build ID: `20261105-survival-shelter-protection-v6`. Gameplay UNVERIFIED.

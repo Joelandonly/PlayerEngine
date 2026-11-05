@@ -106,14 +106,14 @@ public final class SetupShelter {
         StringBuilder code=new StringBuilder();Set<Pos> written=new HashSet<>();
         for(var cell:cells(plan)){
             String block;
-            if(cell.resource().equals("air")){if(probe.open(cell.pos()))continue;block="air";}
+            if(cell.resource().equals("air")){block="air";}
             else if(cell.resource().endsWith("_door")){if(probe.door(cell.pos()))continue;block=cell.resource();}
             else{if(probe.solid(cell.pos()))continue;block=assigned.get(cell.pos());}
             emit(code,cell.pos(),block);written.add(cell.pos());
         }
         for(Pos p:accessBlocks(access))if(!probe.solid(p)&&written.add(p))emit(code,p,assigned.get(p));
         for(Pos p:access){
-            for(int y=1;y<=2;y++)if(!probe.open(p.offset(0,y,0))&&written.add(p.offset(0,y,0)))emit(code,p.offset(0,y,0),"air");
+            for(int y=1;y<=2;y++)if(written.add(p.offset(0,y,0)))emit(code,p.offset(0,y,0),"air");
         }
         return code.toString();
     }

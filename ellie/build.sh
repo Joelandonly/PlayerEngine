@@ -160,3 +160,6 @@ java -cp build/material-testclasses:build/native-testclasses:build/testclasses:b
 
 javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/ShelterCheckpointTest.java
 java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar com.player2.playerengine.tasks.setup.ShelterCheckpointTest
+
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/WorkshopOutputHandoffTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar WorkshopOutputHandoffTest

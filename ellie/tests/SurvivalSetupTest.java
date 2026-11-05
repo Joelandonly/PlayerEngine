@@ -26,6 +26,7 @@ public final class SurvivalSetupTest {
     static final class Environment implements SetupSurvival.Environment {
         int hunger=20,food,fuel;float health=20;
         boolean night,threat,shelter,inside,closed,equipped,bed,nearby=true;
+        int shelterCells;boolean partialShelter;
         boolean noFood,noFuel,falseShelter,falseEquip,unsafeSite,unreachableEntrance;
         StarterBaseTask anchoredBase;boolean workshopBeforeShelter;
         int anchors,closes;String location="saved chest 14,64,10";
@@ -36,7 +37,7 @@ public final class SurvivalSetupTest {
         public boolean shelterVerified(){return shelter;}
         public boolean inside(){return inside&&shelter;}
         public boolean doorClosed(){return closed&&shelter;}
-        public int shelterProgress(){return shelter?125:0;}
+        public int shelterProgress(){return shelter?125:shelterCells;}
         public boolean baseNearby(){return nearby;}
         public double baseDistance(){return nearby?0:80;}
         public String location(){return location;}
@@ -49,7 +50,7 @@ public final class SurvivalSetupTest {
                 case RETURN -> nearby=true;
                 case FOOD -> {if(!noFood)food=target;}
                 case EAT -> {if(food>0){food=Math.max(0,food-5);hunger=Math.min(20,hunger+5);}}
-                case SHELTER -> {if(!falseShelter)shelter=true;}
+                case SHELTER -> {if(partialShelter&&strategy==1)shelterCells=60;else if(!falseShelter)shelter=true;}
                 case ENTER -> {if(!unreachableEntrance)inside=true;}
                 case CLOSE_DOOR -> closed=true;
                 case FUEL -> {if(!noFuel)fuel=target;}
@@ -88,6 +89,8 @@ public final class SurvivalSetupTest {
         check(fresh.survival.food>=32&&fresh.survival.fuel>=8&&fresh.survival.equipped,"food/fuel/equipment are actual final predicates");
         check(fresh.requests.equals(Arrays.stream(EllieSetupTask.plannedSteps()).map(s->s.resource).toList())&&fresh.world.torchPlaced==0,"required kit preserved, no excluded acquisitions or torch placement");
         check(fresh.setup.outcomeForCommand().contains("lighting remains manual"),"completion must not claim spawn-proof lighting");scenarios++;
+        Run repair=new Run();repair.survival.partialShelter=true;repair.run();
+        check(repair.setup.isSuccessful()&&Collections.frequency(repair.survival.actions,SetupSurvival.Action.SHELTER)==2,"partial native build with verified gain gets one remaining-cell repair, not immediate failure");scenarios++;
         Run remote=new Run();remote.survival.nearby=false;remote.run();
         check(remote.setup.isSuccessful()&&remote.survival.actions.getFirst()==SetupSurvival.Action.RETURN,"rerun away from base returns to saved chest instead of relocating");scenarios++;
         Run hungry=new Run();hungry.survival.hunger=3;hungry.run();
