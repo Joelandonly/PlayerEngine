@@ -1,12 +1,10 @@
 package com.player2.playerengine.tasks.setup;
 
 import com.player2.playerengine.PlayerEngineController;
-import com.player2.playerengine.TaskCatalogue;
 import com.player2.playerengine.tasks.base.*;
-import com.player2.playerengine.automaton.api.cache.IWaypoint;
-import com.player2.playerengine.automaton.api.cache.IWaypointCollection;
-import com.player2.playerengine.automaton.api.utils.BetterBlockPos;
 import java.util.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Method;
 
 /**
  * The owner-facing `setup` command. One material bill, one home bench, and bounded
@@ -64,11 +62,26 @@ public final class BasicSetupTask extends Task
             origin=StarterBaseWorld.origin(controller);
             dimension=StarterBaseWorld.dimension(controller);
         }
-        public int inventoryCount(String name) {
-            var matches=TaskCatalogue.getItemMatches(name);
-            if(matches==null||matches.length==0)
+        private static Method itemMatchesMethod;
+        private Method inventoryCountMethod;
+        public int inventoryCount(String name) throws Exception {
+            if(itemMatchesMethod==null) itemMatchesMethod=Class.forName(
+                    "com.player2.playerengine.TaskCatalogue").getMethod("getItemMatches",String.class);
+            Object matches=itemMatchesMethod.invoke(null,name);
+            if(matches==null || Array.getLength(matches)==0)
                 throw new IllegalStateException("Unsupported setup material "+name);
-            return controller.getItemStorage().getItemCountInventoryOnly(matches);
+            Object storage=controller.getItemStorage();
+            if(inventoryCountMethod==null || !inventoryCountMethod.getDeclaringClass().isInstance(storage)) {
+                for(Method method:storage.getClass().getMethods()) {
+                    if(method.getName().equals("getItemCountInventoryOnly") &&
+                            method.getParameterCount()==1 &&
+                            method.getParameterTypes()[0].isAssignableFrom(matches.getClass())) {
+                        inventoryCountMethod=method;break;
+                    }
+                }
+            }
+            if(inventoryCountMethod==null)throw new NoSuchMethodException("getItemCountInventoryOnly");
+            return ((Number)inventoryCountMethod.invoke(storage,matches)).intValue();
         }
         public Task acquire(String name,int missing) throws Exception {
             return EllieSetupTask.nativeAcquisition(name,missing);
@@ -84,12 +97,19 @@ public final class BasicSetupTask extends Task
             var plan=workshop.layout();
             if(plan.isEmpty()) return false;
             var p=plan.getFirst().pos();
-            IWaypointCollection waypoints=controller.getBaritone().getWorldProvider()
+            Object waypoints=controller.getBaritone().getWorldProvider()
                     .getCurrentWorld().getWaypoints();
-            for(IWaypoint waypoint:waypoints.getByTag(IWaypoint.Tag.HOME)) {
-                if(waypoint.getName().equals("Ellie Setup Home") &&
-                        waypoint.getLocation().equals(new BetterBlockPos(p.x(),p.y(),p.z())))
-                    return true;
+            Class<?> tag=Class.forName("com.player2.playerengine.automaton.api.cache.IWaypoint$Tag");
+            @SuppressWarnings({"rawtypes","unchecked"})
+            Object home=Enum.valueOf((Class)tag.asSubclass(Enum.class),"HOME");
+            Collection<?> candidates=(Collection<?>)waypoints.getClass().getMethod("getByTag",tag).invoke(waypoints,home);
+            for(Object waypoint:candidates){
+                if(!"Ellie Setup Home".equals(waypoint.getClass().getMethod("getName").invoke(waypoint)))continue;
+                Object position=waypoint.getClass().getMethod("getLocation").invoke(waypoint);
+                int x=((Number)position.getClass().getMethod("method_10263").invoke(position)).intValue();
+                int y=((Number)position.getClass().getMethod("method_10264").invoke(position)).intValue();
+                int z=((Number)position.getClass().getMethod("method_10260").invoke(position)).intValue();
+                if(x==p.x()&&y==p.y()&&z==p.z())return true;
             }
             return false;
         }
