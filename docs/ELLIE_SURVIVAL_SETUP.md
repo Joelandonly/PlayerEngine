@@ -1,6 +1,6 @@
 # Chest-anchored survival setup
 
-Build ID: `20261105-survival-terraform-platform-v5`.
+Build ID: `20261105-survival-shelter-protection-v6`.
 Development baseline: `b8c3dbb`, the tools-first/no-torch-placement Ellie revision,
 which includes the owner's Setup11 overlay on `codex/shared-recovery-crash`.
 This is still a checksum-pinned PlayerEngine 1.4.0 binary overlay, not Goodbird
@@ -44,8 +44,8 @@ natural terrain, retain suitable existing solids, fill gaps with mixed safe
 full blocks, and build a connected entrance bridge or stair. It excludes
 falling blocks, containers and valuable materials from filler selection.
 Protected structures and hazardous excavation still produce specific BLOCKED
-reasons. Saved partial plans retain coordinates. V1 shelter journals migrate
-to V2 with material and approach plans. Ten voxel terrain scenarios and four
+reasons. Saved partial plans retain coordinates. V1/V2 shelter journals migrate
+to compact V3 position/approach plans. Ten voxel terrain scenarios and four
 reflective inventory-adapter checks cover this behavior; actual Minecraft
 placement and navigation remain unverified.
 
@@ -119,3 +119,14 @@ come from the intended chest, shelter access and door closure work, food/fuel
 and actual held equipment match the report, and all torches remain unplaced.
 Then force an inaccessible resource/site and check a specific bounded BLOCKED
 result instead of an infinite loop or false completion.
+
+## Shelter handoff repair (v6)
+
+Normal daytime shelter work starts after all three workshop stations are
+physically verified. Emergency cover may still precede them. A chest anchor
+is a planned position and never counts as a placed chest. Mining exclusions
+retain simultaneous owners for workshop, shelter and nested repair plans.
+Compact V3 shelter checkpoints fit the actual journal's 360-character limit;
+truncated V2 records retain validated coordinates and reconstruct materials
+and access from observed world state. Five tests exercise the real journal
+writer and reader, including the truncation and restart failure.

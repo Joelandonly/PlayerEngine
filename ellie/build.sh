@@ -157,3 +157,6 @@ java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safet
 mkdir -p build/material-testclasses
 javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/material-testclasses tests/materialfixtures/net/minecraft/class_2346.java tests/StructuralMaterialInventoryTest.java
 java -cp build/material-testclasses:build/native-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar StructuralMaterialInventoryTest
+
+javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/ShelterCheckpointTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar com.player2.playerengine.tasks.setup.ShelterCheckpointTest

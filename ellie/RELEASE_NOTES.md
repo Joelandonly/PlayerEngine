@@ -1,3 +1,27 @@
+# Survival shelter protection v6
+
+Build ID: `20261105-survival-shelter-protection-v6`. Gameplay UNVERIFIED.
+
+The supplied run verified its shelter, then damaged it while gathering supplies.
+Shared construction mining exclusions now retain all active owners per NPC:
+workshop, shelter and nested repair blueprints cannot replace each other's zones.
+Shelter break guards are restored if native state restoration removes them.
+
+Normal daytime setup places and verifies the table, furnace and chest after
+stone tools, before building the shelter. Saved chest coordinates describe a
+planned location, never proof of an existing chest. Emergency cover retains
+its priority. Required inventory and final world checks remain unchanged.
+
+V5's per-cell material list exceeded the existing journal's 360-character field.
+V6 stores a compact position/wood/approach checkpoint, recomputes materials,
+and recovers validated chest/shelter coordinates from truncated V2 records.
+It does not silently move the base or discard partial construction.
+
+Validation adds nested-zone ownership, actual-journal truncation/migration and
+physical-workshop-before-shelter assertions to the full regression suite.
+Actual live mining protection, repaired shelter, station placement and complete
+survival setup still require a Minecraft retest. Torch placement remains off.
+
 # Survival terrain/platform setup v5
 
 Build ID: `20261105-survival-terraform-platform-v5`. Live gameplay UNVERIFIED.

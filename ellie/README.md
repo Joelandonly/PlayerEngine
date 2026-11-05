@@ -1,6 +1,6 @@
 # Ellie: chest-anchored survival setup
 
-Current build: `20261105-survival-terraform-platform-v5`. **Live Minecraft survival completion remains unverified.**
+Current build: `20261105-survival-shelter-protection-v6`. **Live Minecraft survival completion remains unverified.**
 See [survival setup behavior and validation](../docs/ELLIE_SURVIVAL_SETUP.md).
 
 `setup` now assesses hunger, health, daylight and nearby hostiles; returns to the
@@ -88,3 +88,7 @@ production/furnace handoffs, defense-safe build resume, common movement recovery
 look diagnostics and a separate persistent worksite/bench record. Personal home
 is untouched. See [findings, architecture and live gates](../docs/ELLIE_SHARED_RECOVERY.md).
 The portable bundle is `PlayerEngine-Ellie-Player2-Shared-Recovery.zip`.
+
+V6 verifies the three placed workshop stations before normal daytime shelter
+construction, retains nested mining protection zones, and repairs truncated V5
+shelter checkpoints without relocating the saved base.

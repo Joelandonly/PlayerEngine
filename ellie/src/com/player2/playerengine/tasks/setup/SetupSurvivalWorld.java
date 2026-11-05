@@ -37,20 +37,22 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
         journal=CoreGoalJournal.open((Path)call(store,"worldRoot"),String.valueOf(call(call(controller,"getAIPersistantData"),"getCharacterId")),"setup_survival");
         if(!journal.isPersistent())throw new IllegalStateException("Cannot persist survival base anchor");
         String saved=journal.get("detail","");
-        if(Set.of("SETUP_SHELTER_V1","SETUP_SHELTER_V2").contains(journal.get("status",""))){
-            String[] fields=saved.split("\\|",-1);
-            if(!journal.get("resource","").equals(dimension)||(fields.length!=3&&fields.length!=5)||!fields[0].equals(key(chest)))throw new IllegalStateException("Saved survival site differs from recorded workshop; refusing silent relocation");
+        String status=journal.get("status","");
+        if(Set.of("SETUP_SHELTER_V1","SETUP_SHELTER_V2","SETUP_SHELTER_V3").contains(status)){
+            String[] fields=restoreSite(status,saved,dimension,journal.get("resource",""),chest);
             shelter=new SetupShelter.Plan(parse(fields[1]),fields[2]);
-            if(fields.length==5){
-                structuralMaterials=List.of(fields[3].split(","));
-                shelterAccess=Arrays.stream(fields[4].split(";")).map(SetupSurvivalWorld::parse).toList();
-                if(structuralMaterials.size()!=96+SetupShelter.accessBlocks(shelterAccess).size())throw new IllegalStateException("Invalid saved structural material roles");
-            }
+            if(status.equals("SETUP_SHELTER_V3"))shelterAccess=Arrays.stream(fields[3].split(";")).map(SetupSurvivalWorld::parse).toList();
+            // V2 stored a per-cell bill in a 360-character journal field. Its tail
+            // was truncated. Preserve validated coordinates, reobserve supplies/access.
+            if(status.equals("SETUP_SHELTER_V2"))ObservatoryTelemetry.event("SETUP_SHELTER_JOURNAL_REPAIR","Retaining V2 chest/shelter coordinates; reconstructing truncated material/approach data from world");
+            if(shelterAccess.isEmpty())shelterAccess=SetupShelter.access(shelter,this).orElseThrow(()->new IllegalStateException("Saved shelter entrance connection cannot be safely restored"));
+            protectStructure();
         }
         StorageIntelligence.setupChest(controller,pos(chest));
-        ObservatoryTelemetry.event("SETUP_BASE_ANCHOR","Saved workshop chest "+key(chest)+" in "+dimension+"; no relocation or personal-home change");
+        ObservatoryTelemetry.event("SETUP_BASE_ANCHOR","Planned workshop chest location "+key(chest)+" in "+dimension+"; no relocation or personal-home change");
     }
     public SetupSurvival.Snapshot snapshot()throws Exception {
+        if(shelter!=null)protectStructure();
         if(!dimension.equals(StarterBaseWorld.dimension(controller)))throw new IllegalStateException("Survival setup changed dimension");
         Object player=call(controller,"getPlayer"),world=call(controller,"getWorld");
         long tick=((Number)call(world,"method_8510")).longValue();
@@ -182,13 +184,17 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
         if(!SetupShelter.buildable(shelter,shelterAccess,this))throw new IllegalStateException("Recorded shelter/entrance now contains protected blocks or hazards; refusing demolition");
         List<Boolean> missing=new ArrayList<>();for(Pos p:SetupShelter.structuralPositions(shelter,shelterAccess))missing.add(!solid(p));
         structuralMaterials=com.player2.playerengine.reliability.StructuralMaterials.allocate(missing,com.player2.playerengine.reliability.StructuralMaterials.available(controller),com.player2.playerengine.reliability.StructuralMaterials.fallback(controller));
-        journal.put("SETUP_SHELTER_V2",0,dimension,key(chest)+"|"+key(shelter.floor())+"|"+shelter.wood()+"|"+String.join(",",structuralMaterials)+"|"+shelterAccess.stream().map(SetupSurvivalWorld::key).collect(java.util.stream.Collectors.joining(";")));
+        journal.put("SETUP_SHELTER_V3",0,dimension,siteDetail(chest,shelter,shelterAccess));
         if(!journal.isPersistent())throw new IllegalStateException("Cannot persist shelter position; refusing unrecorded construction");
         Map<String,Long> bill=new LinkedHashMap<>();for(int i=0;i<missing.size();i++)if(missing.get(i))bill.merge(structuralMaterials.get(i),1L,Long::sum);
         ObservatoryTelemetry.event("SETUP_SHELTER_SITE",location()+"; shelter floor="+key(shelter.floor())+" entrance="+shelterAccess+" mixed structural supplies="+bill+"; native excavation/platform construction permitted");
     }
     private void protectStructure()throws Exception {
-        if(shelterZone!=null)return;
+        if(shelterZone!=null){
+            shelterZone.ensure();
+            if(structureBreakGuard!=null){Object mutex=call(guardedSettings,"getBreakMutex");synchronized(mutex){List<Object> guards=(List<Object>)call(guardedSettings,"getBreakAvoiders");if(!guards.contains(structureBreakGuard))guards.add(structureBreakGuard);}}
+            return;
+        }
         structuralCells.addAll(SetupShelter.structuralPositions(shelter,shelterAccess));structuralCells.add(shelter.door());structuralCells.add(shelter.door().offset(0,1,0));
         int minX=shelter.floor().x(),maxX=minX+4,minZ=shelter.floor().z(),maxZ=minZ+4;
         for(Pos p:shelterAccess){minX=Math.min(minX,p.x());maxX=Math.max(maxX,p.x());minZ=Math.min(minZ,p.z());maxZ=Math.max(maxZ,p.z());}
@@ -252,6 +258,18 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
         if(shelterZone!=null){shelterZone.close();shelterZone=null;}
         if(structureBreakGuard!=null)try{Object mutex=call(guardedSettings,"getBreakMutex");synchronized(mutex){((List<?>)call(guardedSettings,"getBreakAvoiders")).remove(structureBreakGuard);}}catch(Exception e){ObservatoryTelemetry.event("SETUP_GUARD_RELEASE_FAILED",e.getClass().getSimpleName());}
         structureBreakGuard=null;guardedSettings=null;
+    }
+    static String[] restoreSite(String status,String saved,String dimension,String savedDimension,Pos chest){
+        String[] fields=saved.split("\\|",-1);
+        int minimum=status.equals("SETUP_SHELTER_V3")?4:3;
+        if(!savedDimension.equals(dimension)||fields.length<minimum||!fields[0].equals(key(chest)))throw new IllegalStateException("Saved survival site differs from recorded workshop; refusing silent relocation");
+        parse(fields[1]);if(!Set.of("oak","spruce","birch","jungle","acacia","dark_oak","mangrove","cherry").contains(fields[2]))throw new IllegalStateException("Invalid recorded shelter wood");
+        return fields;
+    }
+    static String siteDetail(Pos chest,SetupShelter.Plan plan,List<Pos> access){
+        String detail=key(chest)+"|"+key(plan.floor())+"|"+plan.wood()+"|"+access.stream().map(SetupSurvivalWorld::key).collect(java.util.stream.Collectors.joining(";"));
+        if(access.isEmpty()||detail.length()>360)throw new IllegalStateException("Shelter checkpoint exceeds bounded journal capacity");
+        return detail;
     }
     private static Object pos(Pos p)throws Exception{return Class.forName("net.minecraft.class_2338").getConstructor(int.class,int.class,int.class).newInstance(p.x(),p.y(),p.z());}
     private static String key(Pos p){return p.x()+","+p.y()+","+p.z();}

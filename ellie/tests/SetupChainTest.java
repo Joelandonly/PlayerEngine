@@ -37,7 +37,7 @@ public final class SetupChainTest {
     }
     static class Run {
         final PlayerEngineController c=new PlayerEngineController(null);
-        final World world=new World(c);
+        final World world=new World(c){public Task acquire(String id){requests.add(id);return super.acquire(id);}};
         final EllieSetupTask task=new EllieSetupTask();
         final List<String> requests=new ArrayList<>();
         final Set<Task> supplied=Collections.newSetFromMap(new IdentityHashMap<>());

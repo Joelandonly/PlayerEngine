@@ -27,10 +27,11 @@ public final class SurvivalSetupTest {
         int hunger=20,food,fuel;float health=20;
         boolean night,threat,shelter,inside,closed,equipped,bed,nearby=true;
         boolean noFood,noFuel,falseShelter,falseEquip,unsafeSite,unreachableEntrance;
+        StarterBaseTask anchoredBase;boolean workshopBeforeShelter;
         int anchors,closes;String location="saved chest 14,64,10";
         final List<SetupSurvival.Action> actions=new ArrayList<>();
         final List<Integer> strategies=new ArrayList<>();
-        public void anchor(StarterBaseTask base)throws Exception{base.prepare();anchors++;}
+        public void anchor(StarterBaseTask base)throws Exception{base.prepare();anchoredBase=base;anchors++;}
         public SetupSurvival.Snapshot snapshot(){return new SetupSurvival.Snapshot(hunger,health,night,threat,food,fuel,equipped,bed);}
         public boolean shelterVerified(){return shelter;}
         public boolean inside(){return inside&&shelter;}
@@ -42,6 +43,7 @@ public final class SurvivalSetupTest {
         public void close(){closes++;}
         public Task task(SetupSurvival.Action action,int target,int strategy){
             actions.add(action);strategies.add(strategy);
+            if(action==SetupSurvival.Action.SHELTER)workshopBeforeShelter=anchoredBase.verifiedPlacedCount("chest")==1&&anchoredBase.verifiedPlacedCount("furnace")==1&&anchoredBase.verifiedPlacedCount("crafting_table")==1;
             if(action==SetupSurvival.Action.SHELTER&&unsafeSite)throw new IllegalStateException("No clear supported site; refusing to demolish existing structures");
             return new Op(()->{switch(action){
                 case RETURN -> nearby=true;
@@ -57,7 +59,7 @@ public final class SurvivalSetupTest {
     }
     static final class Run {
         final PlayerEngineController controller=new PlayerEngineController(null);
-        final SetupChainTest.World world=new SetupChainTest.World(controller);
+        final SetupChainTest.World world=new SetupChainTest.World(controller){public Task acquire(String id){requests.add(id);return super.acquire(id);}};
         final Environment survival=new Environment();
         final EllieSetupTask setup=new EllieSetupTask(survival,new StarterBaseTask(world));
         final Set<Task> performed=Collections.newSetFromMap(new IdentityHashMap<>());
@@ -82,6 +84,7 @@ public final class SurvivalSetupTest {
         int scenarios=0;
         Run fresh=new Run();fresh.run();
         check(fresh.setup.isSuccessful()&&fresh.survival.shelter&&fresh.survival.inside&&fresh.survival.closed,"full setup verifies an entered, closed shelter");
+        check(fresh.survival.workshopBeforeShelter,"normal daytime shelter must start with actual table/furnace/chest physically verified, not planned coordinates");
         check(fresh.survival.food>=32&&fresh.survival.fuel>=8&&fresh.survival.equipped,"food/fuel/equipment are actual final predicates");
         check(fresh.requests.equals(Arrays.stream(EllieSetupTask.plannedSteps()).map(s->s.resource).toList())&&fresh.world.torchPlaced==0,"required kit preserved, no excluded acquisitions or torch placement");
         check(fresh.setup.outcomeForCommand().contains("lighting remains manual"),"completion must not claim spawn-proof lighting");scenarios++;

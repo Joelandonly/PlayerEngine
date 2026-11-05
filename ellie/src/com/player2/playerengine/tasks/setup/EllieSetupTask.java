@@ -22,7 +22,7 @@ public final class EllieSetupTask
 extends Task
 implements TransientlyResumableTask,
 TrackedTaskOutcomeProvider {
-    public static final String ELLIE_BUILD_REVISION = "20261105-survival-terraform-platform-v5";
+    public static final String ELLIE_BUILD_REVISION = "20261105-survival-shelter-protection-v6";
     // No optional items in setup. Every entry must have real verified output.
     // Diamonds, iron armor, spare iron tools and empty buckets belong to later explicit goals.
     private static final Step[] PLAN = new Step[]{
@@ -135,7 +135,7 @@ TrackedTaskOutcomeProvider {
         }
         if(survival!=null&&index<PLAN.length){
             try{
-                Task safety=survival.tick(false,index>=4,baseTask);
+                Task safety=survival.tick(false,baseAccepted,baseTask);
                 if(survival.holding()){
                     if(active!=null&&!kitPausedForSurvival){active.interrupt(null,TaskSuspensionCause.HIGHER_PRIORITY_CHAIN);active=null;kitPausedForSurvival=true;}
                     return safety;
@@ -143,10 +143,11 @@ TrackedTaskOutcomeProvider {
                 if(kitPausedForSurvival){if(active!=null)active.reset();kitPausedForSurvival=false;}
             }catch(Exception|LinkageError error){blockFromRecovery("Survival stage: "+error.getMessage());return null;}
         }
-        // Establish the workshop/storage after bootstrap and before iron upgrades.
+        // Physically establish all three stations after stone tools, before daytime
+        // shelter construction. A saved chest coordinate is intent, not ownership.
         // Preparing the remembered plan on start also credits already placed stations
         // on rerun, instead of needlessly gathering another chest item.
-        if (this.index >= 7 && this.baseTask != null && !this.baseAccepted) {
+        if (this.index >= 4 && this.baseTask != null && !this.baseAccepted) {
             if (!this.baseTask.isTerminal()) return this.baseTask;
             if (!this.baseTask.isSuccessful()) {
                 this.stopStep(new Step("starter base", "base", 1, true, 12000), this.baseTask.controlledReason());
@@ -725,7 +726,7 @@ TrackedTaskOutcomeProvider {
 
     protected String toDebugString() {
         if(survival!=null&&survival.holding())return "Setup survival: "+survival.describe();
-        if (this.index >= 7 && this.baseTask != null && !this.baseAccepted && !this.failed) {
+        if (this.index >= 4 && this.baseTask != null && !this.baseAccepted && !this.failed) {
             return "Setup workshop: " + this.baseTask;
         }
         if (this.failed) {
