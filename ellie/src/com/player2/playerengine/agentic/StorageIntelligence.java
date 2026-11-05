@@ -23,17 +23,19 @@ public final class StorageIntelligence {
   try{return Arrays.equals(coords(allowed),coords(pos));}catch(Exception invalid){return false;}
  }
  /** Fresh verified stock only; passive sightings never count as supplies. */
- public static int availableSetupItem(Object controller,String id){
+ public static int availableSetupItem(Object controller,String id){return setupStock(controller).getOrDefault("minecraft:"+id,0);}
+ public static Map<String,Integer> setupStock(Object controller){
   try{
-   Object position=setupChests.get(controller);if(position==null)return 0;
-   Object world=call(controller,"getWorld");if(!Boolean.TRUE.equals(call(world,"method_22340",position))||!storageBlock(world,position))return 0;
+   Object position=setupChests.get(controller);if(position==null)return Map.of();
+   Object world=call(controller,"getWorld");if(!Boolean.TRUE.equals(call(world,"method_22340",position))||!storageBlock(world,position))return Map.of();
    Object store=callStatic(GPS+"EllieGPSStore","get");Object record=call(store,"byPosition",dimension(controller),position);
-   if(record==null||Boolean.TRUE.equals(get(record,"stale"))||!"inventory".equals(get(record,"type")))return 0;
-   Object data=call(record,"inventoryData");if(data==null)return 0;Object snapshot=get(data,"snapshot");if(snapshot==null)return 0;
-   if(!fresh(gameTime(controller),((Number)get(snapshot,"gameTime")).longValue(),FRESH_TICKS))return 0;
-   int count=0;for(Object item:(List<?>)get(snapshot,"items"))if(("minecraft:"+id).equals(String.valueOf(call(item,"registryId"))))count+=((Number)call(item,"count")).intValue();
-   return Math.max(0,count);
-  }catch(Exception|LinkageError failure){warn("setup stock",failure);return 0;}
+   if(record==null||Boolean.TRUE.equals(get(record,"stale"))||!"inventory".equals(get(record,"type")))return Map.of();
+   Object data=call(record,"inventoryData");if(data==null)return Map.of();Object snapshot=get(data,"snapshot");if(snapshot==null)return Map.of();
+   if(!fresh(gameTime(controller),((Number)get(snapshot,"gameTime")).longValue(),FRESH_TICKS))return Map.of();
+   Map<String,Integer> stock=new LinkedHashMap<>();
+   for(Object item:(List<?>)get(snapshot,"items"))stock.merge(String.valueOf(call(item,"registryId")),Math.max(0,((Number)call(item,"count")).intValue()),Integer::sum);
+   return Collections.unmodifiableMap(stock);
+  }catch(Exception|LinkageError failure){warn("setup stock",failure);return Map.of();}
  }
  public static void refreshSetupChest(Object controller,Object pos){
   try{

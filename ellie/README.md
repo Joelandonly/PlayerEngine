@@ -1,6 +1,6 @@
 # Ellie: chest-anchored survival setup
 
-Current build: `20261105-survival-setup-v4`. **Live Minecraft survival completion remains unverified.**
+Current build: `20261105-survival-terraform-platform-v5`. **Live Minecraft survival completion remains unverified.**
 See [survival setup behavior and validation](../docs/ELLIE_SURVIVAL_SETUP.md).
 
 `setup` now assesses hunger, health, daylight and nearby hostiles; returns to the
@@ -60,7 +60,8 @@ Food may include bread through the existing native food/recipe tasks.
 
 Low hunger interrupts ordinary kit work. Darkness, nearby threats or low health
 can cause return to shelter and a bounded wait; native defense/food chains retain
-priority. Shelter uses a small local-wood 5x5 native blueprint on a checked site.
+priority. Shelter uses a 5x5 native blueprint, prepares natural uneven terrain, and builds
+a connected platform/entrance from mixed suitable blocks in actual inventory.
 Foreign structures are not cleared to force a fit. Placement, food, fuel,
 movement and equipment failures produce specific blocked outcomes.
 

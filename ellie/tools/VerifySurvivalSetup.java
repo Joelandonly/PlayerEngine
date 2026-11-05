@@ -24,6 +24,8 @@ public final class VerifySurvivalSetup {
             method(z,P+"trackers/EntityTracker","getHostiles","()Ljava/util/List;");
             ClassNode base=read(z,P+"tasks/setup/StarterBaseTask");
             if(calls(base,"onTick",P+"tasks/setup/StarterBaseTask$Environment","surveyLighting")!=0)throw new AssertionError("Lighting cannot gate setup");
+            ClassNode terrain=read(z,P+"tasks/setup/StarterBaseWorld");
+            if(calls(terrain,"prepareTerrain",P+"reliability/StructuralMaterials","carried")!=1||calls(terrain,"count",P+"reliability/StructuralMaterials","carried")!=1||calls(terrain,"acquire",P+"reliability/StructuralMaterials","available")!=1)throw new AssertionError("Workshop foundations must use the shared flexible block policy");
             System.out.println("Packaged survival setup entry, final gate and seven native ABI boundaries verified; no lighting gate");
         }
     }

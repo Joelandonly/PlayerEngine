@@ -1,3 +1,20 @@
+# Survival terrain/platform setup v5
+
+Build ID: `20261105-survival-terraform-platform-v5`. Live gameplay UNVERIFIED.
+
+Fixes the premature flat-5x5-site rejection in the supplied November 5 logs.
+The existing builder now receives bounded natural excavation, mixed-material
+platform fills, retained existing solids, and a connected bridge/stair approach.
+Shared workshop preparation also uses suitable blocks from actual main slots.
+Protected blocks, containers, hazards and disconnected sites remain blocked
+with specific diagnostics. Saved chest and partial shelter plans are retained;
+old shelter journals migrate. Torch placement remains disabled.
+
+Validation: complete existing regression suite, 21 production-entry survival
+scenarios, 10 voxel terrain/platform scenarios and four reflective inventory
+adapter checks. These substitute game boundaries; real placement, excavation
+and navigation require Minecraft testing.
+
 # Chest-anchored survival setup v4
 
 Build ID: `20261105-survival-setup-v4`. Minecraft 1.21.1 Fabric, pinned

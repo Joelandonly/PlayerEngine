@@ -167,7 +167,8 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         // Native placement only: never edit the world directly or fake completion.
         Class<?> blockType=Class.forName("net.minecraft.class_2248");
         Object alternatives=Array.newInstance(blockType,1);
-        Array.set(alternatives,0,block("cobblestone"));
+        String material=com.player2.playerengine.reliability.StructuralMaterials.preferred(com.player2.playerengine.reliability.StructuralMaterials.carried(controller),com.player2.playerengine.reliability.StructuralMaterials.fallback(controller));
+        Array.set(alternatives,0,block(material));
         return (Task)Class.forName("com.player2.playerengine.tasks.construction.PlaceBlockTask")
             .getConstructor(blockPos,alternatives.getClass(),boolean.class,boolean.class)
             .newInstance(pos(job.pos()),alternatives,false,false);
@@ -205,10 +206,12 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         return String.join("; ",issues);
     }
     public int count(String resource) throws Exception {
+        if(resource.equals("cobblestone"))return com.player2.playerengine.reliability.StructuralMaterials.carried(controller).values().stream().mapToInt(Integer::intValue).sum();
         Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",resource);
         return ((Number)call(controller.getItemStorage(),"getItemCountInventoryOnly",matches)).intValue();
     }
     public Task acquire(String resource) throws Exception {
+        if(resource.equals("cobblestone"))resource=com.player2.playerengine.reliability.StructuralMaterials.preferred(com.player2.playerengine.reliability.StructuralMaterials.available(controller),com.player2.playerengine.reliability.StructuralMaterials.fallback(controller));
         return EllieSetupTask.nativeAcquisition(resource,1);
     }
     /** Scan actual block light on surface cells at/above the base. No cave searches. */

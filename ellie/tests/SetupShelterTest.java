@@ -22,7 +22,7 @@ public final class SetupShelterTest {
         w.blocks.put(plan.center(),"stone");check(!SetupShelter.verified(plan,w),"blocked interior invalidates enclosure");w.blocks.remove(plan.center());
         w.blocks.remove(plan.door());check(!SetupShelter.verified(plan,w),"missing door invalidates enclosure");w.blocks.put(plan.door(),"spruce_door");
         w.blocks.put(plan.door().offset(0,0,-1),"stone");check(!SetupShelter.verified(plan,w),"blocked external entrance invalidates enclosure");w.blocks.remove(plan.door().offset(0,0,-1));
-        w.obstructed=true;check(!SetupShelter.buildable(plan,w),"foreign/protected cells cannot be bulldozed to force a fit");
+        w.obstructed=true;w.blocks.put(plan.center(),"chest");check(!SetupShelter.buildable(plan,w),"foreign/protected cells cannot be bulldozed to force a fit");
         check(!SetupShelter.code(plan).contains("oak")&&!SetupShelter.code(plan).contains("torch"),"local wood generated; no hidden lighting or unrelated materials");
         System.out.println("SetupShelterTest: 9 geometry/palette/protection checks passed (world boundary substituted)");
     }

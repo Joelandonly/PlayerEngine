@@ -20,9 +20,14 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
     private CoreGoalJournal journal;
     private SetupShelter.Plan shelter;
     private long lastScan=Long.MIN_VALUE;
-    private int evaluatingFloor;
+    private List<Pos> shelterAccess=List.of();
+    private List<String> structuralMaterials=List.of();
     private boolean foodFromStorage;
     private String firstFuel="charcoal";
+    private SetupBuildZone shelterZone;
+    private java.util.function.Predicate<Object> structureBreakGuard;
+    private Object guardedSettings;
+    private final Set<Pos> structuralCells=new HashSet<>();
     SetupSurvivalWorld(PlayerEngineController controller){this.controller=controller;}
     public void anchor(StarterBaseTask base)throws Exception {
         base.prepare();
@@ -32,10 +37,15 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
         journal=CoreGoalJournal.open((Path)call(store,"worldRoot"),String.valueOf(call(call(controller,"getAIPersistantData"),"getCharacterId")),"setup_survival");
         if(!journal.isPersistent())throw new IllegalStateException("Cannot persist survival base anchor");
         String saved=journal.get("detail","");
-        if(journal.get("status","").equals("SETUP_SHELTER_V1")){
+        if(Set.of("SETUP_SHELTER_V1","SETUP_SHELTER_V2").contains(journal.get("status",""))){
             String[] fields=saved.split("\\|",-1);
-            if(!journal.get("resource","").equals(dimension)||fields.length!=3||!fields[0].equals(key(chest)))throw new IllegalStateException("Saved survival site differs from recorded workshop; refusing silent relocation");
+            if(!journal.get("resource","").equals(dimension)||(fields.length!=3&&fields.length!=5)||!fields[0].equals(key(chest)))throw new IllegalStateException("Saved survival site differs from recorded workshop; refusing silent relocation");
             shelter=new SetupShelter.Plan(parse(fields[1]),fields[2]);
+            if(fields.length==5){
+                structuralMaterials=List.of(fields[3].split(","));
+                shelterAccess=Arrays.stream(fields[4].split(";")).map(SetupSurvivalWorld::parse).toList();
+                if(structuralMaterials.size()!=96+SetupShelter.accessBlocks(shelterAccess).size())throw new IllegalStateException("Invalid saved structural material roles");
+            }
         }
         StorageIntelligence.setupChest(controller,pos(chest));
         ObservatoryTelemetry.event("SETUP_BASE_ANCHOR","Saved workshop chest "+key(chest)+" in "+dimension+"; no relocation or personal-home change");
@@ -79,7 +89,7 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
     private static String itemId(Object stack)throws Exception{return Boolean.TRUE.equals(call(stack,"method_7960"))?"":String.valueOf(call(stack,"method_7909"));}
     public boolean baseNearby()throws Exception{return baseDistance()<=24&&loaded(chest);}
     public double baseDistance()throws Exception{return Math.sqrt(squared(coordinates(call(controller,"getPlayer")),new double[]{chest.x()+.5,chest.y(),chest.z()+.5}));}
-    public boolean shelterVerified()throws Exception{return shelter!=null&&SetupShelter.verified(shelter,this);}
+    public boolean shelterVerified()throws Exception{return shelter!=null&&SetupShelter.verified(shelter,this)&&(shelterAccess.isEmpty()||SetupShelter.accessVerified(shelterAccess,this));}
     public boolean inside()throws Exception {
         if(!shelterVerified())return false;
         double[] at=coordinates(call(controller,"getPlayer"));Pos p=shelter.floor();
@@ -91,8 +101,10 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
     }
     public int shelterProgress()throws Exception {
         if(shelter==null)return 0;
-        if(!shelterVerified()&&!SetupShelter.buildable(shelter,this))throw new IllegalStateException("Shelter site changed or contains protected/foreign blocks; refusing demolition at "+key(shelter.floor()));
+        if(!shelterVerified()&&!SetupShelter.buildable(shelter,shelterAccess,this))throw new IllegalStateException("Shelter site changed or contains protected/foreign blocks; refusing demolition at "+key(shelter.floor()));
         int count=0;for(var cell:SetupShelter.cells(shelter))if(cell.resource().equals("air")?open(cell.pos()):cell.resource().endsWith("_door")?door(cell.pos()):solid(cell.pos()))count++;
+        for(Pos p:SetupShelter.accessBlocks(shelterAccess))if(solid(p))count++;
+        for(Pos p:shelterAccess)for(int y=1;y<=2;y++)if(open(p.offset(0,y,0)))count++;
         return count;
     }
     public Task task(SetupSurvival.Action action,int goal,int strategy)throws Exception {
@@ -124,9 +136,11 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
             }
             case SHELTER -> {
                 selectShelter();
+                String code=SetupShelter.code(shelter,structuralMaterials,shelterAccess,this);
+                if(code.isBlank())yield (Task)Class.forName(P+"tasks.movement.GetToBlockTask").getConstructor(Class.forName("net.minecraft.class_2338")).newInstance(pos(shelter.center()));
                 Object build=Class.forName(P+"tasks.construction.build_structure.BuildStructureTask").getConstructor(Class.forName("net.minecraft.class_2338"),String.class,String.class,PlayerEngineController.class)
                     .newInstance(pos(shelter.floor()),"small shelter","setup shelter using local wood",controller);
-                NativeBuildSupport.blueprint(build,SetupShelter.code(shelter));yield (Task)build;
+                NativeBuildSupport.blueprint(build,code);yield (Task)build;
             }
             case RETURN -> (Task)Class.forName(P+"tasks.movement.GetToBlockTask").getConstructor(Class.forName("net.minecraft.class_2338")).newInstance(pos(chest.offset(0,0,1)));
             case ENTER -> (Task)Class.forName(P+"tasks.movement.GetToBlockTask").getConstructor(Class.forName("net.minecraft.class_2338")).newInstance(pos(shelter.center()));
@@ -146,17 +160,46 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
         return (Task)Class.forName(P+"tasks.resources.CollectFoodTask").getConstructor(double.class).newInstance((double)(nativeScore+needed));
     }
     private void selectShelter()throws Exception {
-        if(shelter!=null){if(!shelterVerified()&&!SetupShelter.buildable(shelter,this))throw new IllegalStateException("Saved shelter cannot be repaired without destroying foreign blocks");return;}
-        String wood=localWood();
-        search: for(int radius:new int[]{6,8,10,12})for(int[] side:new int[][]{{radius,0},{-radius-4,0},{0,radius},{0,-radius-4}})for(int dy:new int[]{-1,0,1}){
-            SetupShelter.Plan candidate=new SetupShelter.Plan(chest.offset(side[0],dy,side[1]),wood);
-            evaluatingFloor=candidate.floor().y();
-            if(SetupShelter.verified(candidate,this)||SetupShelter.buildable(candidate,this)){shelter=candidate;break search;}
+        if(shelter==null){
+            String wood=localWood();int tested=0;
+            search: for(int radius:new int[]{6,8,10,12})for(int[] side:new int[][]{{radius,0},{-radius-4,0},{0,radius},{0,-radius-4}})for(int dy:new int[]{-1,0,1,2,3}){
+                tested++;SetupShelter.Plan candidate=new SetupShelter.Plan(chest.offset(side[0],dy,side[1]),wood);
+                // Natural slopes can be excavated and gaps bridged. A flat pad
+                // is an OUTPUT of construction, not a pre-existing prerequisite.
+                var blocked=SetupShelter.obstruction(candidate,this);
+                if(blocked.isPresent()){
+                    if(tested<=4){var cell=blocked.get();String state=loaded(cell.pos())?String.valueOf(state(cell.pos())):"unloaded/out of bounds";ObservatoryTelemetry.event("SETUP_SITE_REJECT","candidate="+key(candidate.floor())+" cell="+cell.pos()+" intended="+cell.resource()+" actual="+state+"; protected or unsafe to prepare");}
+                    continue;
+                }
+                var route=SetupShelter.access(candidate,this);
+                if(route.isEmpty()){if(tested<=4)ObservatoryTelemetry.event("SETUP_SITE_REJECT","candidate="+key(candidate.floor())+"; no bounded connected stair/bridge approach to existing walkable terrain");continue;}
+                shelter=candidate;shelterAccess=route.get();break search;
+            }
+            if(shelter==null)throw new IllegalStateException("No safely preparable shelter/bridge connection in "+tested+" bounded candidates near saved chest; protected blocks, hazards or no reachable placement connection prevent construction");
         }
-        if(shelter==null)throw new IllegalStateException("No supported clear 5x5 shelter site within the bounded workshop search; clear a patch near the saved chest");
-        journal.put("SETUP_SHELTER_V1",0,dimension,key(chest)+"|"+key(shelter.floor())+"|"+shelter.wood());
+        if(shelterAccess.isEmpty())shelterAccess=SetupShelter.access(shelter,this).orElseThrow(()->new IllegalStateException("Saved shelter has no safely preparable entrance connection"));
+        protectStructure();
+        if(!SetupShelter.buildable(shelter,shelterAccess,this))throw new IllegalStateException("Recorded shelter/entrance now contains protected blocks or hazards; refusing demolition");
+        List<Boolean> missing=new ArrayList<>();for(Pos p:SetupShelter.structuralPositions(shelter,shelterAccess))missing.add(!solid(p));
+        structuralMaterials=com.player2.playerengine.reliability.StructuralMaterials.allocate(missing,com.player2.playerengine.reliability.StructuralMaterials.available(controller),com.player2.playerengine.reliability.StructuralMaterials.fallback(controller));
+        journal.put("SETUP_SHELTER_V2",0,dimension,key(chest)+"|"+key(shelter.floor())+"|"+shelter.wood()+"|"+String.join(",",structuralMaterials)+"|"+shelterAccess.stream().map(SetupSurvivalWorld::key).collect(java.util.stream.Collectors.joining(";")));
         if(!journal.isPersistent())throw new IllegalStateException("Cannot persist shelter position; refusing unrecorded construction");
-        ObservatoryTelemetry.event("SETUP_SHELTER_SITE",location()+"; shelter floor="+key(shelter.floor())+" wood="+shelter.wood());
+        Map<String,Long> bill=new LinkedHashMap<>();for(int i=0;i<missing.size();i++)if(missing.get(i))bill.merge(structuralMaterials.get(i),1L,Long::sum);
+        ObservatoryTelemetry.event("SETUP_SHELTER_SITE",location()+"; shelter floor="+key(shelter.floor())+" entrance="+shelterAccess+" mixed structural supplies="+bill+"; native excavation/platform construction permitted");
+    }
+    private void protectStructure()throws Exception {
+        if(shelterZone!=null)return;
+        structuralCells.addAll(SetupShelter.structuralPositions(shelter,shelterAccess));structuralCells.add(shelter.door());structuralCells.add(shelter.door().offset(0,1,0));
+        int minX=shelter.floor().x(),maxX=minX+4,minZ=shelter.floor().z(),maxZ=minZ+4;
+        for(Pos p:shelterAccess){minX=Math.min(minX,p.x());maxX=Math.max(maxX,p.x());minZ=Math.min(minZ,p.z());maxZ=Math.max(maxZ,p.z());}
+        shelterZone=new SetupBuildZone(controller,minX,minZ,maxX-minX+1,maxZ-minZ+1);
+        guardedSettings=call(controller,"getExtraBaritoneSettings");Object mutex=call(guardedSettings,"getBreakMutex");
+        structureBreakGuard=raw->{
+            try{Pos p=new Pos(((Number)call(raw,"method_10263")).intValue(),((Number)call(raw,"method_10264")).intValue(),((Number)call(raw,"method_10260")).intValue());
+                return structuralCells.contains(p)&&(solid(p)||door(p));
+            }catch(Exception e){return false;}
+        };
+        synchronized(mutex){((List<Object>)call(guardedSettings,"getBreakAvoiders")).add(structureBreakGuard);}
     }
     private String localWood()throws Exception {
         Map<String,Integer> scores=new LinkedHashMap<>();
@@ -179,21 +222,37 @@ final class SetupSurvivalWorld implements SetupSurvival.Environment,SetupShelter
     public boolean open(Pos p)throws Exception{return loaded(p)&&(Boolean.TRUE.equals(call(state(p),"method_26215"))||blockId(p).contains(":torch}"));}
     public boolean door(Pos p)throws Exception{return loaded(p)&&blockId(p).endsWith("_door}")&&!blockId(p).endsWith("_trapdoor}");}
     public boolean canBuild(Placement cell)throws Exception {
-        Pos p=cell.pos();if(!loaded(p))return false;
+        Pos p=cell.pos();if(!loaded(p))return false;Object s=state(p);
+        if(cell.resource().equals("air")&&open(p))return true;
+        if(call(call(controller,"getWorld"),"method_8321",pos(p))!=null||playerPlaced(p))return false;
+        if(Boolean.TRUE.equals(call(s,"method_26215")))return true;
         String id=blockId(p);
-        if(id.endsWith(":"+cell.resource()+"}"))return true;
-        Object s=state(p);if(Boolean.TRUE.equals(call(s,"method_26215")))return true;
-        if(call(call(controller,"getWorld"),"method_8321",pos(p))!=null)return false;
-        Object protectedStore=callStatic(P+"structureprotection.PlayerPlacedBlockStore","get");
-        if(Boolean.TRUE.equals(call(protectedStore,"contains",dimension,pos(p))))return false;
-        // Only naturally supported ground is replaced by the floor. No tree,
-        // player structure or interior obstacle is cleared to force a shelter fit.
-        return p.y()==(shelter==null?evaluatingFloor:shelter.floor().y())&&cell.resource().endsWith("_planks")&&solid(p)
-            &&List.of(":dirt}",":grass_block}",":stone}",":sand}",":gravel}",":deepslate}").stream().anyMatch(id::endsWith)
-            &&Boolean.TRUE.equals(call(state(p.offset(0,1,0)),"method_26215"));
+        if(!cell.resource().equals("air")&&id.equals("Block{minecraft:water}"))return true;
+        // Only excavation is restricted to natural terrain. Full-cube platforms
+        // can use mixed inventory blocks and need not have ground under each cell.
+        if(!com.player2.playerengine.reliability.StructuralMaterials.naturalToClear(id)||((Number)call(s,"method_26214",call(controller,"getWorld"),pos(p))).floatValue()<0)return false;
+        if(com.player2.playerengine.reliability.StructuralMaterials.commonOre(id)){
+            boolean stoneTier=count("stone_pickaxe")+count("iron_pickaxe")+count("diamond_pickaxe")+count("netherite_pickaxe")>0;
+            if(!stoneTier&&(!id.contains("coal_ore")||count("wooden_pickaxe")==0))return false;
+        }
+        for(int y=1;y<=4;y++){
+            Pos above=p.offset(0,y,0);if(!loaded(above)||(playerPlaced(above)&&!structuralCells.contains(above))||call(call(controller,"getWorld"),"method_8321",pos(above))!=null)return false;
+        }
+        Object above=state(p.offset(0,1,0));
+        if(Class.forName("net.minecraft.class_2346").isInstance(call(above,"method_26204")))return false;
+        for(int[] d:new int[][]{{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}}){
+            Pos n=p.offset(d[0],d[1],d[2]);if(!loaded(n)||!Boolean.TRUE.equals(call(call(state(n),"method_26227"),"method_15769")))return false;
+        }
+        return true;
     }
+    private boolean playerPlaced(Pos p)throws Exception {return Boolean.TRUE.equals(call(callStatic(P+"structureprotection.PlayerPlacedBlockStore","get"),"contains",dimension,pos(p)));}
     public String location(){return "chest "+key(chest)+" in "+dimension;}
-    public void close(){StorageIntelligence.setupChest(controller,null);}
+    public void close(){
+        StorageIntelligence.setupChest(controller,null);
+        if(shelterZone!=null){shelterZone.close();shelterZone=null;}
+        if(structureBreakGuard!=null)try{Object mutex=call(guardedSettings,"getBreakMutex");synchronized(mutex){((List<?>)call(guardedSettings,"getBreakAvoiders")).remove(structureBreakGuard);}}catch(Exception e){ObservatoryTelemetry.event("SETUP_GUARD_RELEASE_FAILED",e.getClass().getSimpleName());}
+        structureBreakGuard=null;guardedSettings=null;
+    }
     private static Object pos(Pos p)throws Exception{return Class.forName("net.minecraft.class_2338").getConstructor(int.class,int.class,int.class).newInstance(p.x(),p.y(),p.z());}
     private static String key(Pos p){return p.x()+","+p.y()+","+p.z();}
     private static Pos parse(String value){String[] a=value.split(",");if(a.length!=3)throw new IllegalArgumentException("Invalid shelter coordinates");return new Pos(Integer.parseInt(a[0]),Integer.parseInt(a[1]),Integer.parseInt(a[2]));}

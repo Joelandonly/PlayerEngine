@@ -1,6 +1,6 @@
 # Chest-anchored survival setup
 
-Build ID: `20261105-survival-setup-v4`.
+Build ID: `20261105-survival-terraform-platform-v5`.
 Development baseline: `b8c3dbb`, the tools-first/no-torch-placement Ellie revision,
 which includes the owner's Setup11 overlay on `codex/shared-recovery-crash`.
 This is still a checksum-pinned PlayerEngine 1.4.0 binary overlay, not Goodbird
@@ -39,12 +39,15 @@ Shelter wood selection considers carried/stored logs/planks and nearby trees.
 Its local plan goes through the existing StructureFromCode parser and physical
 BuildStructureTask. No direct world-set operation is used by setup.
 
-New shelter sites require a supported entrance and a bounded clear footprint
-near the chest. Existing suitable small enclosures can be recognized. This is
-not a general detector for arbitrary player-built houses. Foreign/protected
-blocks are not demolished to force a fit; if no suitable site is found, setup
-reports that the player must clear a patch near the recorded chest. Existing
-partial plans retain coordinates rather than abandoning half a house.
+Shelter sites do not require flat terrain. The bounded planner can excavate
+natural terrain, retain suitable existing solids, fill gaps with mixed safe
+full blocks, and build a connected entrance bridge or stair. It excludes
+falling blocks, containers and valuable materials from filler selection.
+Protected structures and hazardous excavation still produce specific BLOCKED
+reasons. Saved partial plans retain coordinates. V1 shelter journals migrate
+to V2 with material and approach plans. Ten voxel terrain scenarios and four
+reflective inventory-adapter checks cover this behavior; actual Minecraft
+placement and navigation remain unverified.
 
 ## Ownership and bounds
 
