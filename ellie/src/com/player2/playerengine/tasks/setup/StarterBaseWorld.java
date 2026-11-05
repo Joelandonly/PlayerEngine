@@ -260,6 +260,30 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         };
         return SurfaceLightingPlan.inspect(plan, surveyProbe, excluded);
     }
+    /** Use the engine's existing persistent HOME waypoint collection, not a second GPS file. */
+    public void rememberHome(StarterBaseLayout.Placement bench) throws Exception {
+        if(!bench.resource().equals("crafting_table") || !matches(bench))
+            throw new IllegalStateException("Home waypoint requires a physically verified crafting table");
+        var baritone=controller.getBaritone();
+        if(baritone==null || baritone.getWorldProvider()==null ||
+                baritone.getWorldProvider().getCurrentWorld()==null)
+            throw new IllegalStateException("Native HOME waypoint store unavailable");
+        var waypointStore=baritone.getWorldProvider().getCurrentWorld().getWaypoints();
+        if(waypointStore==null)throw new IllegalStateException("Native HOME waypoint collection unavailable");
+        var at=bench.pos();
+        var location=new com.player2.playerengine.automaton.api.utils.BetterBlockPos(at.x(),at.y(),at.z());
+        for(var previous:new java.util.ArrayList<>(waypointStore.getByTag(
+                com.player2.playerengine.automaton.api.cache.IWaypoint.Tag.HOME))) {
+            if(!previous.getName().equals("Ellie Setup Home"))continue;
+            if(previous.getLocation().equals(location))return;
+            waypointStore.removeWaypoint(previous);
+        }
+        waypointStore.addWaypoint(new com.player2.playerengine.automaton.api.cache.Waypoint(
+                "Ellie Setup Home",com.player2.playerengine.automaton.api.cache.IWaypoint.Tag.HOME,location));
+        com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_HOME_WAYPOINT",
+                "Verified crafting bench HOME at "+at+" in "+expectedDimension);
+    }
+
     public void retainTorch(StarterBaseLayout.Placement placement) {
         if (!placement.resource().equals("torch")) return;
         // Reuse the already-installed native break guard for verified torches.
