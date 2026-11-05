@@ -46,30 +46,35 @@ Install only the replacement PlayerEngine JAR in Minecraft's `mods` folder.
 Remove the previous engine JAR and keep the companion mods. Run `Ellie, setup` in
 a test world and observe actual placement/navigation before accepting a release.
 
-## Current setup
+## Current owner-facing setup (basic batched HOME, v9)
 
-The required kit remains: wooden pickaxe when needed, early stone axe, two stone
-pickaxes, stone shovel, crafting table, furnace, chest, shield, iron pickaxe,
-iron sword and 32 unplaced torches. No bucket, armor or diamond goals are added.
+\`setup\` now dispatches \`BasicSetupTask\`. Older \`EllieSetupTask\` and
+\`SetupSurvival\` classes are retained for compatibility/history, **not
+the current owner-facing setup behavior**.
 
-The command also requires an enclosed, accessible shelter near the saved chest,
-a carried reserve of 32 safe food nutrition units (about four steaks or seven
-bread), eight coal/charcoal fuel items, and an equipped sword and shield. Bed
-acquisition is not required; a carried bed is reported as carried, not placed.
-Food may include bread through the existing native food/recipe tasks.
+The task deliberately completes one bounded material batch at a time:
 
-Low hunger interrupts ordinary kit work. Darkness, nearby threats or low health
-can cause return to shelter and a bounded wait; native defense/food chains retain
-priority. Shelter uses a 5x5 native blueprint, prepares natural uneven terrain, and builds
-a connected platform/entrance from mixed suitable blocks in actual inventory.
-Foreign structures are not cleared to force a fit. Placement, food, fuel,
-movement and equipment failures produce specific blocked outcomes.
+1. Gather 12 logs for the full wooden crafting bill, then place/verify one
+   crafting bench and register it as **Ellie Setup Home** in the existing
+   native Baritone \`HOME\` waypoint collection. The first verified table
+   is the workshop anchor for later chest/furnace placement.
+2. Craft one wooden axe and one wooden pickaxe.
+3. Gather 20 cobblestone (four stone tools, one furnace and a margin),
+   then craft one each stone pickaxe, axe, shovel and sword.
+4. Gather 16 coal and craft **64 torches**. Keep them in inventory.
+5. Craft one chest and furnace, then place both at the recorded bench
+   using the existing native StarterBaseTask/StarterBaseWorld structures.
+6. Verify real world blocks, HOME waypoint and stone equipment/64 torches.
 
-Saved station and shelter positions are persistent intent, even while unloaded.
-Reruns verify actual inventory and world blocks; they do not blindly trust old
-completion receipts, relocate the base, or duplicate already owned tools.
-Setup storage use is restricted to fresh verified stock in its own saved chest.
-The final report does not claim lighting, spawn-proofing, bed placement or a farm.
+No iron or diamond gear, shield, empty buckets, food/fuel reserves, shelter
+construction, automatic lighting or extra commands in this scoped setup.
+All failures are bounded and explicit; no optional-skipping path.
+
+Previous Nov 5 game logs showed a furnace creation subtask ending without
+an actual furnace in inventory. This revision separates raw material gathering,
+furnace crafting and verified physical placement, with at most two missing-output
+acquisition attempts. Native Minecraft gameplay validation is still pending.
+Build/tests and packaging passing are **not** proof of a successful live game.
 
 ## Native commands on this revision
 
