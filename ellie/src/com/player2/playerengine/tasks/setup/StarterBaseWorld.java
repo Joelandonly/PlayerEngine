@@ -207,7 +207,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     }
     public int count(String resource) throws Exception {
         if(resource.equals("cobblestone"))return com.player2.playerengine.reliability.StructuralMaterials.carried(controller).values().stream().mapToInt(Integer::intValue).sum();
-        Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",resource);
+        Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",com.player2.playerengine.reliability.StructuralMaterials.catalogueName(resource));
         List<?> main=(List<?>)com.player2.playerengine.nativecommands.NativeAccess.get(call(controller,"getInventory"),"main");
         if(main.size()!=36)throw new IllegalStateException("Expected 36 actual workshop inventory slots");
         int total=0;
@@ -220,7 +220,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     }
     public Task acquire(String resource) throws Exception {
         if(resource.equals("cobblestone"))resource=com.player2.playerengine.reliability.StructuralMaterials.preferred(com.player2.playerengine.reliability.StructuralMaterials.available(controller),com.player2.playerengine.reliability.StructuralMaterials.fallback(controller));
-        return EllieSetupTask.nativeAcquisition(resource,1);
+        return EllieSetupTask.nativeAcquisition(com.player2.playerengine.reliability.StructuralMaterials.catalogueName(resource),1);
     }
     /** Scan actual block light on surface cells at/above the base. No cave searches. */
     public SurfaceLightingPlan.Survey surveyLighting(List<StarterBaseLayout.Placement> plan,
@@ -276,7 +276,7 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
     }
     private Object block(String id) throws Exception {
         if(!blocks.containsKey(id)) {
-            Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",id);
+            Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",com.player2.playerengine.reliability.StructuralMaterials.catalogueName(id));
             if(matches==null || Array.getLength(matches)!=1)throw new IllegalStateException("Expected one concrete base item: "+id);
             Object item=Array.get(matches,0);
             blocks.put(id,call(item,"method_7711"));
