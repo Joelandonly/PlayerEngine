@@ -9,16 +9,22 @@ public final class SharedTargetRecovery {
  private static final Map<Object,Session> sessions=Collections.synchronizedMap(new WeakHashMap<>());
  private static final ThreadLocal<Object> ticking=new ThreadLocal<>();
  private static long warningAt;
+ private static final Map<Object,String> failures=Collections.synchronizedMap(new WeakHashMap<>());
+ public static String failure(Object root){return failures.get(root);}
+ public static void begin(Object root){failures.remove(root);}
  private static final class Session {
   WeakReference<Object> world=new WeakReference<>(null),root=new WeakReference<>(null),owner=new WeakReference<>(null),action=new WeakReference<>(null),baritone=new WeakReference<>(null),clearBuilder=new WeakReference<>(null),clearSchematic=new WeakReference<>(null);
   final TargetRecoveryPolicy policy=new TargetRecoveryPolicy();
+  final TargetOscillationGuard targetOscillation=new TargetOscillationGuard();
+  final TargetRecoveryPolicy jobProgress=new TargetRecoveryPolicy();
+  long lastWork=Long.MIN_VALUE,lastHeartbeat=Long.MIN_VALUE;boolean resourceJob;int maxCraftPhase=-1;
   final Map<String,Long> rejected=new HashMap<>();final Set<String> tried=new HashSet<>();
   Cell target,destination,blocking;Object goal;boolean lease;String mode="WATCH",lookWriter="unknown",inputWriter="unknown",inputs="unavailable";long started,lastAirPlan,latestSample=Long.MIN_VALUE;String sampledTarget="",exhausted="";
  }
  private SharedTargetRecovery(){}
  private static Session session(Object controller)throws Exception{
   Object world=call(controller,"getWorld");Session s=sessions.computeIfAbsent(controller,k->new Session());
-  if(s.world.get()!=world){dropLease(s);s.world=new WeakReference<>(world);s.root.clear();s.owner.clear();s.target=null;s.goal=null;s.mode="WATCH";s.tried.clear();s.rejected.clear();s.policy.reset();s.latestSample=Long.MIN_VALUE;s.sampledTarget="";}
+  if(s.world.get()!=world){dropLease(s);s.world=new WeakReference<>(world);s.root.clear();s.owner.clear();s.target=null;s.goal=null;s.mode="WATCH";s.tried.clear();s.rejected.clear();s.policy.reset();s.jobProgress.reset();s.lastWork=Long.MIN_VALUE;s.lastHeartbeat=Long.MIN_VALUE;s.targetOscillation.reset();s.latestSample=Long.MIN_VALUE;s.sampledTarget="";}
   return s;
  }
  public static boolean rejected(Object controller,Object position){
@@ -32,11 +38,37 @@ public final class SharedTargetRecovery {
    if(tasks.size()!=1)return false;
    RecoveryWorld game=new RecoveryWorld(controller);long now=game.tick();
    if(!String.valueOf(call(chain,"getName")).equals("User Tasks")){
+    s.lastWork=now;
     if(!s.mode.equals("WATCH")){release(s,game);s.policy.resume(now,false);event(s,"RECOVERY_YIELD","Higher-priority chain owns movement: "+call(chain,"getName"));}
     return false;
    }
-   if(s.root.get()!=task){release(s,game);s.root=new WeakReference<>(task);s.owner.clear();s.target=null;s.policy.reset();s.tried.clear();}
+   if(s.root.get()!=task){release(s,game);s.root=new WeakReference<>(task);s.owner.clear();s.target=null;s.policy.reset();s.jobProgress.reset();s.lastWork=now;s.resourceJob=false;s.maxCraftPhase=-1;s.tried.clear();s.targetOscillation.reset();}
    s.baritone=new WeakReference<>(game.baritone);
+   s.resourceJob |= ((Task)task).containsTask(t->t instanceof com.player2.playerengine.tasks.ResourceTask)
+     || task instanceof com.player2.playerengine.tasks.setup.EllieSetupTask;
+   // A job-wide budget survives leaf replacement, A/B selection and temporary
+   // recovery. Native safety chains do not spend it while they own movement.
+   s.jobProgress.stalled("inventory","inventory"+game.inventorySignature(),0,0,0,now,false);
+   if(s.jobProgress.verifiedWork())s.lastWork=now;
+   if(s.target!=null){
+    s.jobProgress.stalled(s.target.key(),game.progressSafely(s.target),0,0,0,now,false);
+    if(s.jobProgress.verifiedWork())s.lastWork=now;
+   }
+   if(s.lastHeartbeat==Long.MIN_VALUE||now-s.lastHeartbeat>=100){
+    s.lastHeartbeat=now;
+    String detail="OBJECTIVE="+task+" SUBTASK="+((Task)task).getTaskTree()+" TARGET="+(s.target==null?"none":s.target.key())
+      +" INVENTORY="+com.player2.playerengine.agentic.InventorySpace.inspect(controller).summary()
+      +" NO_WORK_TICKS="+(now-s.lastWork)+" ATTEMPT="+s.policy.attempts()+"/3 MODE="+s.mode;
+    ObservatoryTelemetry.set("reliabilityProgress",detail);ObservatoryTelemetry.event("TASK_PROGRESS",detail);
+   }
+   if(s.resourceJob&&now-s.lastWork>=2400){
+    String reason="No verified resource or world output for "+(now-s.lastWork)+" ticks; target="+(s.target==null?"none (resource search exhausted)":s.target.key())
+      +" subtask="+((Task)task).getTaskTree()+" attempts="+s.policy.attempts()+"/3; try a different resource location or remove the reported obstruction";
+    release(s,game);failures.put(task,reason);event(s,"TASK_BLOCKED",reason);
+    if(task instanceof com.player2.playerengine.tasks.setup.EllieSetupTask setup)setup.blockFromRecovery(reason);
+    else ((Task)task).fail(reason);
+    return true;
+   }
    boolean critical=game.criticalAir();
    if(critical&&!s.mode.equals("AIR")){
     if(!takeMovement(s,game))return false;
@@ -46,7 +78,7 @@ public final class SharedTargetRecovery {
     event(s,"RECOVERY_AIR",s.destination==null?"No local breathable exit found; yielding to survival chain":"Air overrides work; native route to breathable cell "+s.destination.key());
    }
    if(s.mode.equals("AIR")){
-    if(!critical){release(s,game);resetOwner(s);s.policy.resume(now,true);event(s,"RECOVERY_RESUME","Breathing restored; original goal retained");return false;}
+    if(!critical){release(s,game);resetOwner(s);s.policy.resume(now,false);event(s,"RECOVERY_RESUME","Breathing restored; original goal retained");return false;}
     if(s.destination!=null&&now-s.lastAirPlan>=40){s.lastAirPlan=now;game.release(s.goal);List<Cell> exits=game.breathableExits();if(!exits.isEmpty()){int index=Math.min((int)((now-s.started)/40),exits.size()-1);s.destination=exits.get(index);s.goal=game.path(s.destination);}}
     return true;
    }
@@ -55,9 +87,11 @@ public final class SharedTargetRecovery {
    if(((Task)owner).thisOrChildSatisfies(t->t instanceof ITaskCanForce force&&force.shouldForce(null)))return false;
    if(!((Task)task).containsTask(t->t==owner)){s.owner.clear();s.target=null;return false;}
    if(s.latestSample!=Long.MIN_VALUE&&now>=s.latestSample&&now-s.latestSample<5)return false;s.latestSample=now;
-   if(!s.sampledTarget.equals(s.target.key())){s.tried.clear();s.sampledTarget=s.target.key();}
+   if(!s.sampledTarget.equals(s.target.key()))s.sampledTarget=s.target.key();
    double[] position=game.position();boolean reachable=game.interact(s.target);
-   if(!s.policy.stalled(s.target.key(),game.progressSafely(s.target),position[0],position[1],position[2],now,reachable,game.breakingProgress(s.target)))return false;
+   boolean stalled=s.policy.stalled(s.target.key(),game.progressSafely(s.target),position[0],position[1],position[2],now,reachable,game.breakingProgress(s.target));
+   if(s.policy.verifiedWork()){s.lastWork=now;s.targetOscillation.reset();}
+   if(!stalled)return false;
    if(rejected(controller,RecoveryWorld.pos(s.target))||(s.policy.attempts()>=3&&s.exhausted.equals(s.target.key())))return false;
    s.inputs=game.activeInputs();
    if(!takeMovement(s,game))return false;
@@ -75,7 +109,7 @@ public final class SharedTargetRecovery {
   }
   s.started=now;
   if(s.policy.attempts()==2&&startClear(s,game,chain))return true;
-  for(Cell cell:game.approaches(s.target))if(s.tried.add(cell.key())){
+  for(Cell cell:game.approaches(s.target))if(s.tried.add(s.target.key()+"->"+cell.key())){
    s.destination=cell;s.mode="APPROACH";s.goal=game.path(cell);event(s,"RECOVERY_APPROACH","Trying standable line-of-sight candidate "+cell.key()+"; route will be verified natively");return true;
   }
   if(startClear(s,game,chain))return true;
@@ -136,7 +170,25 @@ public final class SharedTargetRecovery {
    Object controller=get(task,"controller");if(controller==null)return proposed;Session s=session(controller);
    if(!s.mode.equals("WATCH"))return proposed;
    if(((Task)task).isFinished())return proposed;
-   Cell target=target(task);if(target==null&&task.getClass().getName().endsWith("$BuildFromCode")&&proposed==null){target=builderTarget(controller);if(target==null&&s.owner.get()==task){s.owner.clear();s.target=null;ObservatoryTelemetry.event("RECOVERY_TARGET_UNAVAILABLE","Builder has no verified path destination; retaining native work without guessing a target");}}if(target!=null){s.owner=new WeakReference<>(task);s.target=target;}
+   if(task instanceof com.player2.playerengine.tasks.crafting.CraftMacroResourceTask craft){
+    int rank=com.player2.playerengine.tasks.setup.CoreAcquisitionProgress.stageRank(String.valueOf(craft.getPhase()));
+    if(rank>s.maxCraftPhase){s.maxCraftPhase=rank;s.lastWork=new RecoveryWorld(controller).tick();}
+   }
+   Cell target=target(task);if(target==null&&task.getClass().getName().endsWith("$BuildFromCode")&&proposed==null){target=builderTarget(controller);if(target==null&&s.owner.get()==task){s.owner.clear();s.target=null;ObservatoryTelemetry.event("RECOVERY_TARGET_UNAVAILABLE","Builder has no verified path destination; retaining native work without guessing a target");}}if(target!=null){
+    s.owner=new WeakReference<>(task);s.target=target;
+    // Repeated A-B-A-B mining targets can hide from the ordinary stable-target timer.
+    // Blacklist only a repeatedly revisited block that still physically exists.
+    if(task.getClass().getSimpleName().equals("DestroyBlockTask")
+        && s.targetOscillation.observe(target.key(),System.nanoTime())){
+      RecoveryWorld game=new RecoveryWorld(controller);
+      if(!game.air(target)){
+        reject(controller,RecoveryWorld.pos(target));
+        event(s,"MINING_TARGET_OSCILLATION","Rejected unchanged repeatedly alternating mining target "+target.key()+" for 120 seconds; selecting new candidate");
+        clearTargetCaches(s,controller);
+        resetOwner(s);
+      }
+    }
+   }
   }catch(Exception|LinkageError e){warn(e);}return proposed;
  }
  private static Cell builderTarget(Object controller){
@@ -154,9 +206,9 @@ public final class SharedTargetRecovery {
  }
  private static Cell target(Object task)throws Exception{
   String kind=task.getClass().getSimpleName();
-  if(!List.of("DestroyBlockTask","GetCloseToBlockTask","GetWithinRangeOfBlockTask","GetToBlockTask","PlaceBlockTask","CraftMacroResourceTask","CraftInTableTask").contains(kind))return null;
+  if(!List.of("DestroyBlockTask","GetCloseToBlockTask","GetWithinRangeOfBlockTask","GetToBlockTask","PlaceBlockTask","PlaceItemBlockAtPosTask","CraftMacroResourceTask","CraftInTableTask").contains(kind))return null;
   if(kind.equals("CraftMacroResourceTask")){String phase=String.valueOf(get(task,"phase"));if(!phase.contains("TABLE")&&!phase.equals("CRAFT_3X3_OUTPUT"))return null;}
-  String field=switch(kind){case "DestroyBlockTask"->"pos";case "GetWithinRangeOfBlockTask"->"blockPos";case "GetCloseToBlockTask"->"toApproach";case "GetToBlockTask"->"position";case "PlaceBlockTask"->"target";default->"craftingTablePos";};
+  String field=switch(kind){case "DestroyBlockTask"->"pos";case "GetWithinRangeOfBlockTask"->"blockPos";case "GetCloseToBlockTask"->"toApproach";case "GetToBlockTask"->"position";case "PlaceBlockTask"->"target";case "PlaceItemBlockAtPosTask"->"placePos";default->"craftingTablePos";};
   Object p=get(task,field);if(p!=null)return RecoveryWorld.cell(p);
   return null;
  }

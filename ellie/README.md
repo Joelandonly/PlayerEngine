@@ -1,4 +1,10 @@
-# Ellie: Player2 native commands and shared recovery
+# Ellie: Setup11 survival reliability
+
+Current revision: `20261105-setup11-tools-first-no-torch-placement-v3`. **Live survival gameplay is UNVERIFIED.**
+See [reliability validation](../docs/ELLIE_SETUP11_RELIABILITY.md) for exact automated coverage, budgets, and the required fresh-world run.
+
+The required sequence is wooden pickaxe, early stone axe, two stone pickaxes, stone shovel, crafting table, furnace, chest, shield, iron pickaxe, iron sword, 32 torches. Every objective is required. Setup places and verifies the three workshop stations, then prioritizes the shield and iron tools before acquiring 32 torches. Torches remain in inventory for manual placement. Surface lighting is not surveyed or required for setup completion. Setup never requests buckets, iron armor, spare iron tools, bed, bread or diamonds. Existing better tools may satisfy quantities without requesting a downgrade.
+
 
 Current target: **Minecraft 1.21.1 Fabric, PlayerEngine 1.4.0, Java 21**.
 Keep the existing Player2NPC and companion Fabric mods. This is a binary overlay;
@@ -28,11 +34,10 @@ not part of the current runtime. The build verifies Player2 API byte identity,
 exact class changes, ASM, command routing, supervisor, setup and crafting recovery.
 Generated JAR/portable ZIP files are in `dist/`. For installation, download the
 GitHub Actions artifact **`Ellie-1.21.1-JAR-only`**: it contains exactly one mod JAR,
-with its source revision in the filename. GitHub wraps artifact downloads in a ZIP;
+with its source revision and `UNVERIFIED` in the filename, plus a checksum receipt. GitHub wraps artifact downloads in a ZIP;
 extract that one JAR into `mods`.
 
-The separate **`Ellie-1.21.1-source-bundle`** is for rebuilding. It includes source,
-tests and the older pinned baseline JAR; do not install that baseline.
+The separate **`Ellie-1.21.1-source-bundle`** is a lean review/rebuild source bundle with zero JARs or class files. Rebuilding requires the pinned baseline from this repository, with its SHA-256 verified by `build.sh`. It is not a full upstream engine source tree.
 
 Install only the replacement PlayerEngine JAR in Minecraft's `mods` folder.
 Remove the previous engine JAR and keep the companion mods. Run `Ellie, setup` in

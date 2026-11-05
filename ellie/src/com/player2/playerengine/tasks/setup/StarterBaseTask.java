@@ -21,6 +21,12 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
         int count(String resource) throws Exception;
         Task acquire(String resource) throws Exception;
         Task place(StarterBaseLayout.Placement placement) throws Exception;
+        // Test environments without a game surface preserve the legacy station-only fixture.
+        default SurfaceLightingPlan.Survey surveyLighting(List<StarterBaseLayout.Placement> plan,
+                Set<StarterBaseLayout.Pos> excluded) throws Exception {
+            return new SurfaceLightingPlan.Survey(1, 0, Optional.empty());
+        }
+        default void retainTorch(StarterBaseLayout.Placement placement) {}
     }
     private Environment environment;
     private final StarterBaseLayout.Pos origin;
@@ -85,7 +91,8 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
                 for (int i=0;i<plan.size();i++) if (!environment.matches(plan.get(i))||!environment.safe(plan.get(i))) {
                     index=i;return repair(plan.get(i));
                 }
-                done=true; reason="Starter base verified: crafting table, furnace, one chest and usable support";
+                done=true;
+                reason="Crafting table, furnace and chest physically verified; torch placement is not part of setup";
                 return null;
             }
             var target=plan.get(index);
@@ -125,7 +132,8 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     public void releaseProtection(){if(environment!=null)environment.releaseProtection();}
     public int verifiedPlacedCount(String resource) {
         if (environment==null || plan==null) return 0;
-        try { int count=0;for(var p:plan) if(p.resource().equals(resource)&&environment.matches(p))count++;return count; }
+        try { int count=0;for(var p:plan) if(p.resource().equals(resource)&&environment.matches(p))count++;
+            return count; }
         catch (Exception | LinkageError error) { return 0; }
     }
     public boolean isTerminal() { return done||failed; }

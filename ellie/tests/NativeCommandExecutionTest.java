@@ -32,6 +32,12 @@ public final class NativeCommandExecutionTest {
   check(!((Task)child).stopped()&&tick(root)==child&&!root.isFinished(),"defense suspension must resume the same physical child without a terminal failure");
   complete(child,Optional.empty());tick(root);check(((TrackedTaskOutcomeProvider)root).isSuccessful(),"verified physical result required");
   BuildStructureTask failed=new BuildStructureTask(new class_2338(0,64,0),"small shelter","small shelter",mod);Object bad=tick(failed);complete(bad,Optional.of("blocked cell"));tick(failed);check(!((TrackedTaskOutcomeProvider)failed).isSuccessful()&&((TrackedTaskOutcomeProvider)failed).controlledReason().equals("blocked cell"),"physical failure must never become command success or request a model retry");
+  BuildStructureTask compact=new BuildStructureTask(new class_2338(-83,70,-5),"compact cobblestone village","a compact cobblestone village with three houses and roads",mod);
+  Object compactChild=tick(compact);
+  check(compactChild instanceof Task,"compact village must dispatch to real physical builder");
+  String compactCode=(String)NativeAccess.get(compactChild,"code");
+  check(compactCode.contains("setBlock(-82,70,-4,\"cobblestone\")")&&compactCode.split("setBlock\\(",-1).length==475,
+       "compact village must use 474-cell local layout, not the 5,407-cell fortress");
   var outcome=SetupDirectRoute.class.getDeclaredMethod("outcomeText",String.class,String.class,com.player2.playerengine.supervisor.GoalLifecycle.Snapshot.class,com.player2.playerengine.supervisor.GoalLifecycle.Snapshot.class);outcome.setAccessible(true);
   var rejected=new com.player2.playerengine.supervisor.GoalLifecycle.Snapshot(1,"test","mine",com.player2.playerengine.supervisor.GoalLifecycle.Status.FAILED,"blocked target");
   check(((String)outcome.invoke(null,"mine","completed",null,rejected)).contains("Completion was not verified"),"failed native receipt cannot be reported as completion");

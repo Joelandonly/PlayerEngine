@@ -21,7 +21,8 @@ public final class NativeBuildSupport {
     return;
    }
    com.player2.playerengine.observatory.ObservatoryTelemetry.goalStart(root);
-   String code=(String)callStatic("com.player2.playerengine.tasks.construction.build_structure.FastStarterBlueprint","maybeCode",root);
+   String code=CompactVillageBlueprint.maybeCode(root);
+   if(code==null)code=(String)callStatic("com.player2.playerengine.tasks.construction.build_structure.FastStarterBlueprint","maybeCode",root);
    if(code==null){failed(root,"Unsupported local blueprint. Choose a starter shelter, cabin, lodge, stone cottage, workshop, storage shed, greenhouse or 47x47 fortified village. No AI request was made.");return;}
    com.player2.playerengine.reliability.WorksiteAnchor.open(root,get(root,"mod"),get(root,"buildPosition"),code);
    var type=Class.forName(root.getClass().getName()+"$BuildFromCode");

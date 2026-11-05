@@ -22,7 +22,25 @@ public final class EllieSetupTask
 extends Task
 implements TransientlyResumableTask,
 TrackedTaskOutcomeProvider {
-    private static final Step[] PLAN = new Step[]{new Step("bootstrap", "wooden_pickaxe", 1, true, 1800), new Step("bootstrap", "stone_pickaxe", 2, true, 3600), new Step("bootstrap", "stone_shovel", 1, true, 2400), new Step("bootstrap", "stone_axe", 1, true, 2400), new Step("workshop", "crafting_table", 1, true, 2400), new Step("workshop", "furnace", 1, true, 2400), new Step("storage reserve", "chest", 1, true, 2400), new Step("supplies", "torch", 32, true, 1800), new Step("equipment upgrade", "shield", 1, true, 2400), new Step("equipment upgrade", "bucket", 2, true, 3200), new Step("equipment upgrade", "iron_pickaxe", 1, true, 3000), new Step("equipment upgrade", "iron_shovel", 1, true, 1800), new Step("equipment upgrade", "iron_axe", 1, true, 1800), new Step("equipment upgrade", "iron_sword", 1, true, 1800), new Step("equipment upgrade", "iron_chestplate", 1, true, 3000), new Step("equipment upgrade", "iron_leggings", 1, true, 3000), new Step("equipment upgrade", "iron_helmet", 1, true, 1800), new Step("equipment upgrade", "iron_boots", 1, true, 1800), new Step("supplies", "bread", 16, true, 1600), new Step("supplies", "bed", 1, true, 1600)};
+    public static final String ELLIE_BUILD_REVISION = "20261105-setup11-tools-first-no-torch-placement-v3";
+    // No optional items in setup. Every entry must have real verified output.
+    // Diamonds, iron armor, spare iron tools and empty buckets belong to later explicit goals.
+    private static final Step[] PLAN = new Step[]{
+        new Step("bootstrap", "wooden_pickaxe", 1, true, 1800),
+        new Step("bootstrap", "stone_axe", 1, true, 2400),
+        new Step("bootstrap", "stone_pickaxe", 2, true, 3600),
+        new Step("bootstrap", "stone_shovel", 1, true, 2400),
+        new Step("workshop", "crafting_table", 1, true, 2400),
+        new Step("workshop", "furnace", 1, true, 2400),
+        new Step("storage reserve", "chest", 1, true, 2400),
+        new Step("equipment", "shield", 1, true, 2400),
+        new Step("equipment", "iron_pickaxe", 1, true, 3600),
+        new Step("equipment", "iron_sword", 1, true, 3600),
+        new Step("supplies", "torch", 32, true, 2400)
+    };
+    static {
+        for (Step step : PLAN) if (!step.required) throw new IllegalStateException("Setup cannot have optional objectives");
+    }
     private int index;
     private int lastCount;
     private int stagnant;
@@ -48,7 +66,6 @@ TrackedTaskOutcomeProvider {
     private StarterBaseTask baseTask;
     private boolean baseAccepted;
     private boolean failed;
-    private int optionalSkipped;
     private boolean startedOnce;
     private boolean pendingGestureResume;
     private boolean abandoned;
@@ -64,7 +81,7 @@ TrackedTaskOutcomeProvider {
     private String failureReason = "";
 
     public static Step[] plannedSteps() {
-        return (Step[])PLAN.clone();
+        return PLAN.clone();
     }
 
     protected void onStart() {
@@ -78,7 +95,7 @@ TrackedTaskOutcomeProvider {
                 this.baseTask.prepareExisting();
             } catch (Exception | LinkageError error) {
                 String detail = error instanceof IllegalStateException && error.getMessage() != null ? ": " + error.getMessage() : "";
-                this.stopStep(new Step("startup", "setup_context", 1, true, 12000), "Cannot restore setup context: " + error.getClass().getSimpleName() + detail, true);
+                this.stopStep(new Step("startup", "setup_context", 1, true, 12000), "Cannot restore setup context: " + error.getClass().getSimpleName() + detail);
                 return;
             }
             this.journal = this.openGoalJournal();
@@ -88,7 +105,7 @@ TrackedTaskOutcomeProvider {
             if (this.journal.error() != null) {
                 EllieSetupTask.event("SETUP_JOURNAL_WARNING", this.journal.error());
             }
-            EllieSetupTask.event("SETUP_START", "Starter setup: full required kit with a compact three-block workstation");
+            EllieSetupTask.event("SETUP_START", "Ellie build=" + ELLIE_BUILD_REVISION + "; required survival kit with compact workshop; shield and iron tools before torch supplies; no torch placement");
         } else if (this.pendingGestureResume) {
             this.pendingGestureResume = false;
             TaskSuspensionCause taskSuspensionCause = this.pendingResumeCause;
@@ -112,7 +129,7 @@ TrackedTaskOutcomeProvider {
         if (this.index >= 7 && this.baseTask != null && !this.baseAccepted) {
             if (!this.baseTask.isTerminal()) return this.baseTask;
             if (!this.baseTask.isSuccessful()) {
-                this.stopStep(new Step("starter base", "base", 1, true, 12000), this.baseTask.controlledReason(), true);
+                this.stopStep(new Step("starter base", "base", 1, true, 12000), this.baseTask.controlledReason());
                 return null;
             }
             this.baseAccepted = true;
@@ -122,7 +139,7 @@ TrackedTaskOutcomeProvider {
         if (this.index >= PLAN.length) {
             if (this.baseTask != null && !this.baseTask.isTerminal()) return this.baseTask;
             if (this.baseTask != null && !this.baseTask.isSuccessful()) {
-                this.stopStep(new Step("starter base", "base", 1, true, 12000), this.baseTask.controlledReason(), true);
+                this.stopStep(new Step("starter base", "base", 1, true, 12000), this.baseTask.controlledReason());
                 return null;
             }
             // A completed subtask is historical evidence, not proof that its output is
@@ -130,13 +147,14 @@ TrackedTaskOutcomeProvider {
             try {
                 for (int i = 0; i < PLAN.length; i++) {
                     Step required = PLAN[i];
-                    if (!required.required || required.phase.equals("bootstrap")) continue;
+                    if (!required.required) continue;
                     boolean satisfied = this.verifiedCount(required.resource) >= required.amount
                         || required.resource.equals("wooden_pickaxe") && this.hasAnyPickaxeBeyondWood()
+                        || this.betterBootstrapToolOwned(required)
                         || required.resource.equals("crafting_table") && this.hasVerifiedNearbyCraftingTable();
                     if (satisfied) continue;
                     if (++this.finalVerificationPasses > 2) {
-                        this.stopStep(required, "Final verification could not retain required supplies after two repair passes", true);
+                        this.stopStep(required, "Final verification could not retain required supplies after two repair passes");
                         return null;
                     }
                     this.index = i;
@@ -149,38 +167,32 @@ TrackedTaskOutcomeProvider {
                     return null;
                 }
             } catch (ReflectiveOperationException | RuntimeException error) {
-                this.stopStep(PLAN[0], "Final inventory verification unavailable: " + error.getClass().getSimpleName(), true);
+                this.stopStep(PLAN[0], "Final inventory verification unavailable: " + error.getClass().getSimpleName());
                 return null;
             }
             if (this.baseTask == null) {
                 if (this.baseOrigin == null || this.baseDimension == null) {
-                    this.stopStep(PLAN[0], "No verified setup starting site", true);
+                    this.stopStep(PLAN[0], "No verified setup starting site");
                     return null;
                 }
                 this.baseTask = new StarterBaseTask(this.baseOrigin, this.baseDimension);
                 this.baseTask.controller = this.controller;
-                this.checkpoint("RUNNING", "starter_base", "Full kit verified; placing one table, one furnace and one chest");
+                this.checkpoint("RUNNING", "starter_base", "Full kit verified; placing workstations and storage");
                 return this.baseTask;
             }
             this.completed = true;
             this.checkpoint("COMPLETED", "setup", "All required inventory and workstation objectives verified");
-            String string = "Starter setup complete: full kit verified, crafting table and furnace placed, one chest verified. No shelter or farm is implied.";
+            String string = "Starter setup complete: required kit, crafting table, furnace and chest verified; 32 torches retained for manual placement. No shelter or farm is implied.";
             EllieSetupTask.event("SETUP_SUPPLIES_READY", string);
             this.report(string);
             return null;
         }
         Step step = PLAN[this.index];
-        if (this.finalVerificationPasses > 0 && !step.required) {
-            // Optional objectives have already had their first attempt. Repairs must
-            // not consume supplies again or inflate the optional-skipped counter.
-            ++this.index;
-            return null;
-        }
         if (this.active != null) {
             ++this.objectiveWorkTicks;
         }
         if (this.objectiveWorkTicks > step.stagnantLimit * 4) {
-            this.stopStep(step, "Cumulative active work budget exhausted for " + step.resource + " after " + this.objectiveWorkTicks + " ticks (suspensions excluded)", step.required);
+            this.stopStep(step, "Cumulative active work budget exhausted for " + step.resource + " after " + this.objectiveWorkTicks + " ticks (suspensions excluded)");
             return null;
         }
         if (!step.phase.equals(this.lastPhase)) {
@@ -208,25 +220,14 @@ TrackedTaskOutcomeProvider {
                 return null;
             }
             if (this.active == null) {
-                String string2;
-                if (!step.required && !this.furnaceAssist && this.journal != null && this.journal.optionalCooldown(step.resource, string2 = this.optionalMaterialFingerprint(), System.currentTimeMillis())) {
-                    EllieSetupTask.event("SETUP_OPTIONAL_COOLDOWN", step.resource + ": earlier unavailable materials unchanged; retry after a short cooldown");
-                    this.checkpoint("OPTIONAL_SKIPPED", step.resource, "cooldown; materials unchanged");
-                    ++this.optionalSkipped;
-                    ++this.index;
-                    this.objectiveWorkTicks = 0;
-                    this.inventoryPressureReported = false;
-                    this.resetProgress();
-                    return null;
-                }
                 if (!this.inventoryPressureReported && this.noEmptyInventorySlots()) {
                     this.inventoryPressureReported = true;
-                    EllieSetupTask.event("SETUP_INVENTORY_PRESSURE", "Inventory has no free main slot at " + step.resource + "; continuing only if existing stacks can accept materials");
+                    EllieSetupTask.event("SETUP_INVENTORY_PRESSURE", "Inventory actually full at " + step.resource + ": " + com.player2.playerengine.agentic.InventorySpace.inspect(this.controller).summary());
                 }
                 this.checkpoint("RUNNING", step.resource, "Acquisition started, current=" + n + "/" + step.amount);
                 Task resolved = this.furnaceAssist ? this.resolve(new Step("workshop", "cobblestone", 8, true, step.stagnantLimit)) : this.resolve(step);
                 if (resolved == null) {
-                    this.stopStep(step, "No supported gather/craft task", step.required);
+                    this.stopStep(step, "No supported gather/craft task");
                     return null;
                 }
                 resolved.controller = this.controller;
@@ -252,21 +253,21 @@ TrackedTaskOutcomeProvider {
                 if (!this.furnaceAssist && this.attemptFurnaceMaterialRecovery(step, string)) {
                     return this.active;
                 }
-                this.stopStep(step, (this.furnaceAssist ? "Cobblestone pre-gather failed: " : "Acquisition failed: ") + string, step.required);
+                this.stopStep(step, (this.furnaceAssist ? "Cobblestone pre-gather failed: " : "Acquisition failed: ") + string);
                 return null;
             }
             if (this.active.isFinished()) {
                 if (this.furnaceAssist) {
-                    this.stopStep(step, "Cobblestone pre-gather ended without 8 verified cobblestone", step.required);
+                    this.stopStep(step, "Cobblestone pre-gather ended without 8 verified cobblestone");
                 } else if (n >= step.amount) {
                     this.advance(step, n, "acquired");
                 } else {
-                    this.stopStep(step, "Gather/craft subtask finished without sufficient items (" + n + "/" + step.amount + ")", step.required);
+                    this.stopStep(step, "Gather/craft subtask finished without sufficient items (" + n + "/" + step.amount + ")");
                 }
                 return null;
             }
             if (this.active.stopped()) {
-                this.stopStep(step, "Acquisition task stopped without success (" + n + "/" + step.amount + ")", step.required);
+                this.stopStep(step, "Acquisition task stopped without success (" + n + "/" + step.amount + ")");
                 return null;
             }
             ++this.stepTicks;
@@ -287,23 +288,23 @@ TrackedTaskOutcomeProvider {
                 }
                 if (sample.stationLoop()) {
                     EllieSetupTask.event("SETUP_CRAFT_STATION_LOOP", step.resource + ": repeated " + sample.stationTransitions() + " table-state transitions without inventory progress; station=" + string3 + "; phase=" + string6);
-                    this.stopStep(step, "Crafting-table movement/aim loop with no verified item progress; station=" + string3 + ", phase=" + string6, step.required);
+                    this.stopStep(step, "Crafting-table movement/aim loop with no verified item progress; station=" + string3 + ", phase=" + string6);
                     return null;
                 }
             }
             ++this.stagnant;
             if (this.stagnant > step.stagnantLimit) {
-                this.stopStep(step, "No material or crafting-phase progress for " + this.stagnant + " ticks; output=" + n + "/" + step.amount, step.required);
+                this.stopStep(step, "No material or crafting-phase progress for " + this.stagnant + " ticks; output=" + n + "/" + step.amount);
                 return null;
             }
             if (this.objectiveWorkTicks > step.stagnantLimit * 4) {
-                this.stopStep(step, "Total work limit reached (" + this.objectiveWorkTicks + " active ticks, including replans)", step.required);
+                this.stopStep(step, "Total work limit reached (" + this.objectiveWorkTicks + " active ticks, including replans)");
                 return null;
             }
             return this.active;
         }
         catch (ReflectiveOperationException | RuntimeException exception) {
-            this.stopStep(step, "Inventory or task lookup error: " + exception.getClass().getSimpleName() + " " + String.valueOf(exception.getMessage()), step.required);
+            this.stopStep(step, "Inventory or task lookup error: " + exception.getClass().getSimpleName() + " " + String.valueOf(exception.getMessage()));
             return null;
         }
     }
@@ -478,7 +479,7 @@ TrackedTaskOutcomeProvider {
         if (!step.phase.equals("bootstrap") || !step.resource.startsWith("stone_")) return false;
         String suffix = step.resource.substring(6);
         for (String tier : new String[]{"iron_", "diamond_", "netherite_"}) {
-            if (this.countInventory(tier + suffix) > 0) return true;
+            if (this.countInventory(tier + suffix) >= step.amount) return true;
         }
         return false;
     }
@@ -495,30 +496,20 @@ TrackedTaskOutcomeProvider {
         this.resetProgress();
     }
 
-    private void stopStep(Step step, String string, boolean bl) {
-        EllieSetupTask.event(bl ? "SETUP_BLOCKED" : "SETUP_OPTIONAL_SKIP", step.resource + ": " + string);
+    public void blockFromRecovery(String reason) {
+        if (!isTerminal()) stopStep(PLAN[Math.min(index, PLAN.length-1)], reason);
+    }
+
+    private void stopStep(Step step, String reason) {
+        EllieSetupTask.event("SETUP_BLOCKED", step.resource + ": " + reason);
         this.active = null;
         this.furnaceAssist = false;
         this.resetProgress();
-        if (bl) {
-            this.checkpoint("BLOCKED", step.resource, string);
-        } else {
-            if (this.journal != null) {
-                this.journal.noteOptionalFailure(step.resource, this.optionalMaterialFingerprint());
-            }
-            this.checkpoint("OPTIONAL_SKIPPED", step.resource, string);
-        }
-        if (bl) {
-            this.failed = true;
-            this.failureReason = "Setup blocked at " + step.resource + ": " + string;
-            this.report(this.failureReason);
-            this.fail(this.failureReason);
-        } else {
-            ++this.optionalSkipped;
-            ++this.index;
-            this.objectiveWorkTicks = 0;
-            this.inventoryPressureReported = false;
-        }
+        this.checkpoint("BLOCKED", step.resource, reason);
+        this.failed = true;
+        this.failureReason = "Setup blocked at " + step.resource + ": " + reason;
+        this.report(this.failureReason);
+        this.fail(this.failureReason);
     }
 
     public boolean prepareForTransientResume(TaskSuspensionCause taskSuspensionCause) {
@@ -671,7 +662,7 @@ TrackedTaskOutcomeProvider {
             return "Setup interrupted before verifying all required items";
         }
         if (this.completed) {
-            return "Full starter kit and placed workstation/storage base verified";
+            return "Required survival kit, workstation/storage and torch supplies verified; torch placement excluded";
         }
         return "Setup still running";
     }
@@ -686,7 +677,7 @@ TrackedTaskOutcomeProvider {
 
     public String outcomeForCommand() {
         if (this.isSuccessfullyCompleted()) {
-            return "Setup COMPLETED: full starter kit verified; crafting table, furnace and one chest physically placed and verified. No house or farm is implied.";
+            return "Setup COMPLETED: required tools, shield and supplies verified; crafting table, furnace and chest physically verified; torches retained for manual placement.";
         }
         if (this.failed) {
             return "Setup BLOCKED, not complete: " + this.failureReason;
@@ -700,19 +691,19 @@ TrackedTaskOutcomeProvider {
 
     protected String toDebugString() {
         if (this.index >= 7 && this.baseTask != null && !this.baseAccepted && !this.failed) {
-            return "Setup workstation/storage placement: " + this.baseTask;
+            return "Setup workshop: " + this.baseTask;
         }
         if (this.failed) {
             return "Setup BLOCKED: " + this.failureReason;
         }
         if (this.completed) {
-            return "Setup starter kit and workstation/storage base READY";
+            return "Setup survival kit and illuminated outdoor workshop READY";
         }
         if (this.index >= PLAN.length) {
             return "Setup finalizing";
         }
         Step step = PLAN[this.index];
-        return "Setup " + step.phase + " [" + (this.index + 1) + "/" + PLAN.length + "]: " + (this.furnaceAssist ? "furnace material assist (cobblestone)" : step.resource) + " x" + step.amount + " (optional skipped=" + this.optionalSkipped + ")";
+        return "Setup " + step.phase + " [" + (this.index + 1) + "/" + PLAN.length + "]: " + (this.furnaceAssist ? "furnace material assist (cobblestone)" : step.resource) + " x" + step.amount;
     }
 
     public boolean isFinished() {
@@ -750,23 +741,9 @@ TrackedTaskOutcomeProvider {
         }
     }
 
-    private String optionalMaterialFingerprint() {
-        StringBuilder stringBuilder = new StringBuilder();
-        for (String string : new String[]{"oak_log", "oak_planks", "spruce_log", "birch_log", "jungle_log", "cobblestone", "coal", "iron_ingot", "stick"}) {
-            stringBuilder.append(string).append('=').append(this.safeDiagnosticCount(string)).append(';');
-        }
-        return stringBuilder.toString();
-    }
-
     private boolean noEmptyInventorySlots() {
-        try {
-            ItemStorageTracker itemStorageTracker = this.controller.getItemStorage();
-            Object object = itemStorageTracker.getClass().getMethod("hasEmptyInventorySlot", new Class[0]).invoke((Object)itemStorageTracker, new Object[0]);
-            return Boolean.FALSE.equals(object);
-        }
-        catch (ReflectiveOperationException | RuntimeException exception) {
-            return false;
-        }
+        // Read the NPC's main slots, not itemCounts[Items.AIR]: an empty ItemStack has count zero.
+        return com.player2.playerengine.agentic.InventorySpace.mainFull(this.controller);
     }
 
     private static String craftingTableKey(Task task) {

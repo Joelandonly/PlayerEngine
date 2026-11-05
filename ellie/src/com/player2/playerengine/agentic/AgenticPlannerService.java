@@ -3,13 +3,14 @@ import com.player2.playerengine.PlayerEngineController;
 import com.player2.playerengine.PlayerEngineSettings;
 import java.util.*;
 import java.util.function.Consumer;
-/** Explicit local drop/storage planning; never requests a model, regardless of settings. */
+/** Explicit local resource/drop/storage planning; never requests a model, regardless of settings. */
 public final class AgenticPlannerService {
  private AgenticPlannerService() {}
  public static AgenticPlannerOutcome plan(PlayerEngineController mod,AgenticGoalRequest request) {
   if(request==null||request.goalText()==null||request.goalText().isBlank())
    return new AgenticPlannerOutcome(AgenticPlanValidationResult.invalid(List.of("empty_goal")),"native",List.of(),"Goal text is required.");
-  return tryDeterministicFallback(mod.getModSettings(),request.goalText(),List.of(),"native_unsupported");
+  AgenticPlannerOutcome resource=ResourceAgenticIntegration.plan(mod.getModSettings(),request.goalText());
+  return resource!=null?resource:tryDeterministicFallback(mod.getModSettings(),request.goalText(),List.of(),"native_unsupported");
  }
  public static void planAsync(PlayerEngineController mod,AgenticGoalRequest request,Consumer<AgenticPlannerOutcome> callback) {
   Objects.requireNonNull(callback).accept(plan(mod,request));
@@ -48,7 +49,7 @@ public final class AgenticPlannerService {
     }
 
     private static String safePlanFailureMessage(String goalText) {
-        return "I could not make a safe plan for that yet (agentic planning covers drop pickup and chest storage only). To mine or collect a resource, use the 'get' command directly instead.";
+        return "I could not make a safe plan for that yet (agentic planning supports explicit get <item> <count>, drop pickup and chest storage). To mine or collect a resource, use the 'get' command directly instead.";
     }
 
     private static String mineGoalRedirectMessage() {
