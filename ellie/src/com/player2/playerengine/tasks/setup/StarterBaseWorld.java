@@ -260,28 +260,38 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         };
         return SurfaceLightingPlan.inspect(plan, surveyProbe, excluded);
     }
-    /** Use the engine's existing persistent HOME waypoint collection, not a second GPS file. */
+    /** Persist HOME through the engine's existing Baritone waypoint store. */
     public void rememberHome(StarterBaseLayout.Placement bench) throws Exception {
         if(!bench.resource().equals("crafting_table") || !matches(bench))
-            throw new IllegalStateException("Home waypoint requires a physically verified crafting table");
-        var baritone=controller.getBaritone();
-        if(baritone==null || baritone.getWorldProvider()==null ||
-                baritone.getWorldProvider().getCurrentWorld()==null)
-            throw new IllegalStateException("Native HOME waypoint store unavailable");
-        var waypointStore=baritone.getWorldProvider().getCurrentWorld().getWaypoints();
-        if(waypointStore==null)throw new IllegalStateException("Native HOME waypoint collection unavailable");
+            throw new IllegalStateException("Home waypoint needs a verified crafting table");
         var at=bench.pos();
-        var location=new com.player2.playerengine.automaton.api.utils.BetterBlockPos(at.x(),at.y(),at.z());
-        for(var previous:new java.util.ArrayList<>(waypointStore.getByTag(
-                com.player2.playerengine.automaton.api.cache.IWaypoint.Tag.HOME))) {
-            if(!previous.getName().equals("Ellie Setup Home"))continue;
-            if(previous.getLocation().equals(location))return;
-            waypointStore.removeWaypoint(previous);
+        Object baritone=controller.getBaritone();
+        if(baritone==null)throw new IllegalStateException("Baritone waypoint service unavailable");
+        Object provider=call(baritone,"getWorldProvider");
+        Object worldData=call(provider,"getCurrentWorld");
+        if(worldData==null)throw new IllegalStateException("Current waypoint world unavailable");
+        Object waypoints=call(worldData,"getWaypoints");
+        Class<?> tagClass=Class.forName("com.player2.playerengine.automaton.api.cache.IWaypoint$Tag");
+        @SuppressWarnings({"unchecked","rawtypes"})
+        Object home=Enum.valueOf((Class)tagClass.asSubclass(Enum.class),"HOME");
+        var old=new java.util.ArrayList<>((java.util.Collection<?>)call(waypoints,"getByTag",home));
+        for(Object waypoint:old) {
+            if(!"Ellie Setup Home".equals(call(waypoint,"getName")))continue;
+            Object location=call(waypoint,"getLocation");
+            int x=((Number)call(location,"method_10263")).intValue();
+            int y=((Number)call(location,"method_10264")).intValue();
+            int z=((Number)call(location,"method_10260")).intValue();
+            if(x==at.x()&&y==at.y()&&z==at.z())return;
+            call(waypoints,"removeWaypoint",waypoint);
         }
-        waypointStore.addWaypoint(new com.player2.playerengine.automaton.api.cache.Waypoint(
-                "Ellie Setup Home",com.player2.playerengine.automaton.api.cache.IWaypoint.Tag.HOME,location));
+        Class<?> posClass=Class.forName("com.player2.playerengine.automaton.api.utils.BetterBlockPos");
+        Object location=posClass.getConstructor(int.class,int.class,int.class)
+                .newInstance(at.x(),at.y(),at.z());
+        Object waypoint=Class.forName("com.player2.playerengine.automaton.api.cache.Waypoint")
+                .getConstructor(String.class,tagClass,posClass).newInstance("Ellie Setup Home",home,location);
+        call(waypoints,"addWaypoint",waypoint);
         com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_HOME_WAYPOINT",
-                "Verified crafting bench HOME at "+at+" in "+expectedDimension);
+                "Physically verified table HOME at "+at+" in "+expectedDimension);
     }
 
     public void retainTorch(StarterBaseLayout.Placement placement) {
