@@ -4,6 +4,8 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.WeakHashMap;
 
 /** Resource mining exclusion for an active construction site.
@@ -12,7 +14,7 @@ import java.util.WeakHashMap;
  */
 public final class VillageSiteGuard {
     private VillageSiteGuard() {}
-    private static final Map<Object,Site> SITES = new WeakHashMap<>();
+    private static final Map<Object,List<Site>> SITES = new WeakHashMap<>();
     private static long lastWarn;
     private static final class Site {
         final WeakReference<Object> owner;
@@ -61,27 +63,34 @@ public final class VillageSiteGuard {
             if(sx<=0||sz<=0||sx>256||sz>256)return;
             int x=coordinate(origin,"method_10263","getX"),z=coordinate(origin,"method_10260","getZ");
             synchronized(SITES){
-                Site old=SITES.get(controller);
-                if(old!=null&&old.same(job,x,z,sx,sz))return;
-                SITES.put(controller,new Site(job,x,z,sx,sz));
+                List<Site> sites=SITES.computeIfAbsent(controller,key->new ArrayList<>());
+                sites.removeIf(Site::completed);
+                if(sites.stream().anyMatch(old->old.same(job,x,z,sx,sz)))return;
+                sites.removeIf(old->old.owner.get()==job);
+                sites.add(new Site(job,x,z,sx,sz));
             }
             System.out.println("[EllieMaterial] protected build site x="+x+".."+(x+sx-1)+" z="+z+".."+(z+sz-1)+" (resource mining only)");
         }catch(ReflectiveOperationException|RuntimeException ex){warn("register",ex);}
     }
     public static void clearForJob(Object job){if(job==null)return;
-        synchronized(SITES){SITES.values().removeIf(s->s.owner.get()==job);}
+        synchronized(SITES){SITES.values().forEach(sites->sites.removeIf(s->s.owner.get()==job));
+            SITES.values().removeIf(List::isEmpty);}
     }
     public static void clear(Object job,Object controller){if(job==null||controller==null)return;
-        synchronized(SITES){Site s=SITES.get(controller);if(s!=null&&s.owner.get()==job)SITES.remove(controller);}
+        synchronized(SITES){List<Site> sites=SITES.get(controller);if(sites!=null){sites.removeIf(s->s.owner.get()==job);if(sites.isEmpty())SITES.remove(controller);}}
     }
     public static boolean allowResourceMining(Object controller,Object pos){
         if(controller==null||pos==null)return true;
         try{
-            Site site; synchronized(SITES){site=SITES.get(controller);}
-            if(site==null)return true;
-            if(site.completed()) { synchronized(SITES){if(SITES.get(controller)==site)SITES.remove(controller);}return true; }
             int x=coordinate(pos,"method_10263","getX"),z=coordinate(pos,"method_10260","getZ");
-            if(!site.contains(x,z))return true;
+            Site site=null;
+            synchronized(SITES){
+                List<Site> sites=SITES.get(controller);
+                if(sites==null)return true;
+                sites.removeIf(Site::completed);
+                for(Site candidate:sites)if(candidate.contains(x,z)){site=candidate;break;}
+            }
+            if(site==null)return true;
             ++site.avoided;
             long now=System.currentTimeMillis();
             if(now>=site.nextLogTime){synchronized(site){if(now>=site.nextLogTime){site.nextLogTime=now+30_000;

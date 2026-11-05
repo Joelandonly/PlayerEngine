@@ -15,6 +15,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
         default Task prepareTerrain(StarterBaseLayout.Placement job)throws Exception { throw new UnsupportedOperationException(); }
         default List<StarterBaseLayout.Placement> repairPlan(StarterBaseLayout.Placement station)throws Exception {return List.of();}
         default String unsafeReason(StarterBaseLayout.Placement station)throws Exception {return "support, headroom or standing access is unsafe";}
+        default Task approach(List<StarterBaseLayout.Placement> plan)throws Exception {return null;}
         List<StarterBaseLayout.Placement> loadOrSelect() throws Exception;
         boolean matches(StarterBaseLayout.Placement placement) throws Exception;
         boolean safe(StarterBaseLayout.Placement placement) throws Exception;
@@ -37,7 +38,9 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
     private int layerRepairs;
     private Task active;
     private boolean acquiring;
-    private int index, ticks, stageTicks;
+    private Task access;
+    private int accessTicks;
+    private int index, ticks, stageTicks, outputWaitTicks;
     private boolean done, failed;
     private String reason="Starter base not yet verified";
     public StarterBaseTask(StarterBaseLayout.Pos origin,String dimension) { this.origin=Objects.requireNonNull(origin); this.dimension=Objects.requireNonNull(dimension); }
@@ -49,6 +52,7 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
         onStart();
         if (plan==null) plan=List.copyOf(environment.loadOrSelect());
     }
+    public List<StarterBaseLayout.Placement> layout(){if(plan==null)throw new IllegalStateException("Workshop site not selected");return plan;}
     public void prepareExisting() throws Exception {
         onStart();
         List<StarterBaseLayout.Placement> existing=environment.loadExisting();
@@ -62,6 +66,13 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
                 plan=List.copyOf(environment.loadOrSelect());
                 if (plan.size()!=3) return blocked("Starter base requires one table, one furnace and one chest");
             }
+            Task needed=environment.approach(plan);
+            if(needed!=null){
+                if(++accessTicks>2400)return blocked("Cannot reach the saved workshop chest within the bounded return window");
+                if(access==null||access.stopped()||access.isFinished()){access=needed;access.controller=controller;}
+                return access;
+            }
+            access=null;accessTicks=0;
             if(terrain==null)terrain=List.copyOf(environment.terrainPlan(plan));
             environment.protect(plan);
             while(terrainIndex<terrain.size()) {
@@ -102,10 +113,19 @@ public final class StarterBaseTask extends Task implements TrackedTaskOutcomePro
             if (active!=null) {
                 if (++stageTicks > (acquiring ? 2400 : 600)) return blocked("No verified base output within the bounded native task window at "+target.pos());
                 if (!active.isFinished() && !active.stopped()) return active;
-                if (acquiring && environment.count(target.resource())==0) return blocked("Native acquisition ended without "+target.resource());
+                if (acquiring && environment.count(target.resource())==0) {
+                    // Native crafting can finish before the inventory output arrives.
+                    // Wait for observed output; never turn a callback into ownership.
+                    if(++outputWaitTicks<=40){
+                        reason="Awaiting actual "+target.resource()+" output at "+target.pos()+" ("+outputWaitTicks+"/40 ticks)";
+                        if(outputWaitTicks==1)com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_OUTPUT_SETTLE",reason);
+                        return null;
+                    }
+                    return blocked("Native acquisition ended without "+target.resource()+" after 40 ticks awaiting actual inventory output at "+target.pos());
+                }
                 if (!acquiring && !environment.matches(target)) return blocked("Native placement stopped without verifying "+target.resource()+" at "+target.pos());
                 active=null;
-                stageTicks=0;
+                stageTicks=0;outputWaitTicks=0;
             }
             acquiring=environment.count(target.resource())==0;
             active=Objects.requireNonNull(acquiring?environment.acquire(target.resource()):environment.place(target),"Missing native base task");

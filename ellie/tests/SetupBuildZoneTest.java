@@ -15,8 +15,11 @@ public final class SetupBuildZoneTest {
         check(allowed(controller,-3,-5)&&allowed(controller,5,-3)&&allowed(controller,-2,-6)&&allowed(controller,4,-2),"outside materials remain available");
         check(allowed(other,0,0),"other characters must remain independent");
         zone.ensure();check(!allowed(controller,0,-4),"repeated updates retain protection");
-        // A late stop from a previous goal cannot clear a replacement's claim.
+        // Nested workshop, shelter and tiny repair plans must coexist.
         SetupBuildZone replacement=new SetupBuildZone(controller,20,30,7,3);
+        check(!allowed(controller,0,-4)&&!allowed(controller,20,30),"nested build cannot replace outer protection");
+        replacement.ensure();zone.ensure();
+        check(!allowed(controller,0,-4)&&!allowed(controller,20,30),"interleaved owners retain both zones");
         zone.close();zone.ensure();
         check(!allowed(controller,20,30)&&allowed(controller,0,-4),"stale owner cleanup must preserve replacement footprint");
         replacement.close();check(allowed(controller,20,30),"terminal setup releases its protection");
@@ -34,6 +37,6 @@ public final class SetupBuildZoneTest {
         var completed=EllieSetupTask.class.getDeclaredField("completed");completed.setAccessible(true);completed.setBoolean(root,true);
         var stopRoot=EllieSetupTask.class.getDeclaredMethod("onStop",Task.class);stopRoot.setAccessible(true);stopRoot.invoke(root,new Object[]{null});
         check(allowed(controller,10,10),"whole-goal completion releases protection");
-        System.out.println("SetupBuildZoneTest: 7 passed against original VillageSiteGuard, including all 21 footprint cells");
+        System.out.println("SetupBuildZoneTest: 9 passed against production VillageSiteGuard, including all 21 footprint cells");
     }
 }

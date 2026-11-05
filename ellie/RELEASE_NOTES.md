@@ -1,3 +1,99 @@
+# Setup output handoff v7
+
+Build ID: `20261105-setup-output-handoff-v7`. Gameplay UNVERIFIED.
+
+Addresses the supplied v6 failures at workshop crafting-table acquisition and
+night-time shelter final verification. Workshop material counts read actual
+36 main slots. A native acquisition completion without observed output gets
+one bounded 40-tick settling window; no repeated acquisition or false success.
+The three placed stations and required kit remain mandatory.
+
+Shelter blueprints explicitly retain all interior/entrance air obligations,
+including cells that are clear before construction but can receive temporary
+scaffolding during building. A builder that ends with verified cell gain but
+incomplete geometry gets one remaining-cell repair; no-gain/repeated failures
+block with the first mismatched cell and observed state. Nested mining guards
+and compact checkpoint migration are retained. Torch placement remains off.
+
+Adds delayed-output/false-completion handoff tests, an explicit interior-air
+blueprint assertion and a partial-shelter repair full-chain scenario. Full
+regressions substitute game boundaries; live crafting/placement/repair and
+complete survival setup remain unverified. No chat/follow/hunting fix included.
+
+# Survival shelter protection v6
+
+Build ID: `20261105-survival-shelter-protection-v6`. Gameplay UNVERIFIED.
+
+The supplied run verified its shelter, then damaged it while gathering supplies.
+Shared construction mining exclusions now retain all active owners per NPC:
+workshop, shelter and nested repair blueprints cannot replace each other's zones.
+Shelter break guards are restored if native state restoration removes them.
+
+Normal daytime setup places and verifies the table, furnace and chest after
+stone tools, before building the shelter. Saved chest coordinates describe a
+planned location, never proof of an existing chest. Emergency cover retains
+its priority. Required inventory and final world checks remain unchanged.
+
+V5's per-cell material list exceeded the existing journal's 360-character field.
+V6 stores a compact position/wood/approach checkpoint, recomputes materials,
+and recovers validated chest/shelter coordinates from truncated V2 records.
+It does not silently move the base or discard partial construction.
+
+Validation adds nested-zone ownership, actual-journal truncation/migration and
+physical-workshop-before-shelter assertions to the full regression suite.
+Actual live mining protection, repaired shelter, station placement and complete
+survival setup still require a Minecraft retest. Torch placement remains off.
+
+# Survival terrain/platform setup v5
+
+Build ID: `20261105-survival-terraform-platform-v5`. Live gameplay UNVERIFIED.
+
+Fixes the premature flat-5x5-site rejection in the supplied November 5 logs.
+The existing builder now receives bounded natural excavation, mixed-material
+platform fills, retained existing solids, and a connected bridge/stair approach.
+Shared workshop preparation also uses suitable blocks from actual main slots.
+Protected blocks, containers, hazards and disconnected sites remain blocked
+with specific diagnostics. Saved chest and partial shelter plans are retained;
+old shelter journals migrate. Torch placement remains disabled.
+
+Validation: complete existing regression suite, 21 production-entry survival
+scenarios, 10 voxel terrain/platform scenarios and four reflective inventory
+adapter checks. These substitute game boundaries; real placement, excavation
+and navigation require Minecraft testing.
+
+# Chest-anchored survival setup v4
+
+Build ID: `20261105-survival-setup-v4`. Minecraft 1.21.1 Fabric, pinned
+PlayerEngine 1.4.0 binary overlay, Java 21. **Gameplay remains UNVERIFIED.**
+
+- Expand the existing setup task with assessment, food, shelter, fuel and
+  equipment stages; no second runner, model planner or engine migration.
+- Keep the required kit and station verification. Torch placement/light surveys
+  remain excluded; all 32 torches stay in inventory.
+- Reuse the saved workshop chest and recorded shelter coordinates. Return to a
+  remote saved base instead of silently selecting another site.
+- Use fresh verified base-chest stock before collecting matching supplies;
+  setup cannot withdraw from unrelated remembered storage. Prefer carried or
+  stored wood and nearby trees when choosing shelter materials.
+- Use the existing native physical builder for a checked 5x5 local-wood
+  enclosure, with actual floor/wall/roof/door/interior/entrance verification.
+  Refuse foreign/protected obstructions instead of bulldozing them.
+- Hungry NPCs obtain/eat food; ordinary work can pause for cover/rest/daylight.
+  Native food and defense chains retain priority. Waiting and retry budgets are
+  bounded, including worlds with a stopped daylight cycle.
+- Require 32 safe carried food nutrition units, eight coal/charcoal fuel items,
+  and verified sword/main-hand and shield/off-hand equipment before completion.
+  Use charcoal as a fuel option; food/fuel have bounded alternate native routes.
+  Beds remain opportunistic information only: no mandatory wool hunt or sleep.
+- Correct the old setup help text that still advertised buckets and armor.
+- Verify packaged entry points and native ABI boundaries, and run full setup
+  orchestration/geometry/storage-scope/lifecycle scenarios in addition to the
+  existing regression suite. Substituted worlds do not prove live behavior.
+
+See `docs/ELLIE_SURVIVAL_SETUP.md` for exact stages, limits and fresh-world gates.
+
+---
+
 # Setup11: tools first, no automatic torch placement
 
 Build ID: `20261105-setup11-tools-first-no-torch-placement-v3`.

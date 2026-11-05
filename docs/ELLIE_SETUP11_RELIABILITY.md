@@ -1,5 +1,8 @@
 # Setup11 integration and shared reliability
 
+Historical v3 contract. The current expanded setup is documented in
+[ELLIE_SURVIVAL_SETUP.md](ELLIE_SURVIVAL_SETUP.md).
+
 Baseline: `codex/shared-recovery-crash`, `ae24a84cc9fde89dda55a23a4ecb53b4c25e9056`.
 Owner upload: `Ellie-1.21.1-Setup11-Lean-Source-20261105.zip`, SHA-256
 `08597b502d3f6b6fe8a243edd35576b17683907031f4c68a67ffa2458ea5ff20`.

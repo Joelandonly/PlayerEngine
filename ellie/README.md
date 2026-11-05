@@ -1,10 +1,13 @@
-# Ellie: Setup11 survival reliability
+# Ellie: chest-anchored survival setup
 
-Current revision: `20261105-setup11-tools-first-no-torch-placement-v3`. **Live survival gameplay is UNVERIFIED.**
-See [reliability validation](../docs/ELLIE_SETUP11_RELIABILITY.md) for exact automated coverage, budgets, and the required fresh-world run.
+Current build: `20261105-setup-output-handoff-v7`. **Live Minecraft survival completion remains unverified.**
+See [survival setup behavior and validation](../docs/ELLIE_SURVIVAL_SETUP.md).
 
-The required sequence is wooden pickaxe, early stone axe, two stone pickaxes, stone shovel, crafting table, furnace, chest, shield, iron pickaxe, iron sword, 32 torches. Every objective is required. Setup places and verifies the three workshop stations, then prioritizes the shield and iron tools before acquiring 32 torches. Torches remain in inventory for manual placement. Surface lighting is not surveyed or required for setup completion. Setup never requests buckets, iron armor, spare iron tools, bed, bread or diamonds. Existing better tools may satisfy quantities without requesting a downgrade.
-
+`setup` now assesses hunger, health, daylight and nearby hostiles; returns to the
+saved workshop chest; reuses verified supplies; prepares an enclosed shelter;
+verifies the required kit and stations; and finishes with food, fuel and equipped
+sword/shield. Automatic lighting stays excluded. Existing native task execution,
+Player2, storage, supervisor, observatory and shared recovery remain in use.
 
 Current target: **Minecraft 1.21.1 Fabric, PlayerEngine 1.4.0, Java 21**.
 Keep the existing Player2NPC and companion Fabric mods. This is a binary overlay;
@@ -45,28 +48,28 @@ a test world and observe actual placement/navigation before accepting a release.
 
 ## Current setup
 
-The fixed setup kit uses native catalogue acquisition tasks, as mining prerequisites
-do. It does not opt into the dynamic crafting macro at furnace/material transitions.
-Setup requests disable opportunistic mining of placed output (such as torches),
-so supplies use native ingredient gathering and crafting. Nearby workbench/furnace
-placement requires non-tree support and a usable adjacent standing position.
-Failed base safety checks produce safe native repair jobs or identify the unsafe
-cell; naturally supported workstation floors are protected during setup too.
+The required kit remains: wooden pickaxe when needed, early stone axe, two stone
+pickaxes, stone shovel, crafting table, furnace, chest, shield, iron pickaxe,
+iron sword and 32 unplaced torches. No bucket, armor or diamond goals are added.
 
-The imported revision uses one crafting table, one furnace and one chest in a
-spaced line, on natural ground where possible. A safe nearby bench is preferred
-as the anchor; a saved layout with placed stations retains its coordinates.
-A world bench cannot substitute for a table item explicitly requested for placement. A compact support platform is a
-fallback for unsupported terrain, with at most eight load-bearing placements.
-The required survival kit remains. It intentionally supersedes the old eight-chest
-9x7 deck contract; old layout records are not blindly reused or demolished.
-See [setup contract](../docs/ELLIE_SETUP.md) and
-[compact-platform changes](../docs/ELLIE_COMPACT_PLATFORM_UPLOAD.md).
+The command also requires an enclosed, accessible shelter near the saved chest,
+a carried reserve of 32 safe food nutrition units (about four steaks or seven
+bread), eight coal/charcoal fuel items, and an equipped sword and shield. Bed
+acquisition is not required; a carried bed is reported as carried, not placed.
+Food may include bread through the existing native food/recipe tasks.
 
-The imported crafting-specific watchdog has been superseded by shared task-layer
-recovery. Its earlier behavior remains documented as upload history. See
-[uploaded recovery notes](../docs/ELLIE_CRAFT_RECOVERY_UPLOAD.md).
-Local simulations and binary checks do not establish live gameplay success.
+Low hunger interrupts ordinary kit work. Darkness, nearby threats or low health
+can cause return to shelter and a bounded wait; native defense/food chains retain
+priority. Shelter uses a 5x5 native blueprint, prepares natural uneven terrain, and builds
+a connected platform/entrance from mixed suitable blocks in actual inventory.
+Foreign structures are not cleared to force a fit. Placement, food, fuel,
+movement and equipment failures produce specific blocked outcomes.
+
+Saved station and shelter positions are persistent intent, even while unloaded.
+Reruns verify actual inventory and world blocks; they do not blindly trust old
+completion receipts, relocate the base, or duplicate already owned tools.
+Setup storage use is restricted to fresh verified stock in its own saved chest.
+The final report does not claim lighting, spawn-proofing, bed placement or a farm.
 
 ## Native commands on this revision
 
@@ -85,3 +88,7 @@ production/furnace handoffs, defense-safe build resume, common movement recovery
 look diagnostics and a separate persistent worksite/bench record. Personal home
 is untouched. See [findings, architecture and live gates](../docs/ELLIE_SHARED_RECOVERY.md).
 The portable bundle is `PlayerEngine-Ellie-Player2-Shared-Recovery.zip`.
+
+V6 verifies the three placed workshop stations before normal daytime shelter
+construction, retains nested mining protection zones, and repairs truncated V5
+shelter checkpoints without relocating the saved base.

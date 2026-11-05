@@ -53,14 +53,8 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         String[] coords=journal.get("detail","").split(",");
         if(coords.length!=3) throw new IllegalStateException("Invalid saved base anchor");
         var plan=StarterBaseLayout.at(new StarterBaseLayout.Pos(Integer.parseInt(coords[0]),Integer.parseInt(coords[1]),Integer.parseInt(coords[2])));
-        var reused=StarterBaseLayout.reuseUnstarted(plan,origin,this);
-        if(!reused.equals(plan)){
-            var anchor=reused.getFirst().pos();
-            journal.put("BASE_LAYOUT_COMPACT_V3",0,expectedDimension,anchor.x()+","+anchor.y()+","+anchor.z());
-            if(!journal.isPersistent())throw new IllegalStateException("Cannot save reused workstation anchor");
-            platformMode=false;plan=reused;
-            com.player2.playerengine.observatory.ObservatoryTelemetry.event("SETUP_WORKSTATION_REUSED","Reanchored unstarted base around existing table "+anchor);
-        }
+        // A recorded site is persistent intent, even while its chunk is unloaded.
+        // Never silently move the base just because a remote block lookup returned air.
         protect(plan);
         return plan;
     }
@@ -118,6 +112,12 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         }
         if(zone!=null){zone.close();zone=null;}
     }
+    public Task approach(List<StarterBaseLayout.Placement> plan)throws Exception {
+        var chest=plan.get(2).pos();Object player=call(controller,"getPlayer");
+        double dx=number(player,"method_23317","getX")-chest.x(),dz=number(player,"method_23321","getZ")-chest.z();
+        if(dx*dx+dz*dz<=144&&(Boolean)call(call(controller,"getWorld"),"method_22340",pos(chest)))return null;
+        return (Task)Class.forName("com.player2.playerengine.tasks.movement.GetToBlockTask").getConstructor(blockPos).newInstance(pos(chest.offset(0,0,1)));
+    }
     public boolean air(StarterBaseLayout.Pos pos) throws Exception { return (Boolean)helper("isAir",controller,pos(pos)); }
     private Object state(StarterBaseLayout.Pos p)throws Exception {return call(call(controller,"getWorld"),"method_8320",pos(p));}
     private boolean withinLimits(StarterBaseLayout.Pos p)throws Exception {
@@ -167,7 +167,8 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         // Native placement only: never edit the world directly or fake completion.
         Class<?> blockType=Class.forName("net.minecraft.class_2248");
         Object alternatives=Array.newInstance(blockType,1);
-        Array.set(alternatives,0,block("cobblestone"));
+        String material=com.player2.playerengine.reliability.StructuralMaterials.preferred(com.player2.playerengine.reliability.StructuralMaterials.carried(controller),com.player2.playerengine.reliability.StructuralMaterials.fallback(controller));
+        Array.set(alternatives,0,block(material));
         return (Task)Class.forName("com.player2.playerengine.tasks.construction.PlaceBlockTask")
             .getConstructor(blockPos,alternatives.getClass(),boolean.class,boolean.class)
             .newInstance(pos(job.pos()),alternatives,false,false);
@@ -205,10 +206,20 @@ final class StarterBaseWorld implements StarterBaseTask.Environment, StarterBase
         return String.join("; ",issues);
     }
     public int count(String resource) throws Exception {
+        if(resource.equals("cobblestone"))return com.player2.playerengine.reliability.StructuralMaterials.carried(controller).values().stream().mapToInt(Integer::intValue).sum();
         Object matches=callStatic("com.player2.playerengine.TaskCatalogue","getItemMatches",resource);
-        return ((Number)call(controller.getItemStorage(),"getItemCountInventoryOnly",matches)).intValue();
+        List<?> main=(List<?>)com.player2.playerengine.nativecommands.NativeAccess.get(call(controller,"getInventory"),"main");
+        if(main.size()!=36)throw new IllegalStateException("Expected 36 actual workshop inventory slots");
+        int total=0;
+        for(Object stack:main){
+            if(Boolean.TRUE.equals(call(stack,"method_7960")))continue;
+            Object item=call(stack,"method_7909");
+            for(int i=0;i<Array.getLength(matches);i++)if(item.equals(Array.get(matches,i))){total+=((Number)call(stack,"method_7947")).intValue();break;}
+        }
+        return total;
     }
     public Task acquire(String resource) throws Exception {
+        if(resource.equals("cobblestone"))resource=com.player2.playerengine.reliability.StructuralMaterials.preferred(com.player2.playerengine.reliability.StructuralMaterials.available(controller),com.player2.playerengine.reliability.StructuralMaterials.fallback(controller));
         return EllieSetupTask.nativeAcquisition(resource,1);
     }
     /** Scan actual block light on surface cells at/above the base. No cave searches. */

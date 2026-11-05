@@ -18,7 +18,7 @@ public final class NativeFood {
    if(!Boolean.TRUE.equals(callStatic("com.player2.playerengine.multiversion.item.ItemVer","isFood",item)))continue;
    if(!requested.isBlank()&&!selected.contains(item))continue;
    String name=String.valueOf(item).toLowerCase(Locale.ROOT);
-   if(requested.isBlank()&&List.of("rotten_flesh","spider_eye","pufferfish","poisonous_potato","chorus_fruit").stream().anyMatch(name::contains))continue;
+   if(requested.isBlank()&&List.of("rotten_flesh","spider_eye","pufferfish","poisonous_potato","chorus_fruit","chicken").stream().anyMatch(id->name.equals(id)||name.endsWith(":"+id)))continue;
    Class<?> itemType=Class.forName("net.minecraft.class_1792");
    return (Task)Class.forName("com.player2.playerengine.tasks.misc.EatFoodTask").getConstructor(itemType).newInstance(item);
   }

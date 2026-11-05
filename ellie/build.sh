@@ -9,7 +9,7 @@ baseline = Path('baseline/playerengine-acquisition-safety.jar')
 if hashlib.sha256(baseline.read_bytes()).hexdigest() != manifest['baseline_sha256']:
     raise SystemExit('Baseline checksum mismatch; refusing to patch an unknown JAR')
 PY
-rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses build/distance-testclasses build/game-hooks build/inventory-testclasses
+rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses build/distance-testclasses build/game-hooks build/inventory-testclasses build/survival-testclasses build/material-testclasses build/legacy-testclasses
 mkdir -p build/{classes,patches,tools,testclasses} dist
 javac --release 21 -cp baseline/playerengine-acquisition-safety.jar -d build/classes $(find src -name '*.java' | LC_ALL=C sort)
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchNativeCommands.java
@@ -137,3 +137,29 @@ java -cp build/inventory-testclasses:build/testclasses:build/native-testclasses:
 mkdir -p build/legacy-testclasses
 javac --release 21 -d build/legacy-testclasses legacy-chatgpt/src/com/player2/playerengine/interpreter/LocalChatGPTBridge.java tests/BridgeConfigTest.java
 java -cp build/legacy-testclasses BridgeConfigTest
+
+# Production setup entry plus survival assessment, food/fuel, cover and final verification.
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/SetupShelterTest.java tests/SurvivalSetupTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SetupShelterTest
+mkdir -p build/survival-testclasses
+javac --release 21 -d build/survival-testclasses tests/survivalfixtures/com/player2/playerengine/tasks/deferred/DeferredJobStore.java
+java -cp build/survival-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SurvivalSetupTest
+
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/SetupStorageScopeTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SetupStorageScopeTest
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifySurvivalSetup.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifySurvivalSetup dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
+
+# Natural terrain can be prepared; platforms use actual mixed full-cube supplies.
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/TerraformPlatformTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar TerraformPlatformTest
+
+mkdir -p build/material-testclasses
+javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/material-testclasses tests/materialfixtures/net/minecraft/class_2346.java tests/StructuralMaterialInventoryTest.java
+java -cp build/material-testclasses:build/native-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar StructuralMaterialInventoryTest
+
+javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/ShelterCheckpointTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar com.player2.playerengine.tasks.setup.ShelterCheckpointTest
+
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses tests/WorkshopOutputHandoffTest.java
+java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar WorkshopOutputHandoffTest

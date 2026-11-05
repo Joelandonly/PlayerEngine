@@ -13,7 +13,7 @@ import com.player2.playerengine.tasks.setup.EllieSetupTask;
 public final class EllieSetupCommand
 extends Command {
     public EllieSetupCommand() {
-        super("setup", "Prepare a full starter kit (iron-or-better tools and armor, shield, two buckets, 32 torches, 16 bread, bed) and a safe nearby workstation/storage base (one crafting table, one furnace, one chest, compact platform only if needed). Verify inventory and placed blocks; no house or farm is implied. Blocks are placed using native tasks, not LLM blueprint generation.", new ArgBase[0]);
+        super("setup", "Prepare a persistent chest-anchored survival base: tools, enclosed shelter, accessible workshop, shield/iron equipment, food and fuel reserves, and 32 unplaced torches. Reuse actual inventory and verified base storage, take cover when needed, and report blocked stages honestly. No buckets, armor, diamonds, farms or automatic lighting.", new ArgBase[0]);
     }
 
     @Override

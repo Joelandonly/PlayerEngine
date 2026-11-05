@@ -22,7 +22,7 @@ public final class EllieSetupTask
 extends Task
 implements TransientlyResumableTask,
 TrackedTaskOutcomeProvider {
-    public static final String ELLIE_BUILD_REVISION = "20261105-setup11-tools-first-no-torch-placement-v3";
+    public static final String ELLIE_BUILD_REVISION = "20261105-setup-output-handoff-v7";
     // No optional items in setup. Every entry must have real verified output.
     // Diamonds, iron armor, spare iron tools and empty buckets belong to later explicit goals.
     private static final Step[] PLAN = new Step[]{
@@ -41,6 +41,13 @@ TrackedTaskOutcomeProvider {
     static {
         for (Step step : PLAN) if (!step.required) throw new IllegalStateException("Setup cannot have optional objectives");
     }
+    private final SetupSurvival.Environment survivalEnvironment;
+    private SetupSurvival survival;
+    private boolean kitPausedForSurvival;
+    public EllieSetupTask(){this(null,null);}
+    /** Explicit game boundary for complete orchestration tests. */
+    public EllieSetupTask(SetupSurvival.Environment environment,StarterBaseTask base){this.survivalEnvironment=environment;this.baseTask=base;}
+    public boolean isWaitingForSafety(){return survival!=null&&survival.waiting();}
     private int index;
     private int lastCount;
     private int stagnant;
@@ -88,11 +95,14 @@ TrackedTaskOutcomeProvider {
         if (!this.startedOnce) {
             this.startedOnce = true;
             try {
-                this.baseOrigin = StarterBaseWorld.origin(this.controller);
-                this.baseDimension = StarterBaseWorld.dimension(this.controller);
-                this.baseTask = new StarterBaseTask(this.baseOrigin, this.baseDimension);
+                if(this.baseTask==null){
+                    this.baseOrigin = StarterBaseWorld.origin(this.controller);
+                    this.baseDimension = StarterBaseWorld.dimension(this.controller);
+                    this.baseTask = new StarterBaseTask(this.baseOrigin, this.baseDimension);
+                }
                 this.baseTask.controller = this.controller;
                 this.baseTask.prepareExisting();
+                this.survival=new SetupSurvival(survivalEnvironment==null?new SetupSurvivalWorld(controller):survivalEnvironment,controller);
             } catch (Exception | LinkageError error) {
                 String detail = error instanceof IllegalStateException && error.getMessage() != null ? ": " + error.getMessage() : "";
                 this.stopStep(new Step("startup", "setup_context", 1, true, 12000), "Cannot restore setup context: " + error.getClass().getSimpleName() + detail);
@@ -105,7 +115,7 @@ TrackedTaskOutcomeProvider {
             if (this.journal.error() != null) {
                 EllieSetupTask.event("SETUP_JOURNAL_WARNING", this.journal.error());
             }
-            EllieSetupTask.event("SETUP_START", "Ellie build=" + ELLIE_BUILD_REVISION + "; required survival kit with compact workshop; shield and iron tools before torch supplies; no torch placement");
+            EllieSetupTask.event("SETUP_START", "Ellie build=" + ELLIE_BUILD_REVISION + "; chest-anchored survival setup: assess food/health/daylight, verify shelter and workshop, required kit, food/fuel reserves and equipment; lighting remains manual");
         } else if (this.pendingGestureResume) {
             this.pendingGestureResume = false;
             TaskSuspensionCause taskSuspensionCause = this.pendingResumeCause;
@@ -123,10 +133,21 @@ TrackedTaskOutcomeProvider {
         if (this.completed || this.failed || this.abandoned) {
             return null;
         }
-        // Establish the workshop/storage after bootstrap and before iron upgrades.
+        if(survival!=null&&index<PLAN.length){
+            try{
+                Task safety=survival.tick(false,baseAccepted,baseTask);
+                if(survival.holding()){
+                    if(active!=null&&!kitPausedForSurvival){active.interrupt(null,TaskSuspensionCause.HIGHER_PRIORITY_CHAIN);active=null;kitPausedForSurvival=true;}
+                    return safety;
+                }
+                if(kitPausedForSurvival){if(active!=null)active.reset();kitPausedForSurvival=false;}
+            }catch(Exception|LinkageError error){blockFromRecovery("Survival stage: "+error.getMessage());return null;}
+        }
+        // Physically establish all three stations after stone tools, before daytime
+        // shelter construction. A saved chest coordinate is intent, not ownership.
         // Preparing the remembered plan on start also credits already placed stations
         // on rerun, instead of needlessly gathering another chest item.
-        if (this.index >= 7 && this.baseTask != null && !this.baseAccepted) {
+        if (this.index >= 4 && this.baseTask != null && !this.baseAccepted) {
             if (!this.baseTask.isTerminal()) return this.baseTask;
             if (!this.baseTask.isSuccessful()) {
                 this.stopStep(new Step("starter base", "base", 1, true, 12000), this.baseTask.controlledReason());
@@ -180,9 +201,17 @@ TrackedTaskOutcomeProvider {
                 this.checkpoint("RUNNING", "starter_base", "Full kit verified; placing workstations and storage");
                 return this.baseTask;
             }
+            if(survival!=null){
+                try{
+                    Task last=survival.tick(true,true,baseTask);
+                    if(survival.holding())return last;
+                    if(!survival.complete()){blockFromRecovery("Survival final verification did not complete");return null;}
+                }catch(Exception|LinkageError error){blockFromRecovery("Survival final verification: "+error.getMessage());return null;}
+            }
             this.completed = true;
-            this.checkpoint("COMPLETED", "setup", "All required inventory and workstation objectives verified");
+            this.checkpoint("COMPLETED", "setup", survival==null?"All required inventory and workstation objectives verified":"Kit, workshop, enclosed shelter, food/fuel reserves and equipped sword/shield verified");
             String string = "Starter setup complete: required kit, crafting table, furnace and chest verified; 32 torches retained for manual placement. No shelter or farm is implied.";
+            if(survival!=null)string=survival.describe()+"; required kit and three workshop stations reverified; 32 torches retained for manual placement";
             EllieSetupTask.event("SETUP_SUPPLIES_READY", string);
             this.report(string);
             return null;
@@ -530,12 +559,15 @@ TrackedTaskOutcomeProvider {
     }
 
     public void afterChildrenStopped() {
+        if(survival!=null)survival.childrenStopped();
+        kitPausedForSurvival=false;
         this.active = null;
         this.resetProgress();
         this.resetNavigationWatch();
     }
 
     public void onTransientResumeAbandoned() {
+        if(survival!=null)survival.close();
         if (this.baseTask != null) this.baseTask.releaseProtection();
         if (this.completed || this.failed || this.abandoned) {
             return;
@@ -548,6 +580,7 @@ TrackedTaskOutcomeProvider {
     }
 
     protected void onStop(Task task) {
+        if(survival!=null)survival.close();
         if (this.baseTask != null) this.baseTask.releaseProtection();
         if (!(this.completed || this.failed || this.abandoned)) {
             this.abandoned = true;
@@ -662,6 +695,7 @@ TrackedTaskOutcomeProvider {
             return "Setup interrupted before verifying all required items";
         }
         if (this.completed) {
+            if(survival!=null)return survival.describe();
             return "Required survival kit, workstation/storage and torch supplies verified; torch placement excluded";
         }
         return "Setup still running";
@@ -677,6 +711,7 @@ TrackedTaskOutcomeProvider {
 
     public String outcomeForCommand() {
         if (this.isSuccessfullyCompleted()) {
+            if(survival!=null)return "Setup COMPLETED: "+survival.describe()+"; required kit and workshop verified; torches remain unplaced.";
             return "Setup COMPLETED: required tools, shield and supplies verified; crafting table, furnace and chest physically verified; torches retained for manual placement.";
         }
         if (this.failed) {
@@ -690,14 +725,15 @@ TrackedTaskOutcomeProvider {
     }
 
     protected String toDebugString() {
-        if (this.index >= 7 && this.baseTask != null && !this.baseAccepted && !this.failed) {
+        if(survival!=null&&survival.holding())return "Setup survival: "+survival.describe();
+        if (this.index >= 4 && this.baseTask != null && !this.baseAccepted && !this.failed) {
             return "Setup workshop: " + this.baseTask;
         }
         if (this.failed) {
             return "Setup BLOCKED: " + this.failureReason;
         }
         if (this.completed) {
-            return "Setup survival kit and illuminated outdoor workshop READY";
+            return "Setup required kit and workshop READY; lighting remains manual";
         }
         if (this.index >= PLAN.length) {
             return "Setup finalizing";
