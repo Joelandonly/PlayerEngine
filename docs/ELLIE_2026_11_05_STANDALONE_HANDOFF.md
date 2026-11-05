@@ -43,3 +43,25 @@ The source ZIP's duplicate binaries and the mismatched internal JAR filename are
 ### Scope of this PR
 
 Documentation only. It contains **no Java source changes, no merged binary, no claim that the standalone works**. The standalone source ZIP resides in the original ChatGPT conversation, not in this GitHub branch; it must be supplied independently if Codex needs its exact source content.
+
+## November 5 follow-up: Setup11 / stone shovel / outdoor surface lighting (source overlay made outside GitHub)
+
+The user clarified **stone shovel is REQUIRED**. They also confirmed early stone axe, mandatory iron sword, no optional-skipping, no empty buckets, no spare iron shovel/axe, no iron armor and **no diamond mining or equipment during setup**. Bed and bread are not in this setup revision.
+
+A new **local, unmerged binary-overlay** revision was produced:
+- Build ID: `20261105-setup11-stoneshovel-outdoorlight-v1` (printed at `SETUP_START`, also in JAR `META-INF/ELLIE_BUILD_REVISION.txt`)
+- Standalone JAR filename: `Ellie-1.21.1-Setup11-Stone-Shovel-Surface-Lighting-20261105.jar`
+- JAR SHA-256: `67a4f2853b5d035f160c5edd41e051f1b73fd141271c662bbca470bd1649fe9c`
+- Lean review source ZIP: `Ellie-1.21.1-Setup11-Lean-Source-20261105.zip`, 177 KB (zero binaries), SHA-256 `08597b502d3f6b6fe8a243edd35576b17683907031f4c68a67ffa2458ea5ff20`. Files are in the owner's current ChatGPT session and **not uploaded to GitHub**. Ask owner to attach this ZIP to Codex if source details are needed.
+- Build type: existing pinned binary-overlay baseline, not a complete decompiled upstream source.
+
+Setup objectives are exactly, in order: `wooden_pickaxe`, `stone_axe`, `stone_pickaxe x2`, `stone_shovel`, `crafting_table`, `furnace`, `chest`, `torch x32`, `shield`, `iron_pickaxe`, `iron_sword`. All are required, with no optional-skip branch.
+
+Workshop verification now also runs an **outdoor, surface-only torch lighting stage**, using actual block light (not skylight). It samples actual outdoor ground within a bounded margin around the 3-station site, only at/above worksite Y, excludes non-sky-exposed terrain and workstation access lanes, places at most 12 torches using existing native placement/acquisition tasks, remeasures light after placements, and refuses false success with dark eligible samples. No cave, underground or trial-chamber lighting. Already installed torches count toward the 32-torch supply verification.
+
+Earlier fixes from the local lineage remain (real inventory slot check, A/B mining-target rejection, long-range chunk-ticket watchdog, quoted `agentic` resource goals, compact village). **Do not assume live integration has been proven.**
+
+Validation: Java compilation passed, focused `SetupCompletionTest` 12 checks passed, `SurfaceLightingTest` passes including access lanes and no-underground cases, bytecode verifier checked 1,268 methods. Existing suite ran through native/recovery/village/range/inventory tests successfully; full monolithic run hit its execution timeout near the end and the remaining checks were run separately. No Minecraft runtime smoke test has been performed for this revision.
+
+**Delivery remains distinct from validation:** no new GitHub Actions artifact exists for this JAR. The previous ChatGPT download-link failure was not a runtime failure. To provide the requested stable direct download, Codex must port/reproduce this exact revision and publish a new GitHub artifact, not link older PR #9 binaries.
+
