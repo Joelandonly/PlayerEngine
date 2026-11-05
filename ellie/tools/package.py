@@ -37,6 +37,7 @@ expected_new={'com/player2/playerengine/tasks/construction/build_structure/Villa
 expected_new.update('com/player2/playerengine/tasks/setup/'+name+'.class' for name in [
     'StarterBaseLayout','StarterBaseLayout$Pos','StarterBaseLayout$Placement','StarterBaseLayout$Probe',
     'StarterBaseTask','StarterBaseTask$Environment','StarterBaseWorld','StarterBaseWorld$1',
+     'BasicSetupTask','BasicSetupTask$Stage','BasicSetupTask$Environment','BasicSetupTask$NativeEnvironment',
     'SurfaceLightingPlan','SurfaceLightingPlan$Probe','SurfaceLightingPlan$Survey',
     'SetupBuildZone','SetupBuildZone$Shape','SetupBuildZone$Origin',
     'SetupSurvival','SetupSurvival$Environment','SetupSurvival$Action','SetupSurvival$Snapshot',
