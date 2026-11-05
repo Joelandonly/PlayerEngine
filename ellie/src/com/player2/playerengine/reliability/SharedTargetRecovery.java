@@ -49,8 +49,11 @@ public final class SharedTargetRecovery {
    }
    if(s.root.get()!=task){release(s,game);s.root=new WeakReference<>(task);s.owner.clear();s.target=null;s.policy.reset();s.jobProgress.reset();s.lastWork=now;s.resourceJob=false;s.maxCraftPhase=-1;s.tried.clear();s.targetOscillation.reset();}
    s.baritone=new WeakReference<>(game.baritone);
+   // Monitor setup as a single recovery-owned job even while the current
+   // native child is a crafting macro or station placement, not ResourceTask.
    s.resourceJob |= ((Task)task).containsTask(t->t instanceof com.player2.playerengine.tasks.ResourceTask)
-     || task instanceof com.player2.playerengine.tasks.setup.EllieSetupTask;
+     || task instanceof com.player2.playerengine.tasks.setup.EllieSetupTask
+     || task instanceof com.player2.playerengine.tasks.setup.BasicSetupTask;
    // A job-wide budget survives leaf replacement, A/B selection and temporary
    // recovery. Native safety chains do not spend it while they own movement.
    s.jobProgress.stalled("inventory","inventory"+game.inventorySignature(),0,0,0,now,false);
@@ -72,6 +75,7 @@ public final class SharedTargetRecovery {
       +" subtask="+((Task)task).getTaskTree()+" attempts="+s.policy.attempts()+"/3; try a different resource location or remove the reported obstruction";
     release(s,game);failures.put(task,reason);event(s,"TASK_BLOCKED",reason);
     if(task instanceof com.player2.playerengine.tasks.setup.EllieSetupTask setup)setup.blockFromRecovery(reason);
+    else if(task instanceof com.player2.playerengine.tasks.setup.BasicSetupTask setup)setup.blockFromRecovery(reason);
     else ((Task)task).fail(reason);
     return true;
    }
