@@ -37,8 +37,8 @@ manifest = {
     'jar_sha256': sha256(JAR.read_bytes()).hexdigest(),
     'source_upload_jar_sha256': original.get('source_upload_jar_sha256', original['jar_sha256']),
     'target': 'Minecraft 1.21.1 Fabric, PlayerEngine 1.4.0, Java 21, native Player2',
-    'build_kind': 'binary-overlay; complete Minecraft 1.21.1 source unavailable',
-    'release': 'Ellie non-loading water escape v15 — CI candidate; gameplay UNVERIFIED',
+    'build_kind': 'binary-overlay; recovered upstream source used as reference; custom overlay preserved',
+    'release': 'Ellie food reliability v16 — CI candidate; gameplay UNVERIFIED',
     'craft_recovery_upload_jar_sha256': 'f36e4210a31024c113f7be6d2afa97385c878a15b1ab1d9f590a4ea745980b9f',
     'changed_existing_classes': [
         'com/player2/playerengine/supervisor/CoreGoalSupervisor.class',

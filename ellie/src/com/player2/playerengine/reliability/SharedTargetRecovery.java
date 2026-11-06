@@ -12,6 +12,11 @@ public final class SharedTargetRecovery {
  private static final Map<Object,String> failures=Collections.synchronizedMap(new WeakHashMap<>());
  public static String failure(Object root){return failures.get(root);}
  public static void begin(Object root){failures.remove(root);}
+ /** Explicit failure from an existing survival worker; the native executor still performs teardown. */
+ public static void block(Object root,String reason){
+  failures.put(root,reason);
+  if(root instanceof Task task)task.stop();
+ }
  /** Called only after a stage observes a new high-water count of actual world outputs. */
  public static void verifiedWorldOutput(Object controller,String evidence){
   try{Session s=sessions.get(controller);if(s==null)return;s.lastWork=new RecoveryWorld(controller).tick();ObservatoryTelemetry.set("recentVerifiedOutput",evidence);}

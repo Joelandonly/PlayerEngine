@@ -17,6 +17,13 @@ assert not any(row['route'] == 'legacy-user-task' and row['caller'].split('#')[0
 with zipfile.ZipFile(root / 'baseline/playerengine-acquisition-safety.jar') as baseline, \
      zipfile.ZipFile(root / 'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar') as built:
     setup_changes = {
+        'com/player2/playerengine/tasks/resources/CollectFoodTask.class',
+        'com/player2/playerengine/tasks/resources/CollectMeatTask.class',
+        'com/player2/playerengine/tasks/container/SmeltInSmokerTask.class',
+        'com/player2/playerengine/chains/FoodChain.class',
+        'com/player2/playerengine/tasks/entity/GiveItemToPlayerTask.class',
+        'com/player2/playerengine/tasks/construction/PlaceSignTask.class',
+        'com/player2/playerengine/executor/TaskStepExecutorAdapter.class',
         'com/player2/playerengine/tasks/movement/GetOutOfWaterTask$EscapeFromWaterGoal.class',
         'com/player2/playerengine/automaton/pathing/calc/AStarPathFinder.class',
         'com/player2/playerengine/automaton/pathing/movement/Movement.class',

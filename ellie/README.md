@@ -1,3 +1,18 @@
+# Food reliability v16 (experimental)
+
+Build ID: `20261106-food-reliability-v16`. **Gameplay UNVERIFIED.**
+Repairs the existing food workers: repeated hunts, already-owned cooked food,
+in-flight fuel/cooking retention, bounded alternative fuel strategies, existing
+furnace reuse, and automatic food collection that otherwise starves owner work.
+Command completion follows its own executor receipt, including deferred native
+callbacks and partial/failure outcomes. No new scheduler or recovery controller.
+
+All **32 setup classes** remain byte-identical to the owner-confirmed 14-stage
+setup. Navigation/bridging and the previous descent/water safeguards are retained.
+See [changes, tests and live acceptance checks](../docs/ELLIE_FOOD_RELIABILITY_V16.md).
+The later navigation, deposit-counting, pickup, fishing and resolver repairs are
+separate work; this candidate does not claim to resolve every audit finding.
+
 # Non-loading water escape v15 (experimental)
 
 Build ID: `20261106-nonloading-water-escape-v15`. **Gameplay UNVERIFIED.**

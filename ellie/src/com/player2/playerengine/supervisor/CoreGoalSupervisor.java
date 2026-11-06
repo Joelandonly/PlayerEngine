@@ -61,14 +61,17 @@ public final class CoreGoalSupervisor {
                     checkpoint(slot, terminal);
                     event("CORE_GOAL_TERMINAL", "generation=" + terminal.generation()
                             + " status=" + terminal.status() + " detail=" + terminal.detail());
+                    CommandCompletion.completed(execution);
                     // Stale goals must not schedule more work after ownership has changed.
-                    if (onComplete != null) onComplete.run();
+                    if (onComplete != null && slot.lifecycle.current().generation()==started.generation()) onComplete.run();
                 }
             };
             try {
+                CommandCompletion.prepare(task);
                 StepExecution execution = Objects.requireNonNull(controller.getStepExecutorAdapter()
                         .submit(commandId, kind, task, policy, completion), "Executor returned no receipt");
                 receipt.set(execution);
+                CommandCompletion.bind(task, execution);
                 if (requested.get()) completion.run();
                 return execution;
             } catch (RuntimeException failure) {
@@ -92,6 +95,7 @@ public final class CoreGoalSupervisor {
         StepState state = execution.getState();
         String log = execution.getLastLogEntry();
         if (log != null && log.contains("CANCELLED_")) return GoalLifecycle.Status.CANCELLED;
+        if (state == StepState.FAILED && log != null && log.contains("BLOCKED_")) return GoalLifecycle.Status.BLOCKED;
         if (state == StepState.FAILED || state == StepState.ROLLED_BACK) return GoalLifecycle.Status.FAILED;
         if (state == StepState.BLOCKED) return GoalLifecycle.Status.BLOCKED;
         if (task instanceof TrackedTaskOutcomeProvider outcome) {

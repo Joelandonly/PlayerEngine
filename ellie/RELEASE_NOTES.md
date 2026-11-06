@@ -1,3 +1,23 @@
+# Food reliability v16 — gameplay UNVERIFIED
+
+Fixes the first food/supervision/result-contract portion of the command audit.
+Fuel acquisition is retained and bounded; inaccessible fuel switches strategy.
+Hunting targets require a new raw item and cooking goals include existing cooked
+stock. Food keeps its cooking child until inventory output is verified, uses an
+existing furnace where available, and reports a specific blocked dependency.
+Automatic food collection yields to an explicit food job and suppresses unchanged
+failed retries while preserving emergency eating. Critical unresolved hunger
+blocks the owner job explicitly rather than silently repeating food work.
+
+The command lifecycle captures its own task receipt, defers early native callback
+completion, and translates worker failure/partial outcomes consistently. Giving
+retains a verified successful terminal and sign failures keep their reason.
+
+Validation executes the packaged food/cooking methods with explicit world/combat/
+acquisition/navigation boundaries. The repeated-hunt regression fails on v15.
+The full pre-existing suite and setup byte-preservation checks remain required.
+No live Minecraft gameplay success is claimed. See docs/ELLIE_FOOD_RELIABILITY_V16.md.
+
 # Non-loading water escape v15 — gameplay UNVERIFIED
 
 The supplied long-running world stops at the same Unstuck/Completing-goal boundary
