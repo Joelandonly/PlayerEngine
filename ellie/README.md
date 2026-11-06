@@ -1,3 +1,14 @@
+# Non-loading water escape v15 (experimental)
+
+Build ID: `20261106-nonloading-water-escape-v15`. **Gameplay UNVERIFIED.**
+Repairs live-world block queries in native water-escape goal callbacks, a separate
+path-worker access hazard missed by v14. Keeps native goal policy, setup and
+bridging. Existing observatory client ticks attempt a full thread capture after
+a sustained unpaused server stall: `logs/ellie-server-stall.txt`.
+
+See [supplied freeze evidence, patch scope and live validation](../docs/ELLIE_WATER_ESCAPE_STALL_V15.md).
+The exact frozen Minecraft wait chain remains unconfirmed.
+
 # Non-loading descent collision view v14 (experimental)
 
 Build ID: `20261106-descent-block-view-v14`. **Gameplay UNVERIFIED.**

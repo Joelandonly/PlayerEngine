@@ -1,12 +1,22 @@
 package com.player2.playerengine.observatory;
 
 import java.lang.reflect.*;
+import java.lang.ref.WeakReference;
+import java.lang.management.*;
+import java.nio.file.*;
+import java.time.Instant;
 import java.util.*;
 
 /** Independent server-clock ticket maintenance and measured tick diagnostics; never executes AI. */
 public final class DistanceDiagnostics {
     private static final Map<Object, Sample> SAMPLES = new WeakHashMap<>();
-    private static long serverClock = -1, lastSample = -1, lastCleanup = -1;
+    private static volatile long serverClock = -1;
+    private static long lastSample = -1, lastCleanup = -1;
+    private static volatile WeakReference<Object> heartbeatServer = new WeakReference<>(null);
+    private static volatile long heartbeatNanos;
+    // Client callback state: never take the server diagnostic/telemetry monitors here.
+    private static long clientCheckedAt, clientUnpausedSince, capturedHeartbeat;
+    private static final long STALL_NANOS = 30_000_000_000L;
     private static boolean warned;
     private static final Map<String,Long> LAST_REGISTERED = new LinkedHashMap<>();
     private static final Set<String> MISSING_REPORTED = new HashSet<>();
@@ -16,6 +26,13 @@ public final class DistanceDiagnostics {
         String uuid = "unknown", state = "";
     }
     private DistanceDiagnostics() {}
+    /** Startup identity makes world reloads distinguishable from loading another mod revision. */
+    public static void announceBuild(){
+        try(var stream=DistanceDiagnostics.class.getResourceAsStream("/META-INF/ELLIE_BUILD_REVISION.txt")){
+            String stamp=stream==null?"build metadata unavailable":new String(stream.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8).strip().replace('\n',' ');
+            ObservatoryTelemetry.set("buildRevision",stamp);ObservatoryTelemetry.event("BUILD_IDENTITY",stamp);
+        }catch(Exception|LinkageError ignored){/* diagnostic only */}
+    }
     private static Object call(Object receiver, String method) throws ReflectiveOperationException {
         return receiver == null ? null : receiver.getClass().getMethod(method).invoke(receiver);
     }
@@ -73,6 +90,7 @@ public final class DistanceDiagnostics {
     /** Called from the GLOBAL Minecraft server tick, not from the NPC's update callback. */
     public static void onServerTick(Object server){
         if(server==null)return;
+        serverHeartbeat(server,System.nanoTime());
         try{
             Object value=call(server,"method_3780");if(!(value instanceof Number n))return;
             long tick=n.longValue();
@@ -103,6 +121,51 @@ public final class DistanceDiagnostics {
         }catch(ReflectiveOperationException|RuntimeException e){
             if(!warned){warned=true;ObservatoryTelemetry.event("DISTANCE_DIAGNOSTIC_UNAVAILABLE",e.toString());}
         }
+    }
+    static void serverHeartbeat(Object server,long now){
+        if(heartbeatServer.get()!=server)heartbeatServer=new WeakReference<>(server);
+        heartbeatNanos=now;
+    }
+    /** Called by the existing client tick callback, including with dashboard/HUD closed. No new thread. */
+    public static void clientTick(Object client){
+        long now=System.nanoTime();if(clientCheckedAt!=0&&now-clientCheckedAt<1_000_000_000L)return;clientCheckedAt=now;
+        try{
+            if(client==null)client=Class.forName("net.minecraft.class_310").getMethod("method_1551").invoke(null);
+            Object server=call(client,"method_1576");
+            captureIfStalled(server,Boolean.TRUE.equals(call(client,"method_1493")),
+                    field(client,"field_1687")!=null,now,Path.of("logs","ellie-server-stall.txt"));
+        }catch(ReflectiveOperationException|RuntimeException ignored){/* read-only diagnostic cannot affect gameplay */}
+    }
+    static boolean captureIfStalled(Object server,boolean paused,boolean worldLoaded,long now,Path file){
+        if(server==null||heartbeatServer.get()!=server||paused||!worldLoaded){clientUnpausedSince=0;return false;}
+        long last=heartbeatNanos;
+        if(last==0||now-last<STALL_NANOS){clientUnpausedSince=now;capturedHeartbeat=0;return false;}
+        // A normal pause must receive a fresh, unpaused grace period.
+        if(clientUnpausedSince==0){clientUnpausedSince=now;return false;}
+        if(now-clientUnpausedSince<STALL_NANOS||capturedHeartbeat==last)return false;
+        capturedHeartbeat=last;
+        try{
+            StringBuilder out=new StringBuilder("ELLIE SERVER STALL THREAD CAPTURE\n");
+            out.append("captured: ").append(Instant.now()).append("\nlast server tick: ").append(serverClock)
+               .append("\nheartbeat absent seconds: ").append((now-last)/1_000_000_000L)
+               .append("\nserver type: ").append(server.getClass().getName()).append('\n');
+            try(var revision=DistanceDiagnostics.class.getResourceAsStream("/META-INF/ELLIE_BUILD_REVISION.txt")){
+                if(revision!=null)out.append("build: ").append(new String(revision.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8)).append('\n');
+            }
+            ThreadMXBean bean=ManagementFactory.getThreadMXBean();
+            out.append("monitor deadlocks: ").append(Arrays.toString(bean.findDeadlockedThreads())).append("\n\n");
+            for(ThreadInfo info:bean.dumpAllThreads(true,true)){
+                out.append('"').append(info.getThreadName()).append("\" #").append(info.getThreadId())
+                   .append(" state=").append(info.getThreadState()).append(" waitingOn=").append(info.getLockName())
+                   .append(" owner=").append(info.getLockOwnerName()).append('\n');
+                for(StackTraceElement frame:info.getStackTrace())out.append("    at ").append(frame).append('\n');
+                out.append("    monitors: ").append(Arrays.toString(info.getLockedMonitors()))
+                   .append("\n    synchronizers: ").append(Arrays.toString(info.getLockedSynchronizers())).append("\n\n");
+            }
+            Files.createDirectories(file.toAbsolutePath().getParent());Files.writeString(file,out);
+            // Deliberately no synchronized telemetry/event call: it may be held by a stalled server.
+            return true;
+        }catch(Exception|LinkageError ignored){return false;}
     }
     /** Also supports fixture testing without a Minecraft server. */
     public static synchronized void sample(Object controller,long tick){

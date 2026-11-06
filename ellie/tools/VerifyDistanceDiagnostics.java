@@ -22,6 +22,8 @@ public class VerifyDistanceDiagnostics {
    check(calls(controller,"staticServerTick",d,"onServerTick")==1,"global tick observer installed");
    check(calls(controller,"serverTick",d,"onControllerTick")==1,"controller heartbeat installed");
    check(calls(overlay,"render",d,"appendNavigationLines")==1,"Navigation HUD diagnostics installed");
+   check(calls(overlay,"poll",d,"clientTick")==1,"client-side stall capture runs independently of server tick/dashboard open state");
+   check(calls(overlay,"onInitializeClient",d,"announceBuild")==1,"startup records embedded build identity before world loading");
    check(calls(get(z,p+"trackers/ChunkLoadingTracker"),"tick",p+"util/ChunkController","load")>=1,"existing chunk loader left in place");
    String w=p+"observatory/ChunkTicketWatchdog";
    check(calls(get(z,d),"onServerTick",d,"checkMissing")==1,"global callback reports missing registered controllers");
