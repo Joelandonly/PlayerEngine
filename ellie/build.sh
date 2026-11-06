@@ -85,8 +85,8 @@ cp build/patches/com/player2/playerengine/PlayerEngineController.class build/gam
 rm build/patches/com/player2/playerengine/PlayerEngineController.class
 javac --release 21 -cp build/patches:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/native-testclasses $(find tests/nativefixtures -name '*.java' | LC_ALL=C sort) tests/NativeCommandExecutionTest.java tests/ProductionAndNpcUseTest.java
 java -cp build/native-testclasses:build/patches:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar NativeCommandExecutionTest
-javac --release 21 -cp build/native-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/native-testclasses tests/RemoteOwnerCommandGateTest.java
-java -cp build/native-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar RemoteOwnerCommandGateTest
+javac --release 21 -cp build/testclasses:build/classes:build/native-testclasses:baseline/playerengine-acquisition-safety.jar -d build/native-testclasses tests/RemoteOwnerCommandGateTest.java
+java -cp build/testclasses:build/classes:build/native-testclasses:baseline/playerengine-acquisition-safety.jar RemoteOwnerCommandGateTest
 java -cp build/native-testclasses:build/patches:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar ProductionAndNpcUseTest
 java -cp build/testclasses:build/classes:build/patches:baseline/playerengine-acquisition-safety.jar TargetRecoveryPolicyTest
 
