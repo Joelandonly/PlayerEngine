@@ -1,3 +1,24 @@
+# Non-loading descent collision view v14 (experimental)
+
+Build ID: `20261106-descent-block-view-v14`. **Gameplay UNVERIFIED.**
+Corrects v13's planning collision callbacks to use native `bsi.access` instead
+of the live world. A worker/view regression fails against v13 and passes with
+this change. The reported intermittent Minecraft freeze is not reproduced or
+conclusively explained by the supplied log. Setup and bridging remain unchanged.
+
+See [evidence, correction and live validation](../docs/ELLIE_DESCENT_BLOCK_VIEW_V14.md).
+
+# Pre-commit descent safety v13 (experimental)
+
+Build ID: `20261106-safe-descents-v13`. **Gameplay UNVERIFIED.**
+Based on v12 `45b1a02`. Preserves outward bridging and the owner-confirmed 14-stage
+setup. Shared planning and pre-input gates reject unsupported dangerous descents;
+a carried bucket grants no speculative fall protection.
+
+See [behavior, automated checks and live acceptance steps](../docs/ELLIE_SAFE_DESCENTS_V13.md).
+
+The following notes retain previous build provenance.
+
 # Independent NPC chunk ticking v12 (experimental)
 
 Build ID: `20261106-independent-npc-chunks-v12`. **Gameplay UNVERIFIED.**

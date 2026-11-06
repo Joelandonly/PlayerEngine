@@ -1,3 +1,27 @@
+# Non-loading descent collision view v14 — gameplay UNVERIFIED
+
+Use native CalculationContext.bsi.access for planning collision callbacks;
+neighbor lookups must not escape to the live world from a path worker. No descent
+policy, native movement hooks, setup, chunk ownership or lifecycle changes.
+A regression fails against v13 and covers alternating world contexts and old
+context unloading. This demonstrates the access defect, not the exact reported
+Minecraft freeze. Real rapid-world-switch testing remains required.
+See docs/ELLIE_DESCENT_BLOCK_VIEW_V14.md.
+
+# Pre-commit descent safety v13 — gameplay UNVERIFIED
+
+Preserve outward bridging while rejecting unsafe downward candidates in shared
+A* planning and rechecking landings before native movement preparation/inputs.
+Allow verified safe drops, gradual stairs, existing source water and continuous
+climbables; do not treat a carried bucket as validated deployment protection.
+Reuse native replanning and existing bounded shared recovery. No setup changes.
+
+Adds geometry/adapter regressions, execution of the packaged pre-commit gate,
+bytecode boundary checks and exact preservation checks for all 32 proven setup
+classes and concrete native bridge/movement bodies. These substitute game
+boundaries and do not prove live Minecraft navigation or placement success.
+See docs/ELLIE_SAFE_DESCENTS_V13.md for the required live cliff/mining checks.
+
 # Independent NPC chunk ticking v12 — gameplay UNVERIFIED
 
 Based on experimental v11 cc9f999. Keeps the proven 14-stage setup source unchanged.
