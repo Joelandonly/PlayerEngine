@@ -3,7 +3,7 @@ import java.util.*;
 import java.util.zip.*;
 import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.tree.*;
-/** Read-only diagnostics instrumentation. Fail closed if method shapes change. */
+/** Global chunk maintenance and diagnostics instrumentation. Fail closed if method shapes change. */
 public final class PatchDistanceDiagnostics implements Opcodes {
  static final String P="com/player2/playerengine/", D=P+"observatory/DistanceDiagnostics";
  static ClassNode read(byte[] content){ClassNode n=new ClassNode();new ClassReader(content).accept(n,0);return n;}
@@ -19,6 +19,19 @@ public final class PatchDistanceDiagnostics implements Opcodes {
    ClassNode controller=read(Files.readAllBytes(ctlPath));
    hook(method(controller,"serverTick","()V"),"onControllerTick");
    hook(method(controller,"staticServerTick","(Lnet/minecraft/server/MinecraftServer;)V"),"onServerTick");
+
+   String watchdog=P+"observatory/ChunkTicketWatchdog",nativeChunks=P+"util/ChunkController";
+   ClassNode chunks=read(fromJar(z,nativeChunks));
+   for(String name:List.of("load","unload")){
+    MethodNode m=method(chunks,name,"(Lnet/minecraft/class_3218;Ljava/util/UUID;II)V");m.instructions.clear();m.tryCatchBlocks.clear();m.localVariables=null;
+    m.instructions.add(new VarInsnNode(ALOAD,1));m.instructions.add(new VarInsnNode(ALOAD,2));m.instructions.add(new VarInsnNode(ILOAD,3));m.instructions.add(new VarInsnNode(ILOAD,4));m.instructions.add(new MethodInsnNode(INVOKESTATIC,watchdog,name,"(Ljava/lang/Object;Ljava/util/UUID;II)V",false));m.instructions.add(new InsnNode(RETURN));
+   }
+   for(String name:List.of("clear","size")){MethodNode m=method(chunks,name,name.equals("clear")?"()V":"()I");m.instructions.clear();m.tryCatchBlocks.clear();m.localVariables=null;m.instructions.add(new MethodInsnNode(INVOKESTATIC,watchdog,name,m.desc,false));m.instructions.add(new InsnNode(name.equals("clear")?RETURN:IRETURN));}
+   write(chunks,existing);
+   ClassNode tracker=read(fromJar(z,P+"trackers/ChunkLoadingTracker"));
+   MethodNode reset=method(tracker,"reset","()V");InsnList release=new InsnList();release.add(new VarInsnNode(ALOAD,0));release.add(new MethodInsnNode(INVOKESTATIC,watchdog,"reset","(Ljava/lang/Object;)V",false));reset.instructions.insert(release);write(tracker,existing);
+   MethodNode stop=method(controller,"stop","(L"+P+"executor/StopReason;)V");InsnList stopHook=new InsnList();stopHook.add(new VarInsnNode(ALOAD,0));stopHook.add(new MethodInsnNode(INVOKESTATIC,watchdog,"stopped","(Ljava/lang/Object;)V",false));stop.instructions.insert(stopHook);
+   MethodNode unregister=method(controller,"unregisterFromGlobalRegistry","(Ljava/util/UUID;)V");InsnList unregisterHook=new InsnList();unregisterHook.add(new VarInsnNode(ALOAD,0));unregisterHook.add(new MethodInsnNode(INVOKESTATIC,watchdog,"release","(Ljava/util/UUID;)V",false));unregister.instructions.insert(unregisterHook);
    write(controller,existing);
    ClassNode overlay=read(fromJar(z,P+"observatory/ObservatoryOverlay"));
    MethodNode render=method(overlay,"render","(Ljava/lang/Object;)V");
@@ -33,7 +46,7 @@ public final class PatchDistanceDiagnostics implements Opcodes {
    }
    if(hits!=1)throw new AssertionError("Navigation hook count "+hits);
    write(overlay,existing);
-   System.out.println("Distance diagnostics: independent server tick + NPC controller tick + Navigation overlay; no chunk/ticking changes");
+   System.out.println("Distance diagnostics: independent server tick + NPC controller tick + Navigation overlay; world-scoped native chunk ownership and independent maintenance");
   }
  }
 }

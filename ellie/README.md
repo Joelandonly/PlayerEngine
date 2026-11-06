@@ -1,3 +1,16 @@
+# Independent NPC chunk ticking v12 (experimental)
+
+Build ID: `20261106-independent-npc-chunks-v12`. **Gameplay UNVERIFIED.**
+Based on v11 `cc9f9994e2d686e8ac7945fe2f1ee31106a0d0eb`; intended for review
+against `feature/ellie-friendly-commands-remote-owner-20261106`, not main.
+The owner-reported four-world proven baseline is `6290ef647051bc4f1be1898b795c031d80295252`.
+Its 14-stage setup implementation is unchanged by this patch.
+
+See [chunk execution investigation, CI scope and live acceptance steps](../docs/ELLIE_REMOTE_EXECUTION_V12.md).
+
+The following retained notes describe older overlay provenance and survival experiments;
+they are not a new setup contract for this patch.
+
 # Ellie: chest-anchored survival setup
 
 Current build: `20261105-setup-output-handoff-v7`. **Live Minecraft survival completion remains unverified.**

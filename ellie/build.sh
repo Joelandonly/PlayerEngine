@@ -118,9 +118,9 @@ javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-e
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyDistanceDiagnostics dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
 
 # Fresh inventory, agentic quote, early axe, and chunk watchdog regression.
-javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/distance-testclasses tests/InventorySpaceTest.java tests/ChunkTicketWatchdogTest.java
+javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/distance-testclasses tests/InventorySpaceTest.java $(find tests/chunkfixtures -name '*.java') tests/ChunkTicketWatchdogTest.java
 java -cp build/distance-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar InventorySpaceTest
-java -cp build/distance-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar ChunkTicketWatchdogTest
+java -cp build/distance-testclasses:build/patches:build/classes:baseline/playerengine-acquisition-safety.jar ChunkTicketWatchdogTest
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifyInventoryTracker.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyInventoryTracker dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
 

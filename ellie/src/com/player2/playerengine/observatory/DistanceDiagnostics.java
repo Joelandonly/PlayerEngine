@@ -78,15 +78,17 @@ public final class DistanceDiagnostics {
             long tick=n.longValue();
             synchronized(DistanceDiagnostics.class){
                 serverClock=tick;
-                if(lastSample>=0&&tick>=lastSample&&tick-lastSample<20)return;
+                // Ticket maintenance runs every global tick, even when diagnostics are throttled.
                 if(tick<lastSample){LAST_REGISTERED.clear();MISSING_REPORTED.clear();}
                 lastSample=tick;
             }
             Object registry=Class.forName("com.player2.playerengine.PlayerEngineController").getField("staticControllers").get(null);
             if(!(registry instanceof Map<?,?> controllers))return;
-            for(Object controller:new ArrayList<>(controllers.values()))if(controller!=null){
+            List<?> active=new ArrayList<>(controllers.values());
+            ChunkTicketWatchdog.retainControllers(active,tick);
+            for(Object controller:active)if(controller!=null){
                 // Read-only sample first, then repair only tickets the existing loader still owns.
-                sample(controller,tick);
+                if(tick%20==0)sample(controller,tick);
                 ChunkTicketWatchdog.reconcile(controller,tick);
             }
             synchronized(DistanceDiagnostics.class){
