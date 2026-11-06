@@ -63,7 +63,7 @@ jobs:
           ELLIE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir -p build/install
-          cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar "build/install/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-RemoteChunk-${ELLIE_REVISION:0:7}-UNVERIFIED.jar"
+          cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar "build/install/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SafeDescent-${ELLIE_REVISION:0:7}-UNVERIFIED.jar"
           (cd build/install && sha256sum *.jar > SHA256SUMS.txt)
       - name: Upload installable Ellie JAR
         uses: actions/upload-artifact@v4

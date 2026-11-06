@@ -1,3 +1,14 @@
+# Pre-commit descent safety v13 (experimental)
+
+Build ID: `20261106-safe-descents-v13`. **Gameplay UNVERIFIED.**
+Based on v12 `45b1a02`. Preserves outward bridging and the owner-confirmed 14-stage
+setup. Shared planning and pre-input gates reject unsupported dangerous descents;
+a carried bucket grants no speculative fall protection.
+
+See [behavior, automated checks and live acceptance steps](../docs/ELLIE_SAFE_DESCENTS_V13.md).
+
+The following notes retain previous build provenance.
+
 # Independent NPC chunk ticking v12 (experimental)
 
 Build ID: `20261106-independent-npc-chunks-v12`. **Gameplay UNVERIFIED.**

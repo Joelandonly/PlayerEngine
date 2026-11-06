@@ -1,3 +1,17 @@
+# Pre-commit descent safety v13 — gameplay UNVERIFIED
+
+Preserve outward bridging while rejecting unsafe downward candidates in shared
+A* planning and rechecking landings before native movement preparation/inputs.
+Allow verified safe drops, gradual stairs, existing source water and continuous
+climbables; do not treat a carried bucket as validated deployment protection.
+Reuse native replanning and existing bounded shared recovery. No setup changes.
+
+Adds geometry/adapter regressions, execution of the packaged pre-commit gate,
+bytecode boundary checks and exact preservation checks for all 32 proven setup
+classes and concrete native bridge/movement bodies. These substitute game
+boundaries and do not prove live Minecraft navigation or placement success.
+See docs/ELLIE_SAFE_DESCENTS_V13.md for the required live cliff/mining checks.
+
 # Independent NPC chunk ticking v12 — gameplay UNVERIFIED
 
 Based on experimental v11 cc9f999. Keeps the proven 14-stage setup source unchanged.
