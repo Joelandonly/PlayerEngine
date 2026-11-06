@@ -16,11 +16,11 @@ with ZipFile(jar) as z:
     for p in sorted([root/'build.sh',root/'tools/package.py',*list((root/'src').rglob('*.java')),*list((root/'tools').glob('*.java')),*list((root/'tests').rglob('*'))]):
         if p.is_file():digest.update(p.relative_to(root).as_posix().encode()+b'\0'+p.read_bytes())
     assert metadata['source_sha256']==digest.hexdigest(),'JAR sources differ from current build inputs'
-    assert metadata['build_id']=='20261105-basic-batched-home-v9'
+    assert metadata['build_id']=='20261106-friendly-commands-remote-owner-v10'
     assert metadata['live_minecraft_validated'] is False
     assert metadata['baseline_sha256']==sha256((root/'baseline/playerengine-acquisition-safety.jar').read_bytes()).hexdigest()
     assert revision in z.read('META-INF/ELLIE_BUILD_REVISION.txt').decode()
-    assert metadata['build_id'].encode() in z.read('com/player2/playerengine/tasks/setup/EllieSetupTask.class')
+    assert b'20261105-basic-batched-home-v9' in z.read('com/player2/playerengine/tasks/setup/EllieSetupTask.class'), 'The proven setup v9 implementation must remain untouched'
     expected={}
     for directory in ('classes','patches'):
         for p in (root/'build'/directory).rglob('*.class'):
