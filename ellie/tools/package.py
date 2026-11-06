@@ -30,7 +30,7 @@ expected_existing.update('com/player2/playerengine/'+name+'.class' for name in [
     'agentic/AgenticPlannerService','agentic/elliegps/WaypointIngestionService',
     'PlayerEngineController','tasks/ResourceTask','tasks/container/ScanContainerTask','tasks/container/BoundedContainerTransferTask','agentic/AgenticSchemas','agentic/AgenticStepFactoryRegistry','agentic/AgenticPlanValidator','trackers/storage/InventorySubTracker',
     'commands/BuildStructureCommand','commands/AgenticCommand','commands/random/ScanCommand','commands/base/CommandExecutor',
-    'player2api/SetupDirectRoute','tasks/agentic/LabelChestTask','observatory/ObservatoryOverlay',
+    'player2api/SetupDirectRoute','player2api/RemoteOwnerCommandGate','tasks/agentic/LabelChestTask','observatory/ObservatoryOverlay',
     'tasks/construction/build_structure/BuildStructureTask', 'tasks/construction/build_structure/VillageSiteGuard', 'tasks/construction/build_structure/VillageSiteGuard$Site'])
 expected_new={'com/player2/playerengine/tasks/construction/build_structure/VillageSiteGuard$1.class', 'com/player2/playerengine/supervisor/ProjectTaskGateway.class',
               'com/player2/playerengine/tasks/crafting/CraftTableApproachRecovery.class'}
