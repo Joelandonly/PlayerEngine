@@ -27,7 +27,7 @@ public final class ResourceAgenticIntegration {
   text=text.trim();
   // RestOfLineArg may preserve surrounding quotes.
   if(text.length()>=2 && ((text.charAt(0)=='"' && text.charAt(text.length()-1)=='"') ||
-                           (text.charAt(0)=='\\'' && text.charAt(text.length()-1)=='\\'')))
+                           (text.charAt(0)==39 && text.charAt(text.length()-1)==39)))
    text=text.substring(1,text.length()-1).trim();
   Matcher first=ITEM_FIRST.matcher(text),second=COUNT_FIRST.matcher(text);
   String item,quantity;
