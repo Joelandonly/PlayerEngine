@@ -4,18 +4,61 @@ import java.util.*;
 public final class NativeCommandText {
  private NativeCommandText(){}
  public static final Set<String> IDS=Set.of("agentic","attack","audit_waypoint","bodylang","build_structure","chatclef","compare_waypoint","create_waypoint","delete_waypoint","deposit","deposit_storage_slot","deposit_to_storage","eat_food","equip","fish","follow","food","get","give","goto","harvest_farm","hero","idle","leaveboat","locate_storage","locate_structure","locate_waypoints","meat","mine","pickup_drops","place_sign","plant_farm","read_signs","reload_settings","resetmemory","scan","scan_storage","set_attack_hostiles","set_follow_mode","setup","setup_farm","smelt","smith","stop","withdraw_from_storage","withdraw_storage_slot");
+ /**
+  * Input-only normalization. Never make the executor guess: preserve all exact
+  * registered commands, coordinates, names, quoted strings and command chains.
+  * Native get and AGENTIC share one verified item/count parser for safe reorders.
+  */
  public static String resolve(String input){
   if(input==null)return null;
-  String text=input.trim().replaceFirst("(?i)^ellie\\s*[,!:]\\s*","").replaceFirst("(?i)^ellie\\s+","").replaceFirst("^@","").trim();
-  String lower=text.toLowerCase(Locale.ROOT),alias=lower.replaceAll("[.!?]+$","").trim().replaceAll("\\s+"," ");
-  if(Set.of("setup","get started","prepare yourself","start setup","begin setup","resume setup","continue setup").contains(alias))return "setup";
-  if(Set.of("make a farm","make a farm here","build a farm","build a farm here","set up a farm").contains(alias))return "setup_farm";
-  if(lower.matches("(?:build|make) (?:a |an )?.*(?:village|settlement|shelter|cabin|cottage|lodge|workshop|storage shed|greenhouse|house).*$"))return "__local_build__ "+text.replaceFirst("(?i)^(?:build|make)\\s+","");
+  String text=input.trim().replaceFirst("(?i)^ellie\\s*[,!:]\\s*", "")
+      .replaceFirst("(?i)^ellie\\s+", "")
+      .replaceFirst("^@","").trim();
+  text=text.replaceFirst("(?i)^please\\s+","")
+      .replaceFirst("(?i)^(?:can|could|would)\\s+you\\s+(?:please\\s+)?","").trim();
+  if(text.isEmpty())return null;
+  String lower=text.toLowerCase(Locale.ROOT);
+  String alias=lower.replaceAll("[.!?]+$","").trim().replaceAll("\\s+"," ");
+  if(Set.of("setup","get started","prepare yourself","start setup","begin setup",
+            "resume setup","continue setup").contains(alias))return "setup";
+  if(Set.of("make a farm","make a farm here","build a farm","build a farm here","set up a farm").contains(alias))
+   return "setup_farm";
+  if(Set.of("stop working","stop the task","stop that","halt","cancel task","cancel current task").contains(alias))
+   return "stop";
+  if(Set.of("put items away","put stuff away","store inventory","deposit items").contains(alias))
+   return "deposit";
+  if(Set.of("pick up drops","pick up loose drops","collect loose drops nearby").contains(alias))
+   return "pickup_drops";
+  if(alias.matches("go to -?\\d+ -?\\d+ -?\\d+"))
+   return "goto "+text.replaceFirst("(?i)^go\\s+to\\s+","");
+  if(lower.matches("(?:build|make) (?:a |an )?.*(?:village|settlement|shelter|cabin|cottage|lodge|workshop|storage shed|greenhouse|house).*$"))
+   return "__local_build__ "+text.replaceFirst("(?i)^(?:build|make)\\s+","");
   int split=0;while(split<text.length()&&!Character.isWhitespace(text.charAt(split)))split++;
-  String id=text.substring(0,split).toLowerCase(Locale.ROOT);
+  String id=text.substring(0,split).toLowerCase(Locale.ROOT).replace('-','_');
   if(split==text.length())id=id.replaceAll("[.!?]+$","");
   if(id.equals("drop"))id="give";
-  if(IDS.contains(id)||Set.of("dummy","cycle","gamer","beat_minecraft","inventory","list","pause","unpause","stash","status").contains(id))return id+text.substring(split);
+  String argument=text.substring(split).trim();
+  // Collect, gather, fetch, craft and obtain map only when the item and count
+  // are unambiguous. No stone/cobblestone or other material guessing.
+  if(Set.of("gather","collect","obtain","acquire","fetch","craft").contains(id)) {
+   var resource=com.player2.playerengine.agentic.ResourceAgenticIntegration.parse(text);
+   if(resource!=null)return "agentic get "+resource.item()+" "+resource.count();
+   return null; // ordinary conversation still uses conversational routing
+  }
+  if(id.equals("agentic")) {
+   var resource=com.player2.playerengine.agentic.ResourceAgenticIntegration.parse(argument);
+   if(resource!=null)return "agentic get "+resource.item()+" "+resource.count();
+  }
+  if(id.equals("get") && argument.matches("(?i)^[0-9]{1,6}\\s+(?:of\\s+)?(?:minecraft:)?[a-z][a-z0-9_]{1,55}$")) {
+   var resource=com.player2.playerengine.agentic.ResourceAgenticIntegration.parse(text);
+   if(resource!=null)return "get "+resource.item()+" "+resource.count();
+   // Even an excessive request goes to the validated AGENTIC error path,
+   // never to GetCommand with a number in the item-name position.
+   return "agentic "+text;
+  }
+  if(IDS.contains(id)||Set.of("dummy","cycle","gamer","beat_minecraft","inventory",
+      "list","pause","unpause","stash","status").contains(id))
+   return id+text.substring(split);
   return null;
  }
  /** Preserve semicolons inside quoted arguments, including sign text. */
