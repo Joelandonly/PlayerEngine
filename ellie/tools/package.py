@@ -26,6 +26,9 @@ expected_existing.update({
 })
 expected_existing.update('com/player2/playerengine/commands/'+name+'.class' for name in (ROOT/'tools/supervised-commands.txt').read_text().splitlines())
 expected_existing.update('com/player2/playerengine/'+name+'.class' for name in [
+    'tasks/resources/CollectFoodTask','tasks/resources/CollectMeatTask','tasks/container/SmeltInSmokerTask',
+    'chains/FoodChain','commands/base/Command','tasks/entity/GiveItemToPlayerTask',
+    'tasks/construction/PlaceSignTask','executor/TaskStepExecutorAdapter',
     'tasks/movement/GetOutOfWaterTask$EscapeFromWaterGoal','tasks/construction/PlaceBlockNearbyTask','tasks/container/SmeltInFurnaceTask','automaton/pathing/calc/AStarPathFinder','automaton/pathing/movement/Movement','automaton/api/entity/LivingEntityInteractionManager','automaton/utils/InputOverrideHandler','automaton/behavior/LookBehavior','commands/BlockScanner','tasks/base/Task','util/helpers/LookHelper',
     'agentic/AgenticPlannerService','agentic/elliegps/WaypointIngestionService',
     'PlayerEngineController','tasks/ResourceTask','tasks/container/ScanContainerTask','tasks/container/BoundedContainerTransferTask','agentic/AgenticSchemas','agentic/AgenticStepFactoryRegistry','agentic/AgenticPlanValidator','trackers/storage/InventorySubTracker','util/ChunkController','trackers/ChunkLoadingTracker',
@@ -47,6 +50,10 @@ expected_new.update('com/player2/playerengine/nativecommands/'+name+'.class' for
 expected_new.update('com/player2/playerengine/agentic/'+name+'.class' for name in ['StorageIntelligence','StorageIntelligence$Session','StorageIntelligence$Heartbeat','StorageIntelligence$Choice','InventorySpace','InventorySpace$Snapshot','ResourceAgenticIntegration','ResourceAgenticIntegration$Parsed'])
 expected_new.update('com/player2/playerengine/observatory/'+name+'.class' for name in ['DistanceDiagnostics','DistanceDiagnostics$Sample','ChunkTicketWatchdog','ChunkTicketWatchdog$Claim','ChunkTicketWatchdog$Session'])
 expected_new.update('com/player2/playerengine/reliability/'+name+'.class' for name in ['SafeDescent','SafeDescent$Surface','SafeDescent$Probe','NpcItemUse','ProductionHandoff','TargetRecoveryPolicy','RecoveryWorld','RecoveryWorld$Cell','SharedTargetRecovery','SharedTargetRecovery$Session','WorksiteAnchor','WorksiteAnchor$Site','WorkshopPlacement','TargetOscillationGuard','StructuralMaterials'])
+expected_new.update('com/player2/playerengine/reliability/'+name+'.class' for name in [
+    'FoodAcquisition','FoodAcquisition$Progress','FuelRecovery','FuelRecovery$State','FuelRecovery$Environment',
+    'FuelRecovery$NativeEnvironment','FoodSurvival','FoodSurvival$State'])
+expected_new.update('com/player2/playerengine/supervisor/'+name+'.class' for name in ['CommandCompletion','CommandCompletion$Receipt','CommandCompletion$TaskOutcome'])
 removed={'com/player2/playerengine/commands/random/DummyTaskCommand.class',
          'com/player2/playerengine/commands/random/DummyTaskCommand$DummyTask.class'}
 assert set(changes)==expected_existing|expected_new,(set(changes)-(expected_existing|expected_new),(expected_existing|expected_new)-set(changes))
@@ -59,10 +66,10 @@ source_digest=sha256()
 for p in sorted([ROOT/'build.sh',ROOT/'tools/package.py',*list((ROOT/'src').rglob('*.java')),*list((ROOT/'tools').glob('*.java')),*list((ROOT/'tests').rglob('*'))]):
     if p.is_file():
         source_digest.update(p.relative_to(ROOT).as_posix().encode()+b'\0'+p.read_bytes())
-metadata={'build_id':'20261106-nonloading-water-escape-v15','source_revision':revision,'source_sha256':source_digest.hexdigest(),'baseline_sha256':sha256(base.read_bytes()).hexdigest(),'live_minecraft_validated':False}
+metadata={'build_id':'20261106-food-reliability-v16','source_revision':revision,'source_sha256':source_digest.hexdigest(),'baseline_sha256':sha256(base.read_bytes()).hexdigest(),'live_minecraft_validated':False}
 with ZipFile(out,'w',compression=ZIP_DEFLATED,compresslevel=6) as z:
     info=ZipInfo('META-INF/ELLIE_BUILD_REVISION.txt',date_time=(2026,11,5,0,0,0));info.compress_type=ZIP_DEFLATED
-    z.writestr(info,'20261106-nonloading-water-escape-v15\n'+revision+'\n')
+    z.writestr(info,'20261106-food-reliability-v16\n'+revision+'\n')
     info=ZipInfo('META-INF/ELLIE_BUILD.json',date_time=(2026,11,5,0,0,0));info.compress_type=ZIP_DEFLATED
     z.writestr(info,json.dumps(metadata,sort_keys=True,indent=2)+'\n')
     for key in sorted((set(orig)|set(changes))-removed):

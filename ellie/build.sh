@@ -9,7 +9,7 @@ baseline = Path('baseline/playerengine-acquisition-safety.jar')
 if hashlib.sha256(baseline.read_bytes()).hexdigest() != manifest['baseline_sha256']:
     raise SystemExit('Baseline checksum mismatch; refusing to patch an unknown JAR')
 PY
-rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses build/distance-testclasses build/game-hooks build/inventory-testclasses build/survival-testclasses build/material-testclasses build/legacy-testclasses build/descent-testclasses build/water-testclasses
+rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses build/distance-testclasses build/game-hooks build/inventory-testclasses build/survival-testclasses build/material-testclasses build/legacy-testclasses build/descent-testclasses build/water-testclasses build/food-testclasses build/command-testclasses
 mkdir -p build/{classes,patches,tools,testclasses} dist
 javac --release 21 -cp baseline/playerengine-acquisition-safety.jar -d build/classes $(find src -name '*.java' | LC_ALL=C sort)
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchNativeCommands.java
@@ -24,6 +24,9 @@ javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-e
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchAutonomy baseline/playerengine-acquisition-safety.jar build/patches
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchReliability.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchReliability baseline/playerengine-acquisition-safety.jar build/patches
+# Repair existing food/cooking workers and bind command completion to their exact executor receipt.
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchFoodReliability.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchFoodReliability baseline/playerengine-acquisition-safety.jar build/patches
 # Independent server heartbeat / real entity age / chunk ticket diagnostics (read-only).
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchDistanceDiagnostics.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchDistanceDiagnostics baseline/playerengine-acquisition-safety.jar build/patches
@@ -196,3 +199,14 @@ javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-e
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyWaterEscapeGoal dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar baseline/playerengine-acquisition-safety.jar
 javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/distance-testclasses tests/ServerStallCaptureTest.java
 java -cp build/distance-testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar com.player2.playerengine.observatory.ServerStallCaptureTest
+
+# Execute the packaged food/cooking workers across full success and failure chains.
+mkdir -p build/food-testclasses build/command-testclasses
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.commons=ALL-UNNAMED -d build/food-testclasses tests/PackagedFoodLoopTest.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.commons=ALL-UNNAMED -cp build/food-testclasses PackagedFoodLoopTest dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar tests/food-game-symbols.properties
+javac --release 21 -cp build/testclasses:build/classes:build/patches:baseline/playerengine-acquisition-safety.jar -d build/command-testclasses tests/CommandCompletionTest.java
+java -cp build/command-testclasses:build/testclasses:build/classes:build/patches:baseline/playerengine-acquisition-safety.jar CommandCompletionTest
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/command-testclasses tests/PackagedCompletionMapTest.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/command-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar PackagedCompletionMapTest dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifyFoodReliability.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyFoodReliability dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar

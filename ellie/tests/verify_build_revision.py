@@ -16,7 +16,7 @@ with ZipFile(jar) as z:
     for p in sorted([root/'build.sh',root/'tools/package.py',*list((root/'src').rglob('*.java')),*list((root/'tools').glob('*.java')),*list((root/'tests').rglob('*'))]):
         if p.is_file():digest.update(p.relative_to(root).as_posix().encode()+b'\0'+p.read_bytes())
     assert metadata['source_sha256']==digest.hexdigest(),'JAR sources differ from current build inputs'
-    assert metadata['build_id']=='20261106-nonloading-water-escape-v15'
+    assert metadata['build_id']=='20261106-food-reliability-v16'
     assert metadata['live_minecraft_validated'] is False
     assert metadata['baseline_sha256']==sha256((root/'baseline/playerengine-acquisition-safety.jar').read_bytes()).hexdigest()
     assert revision in z.read('META-INF/ELLIE_BUILD_REVISION.txt').decode()

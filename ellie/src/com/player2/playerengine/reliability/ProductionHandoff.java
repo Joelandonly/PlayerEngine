@@ -7,7 +7,9 @@ public final class ProductionHandoff {
  private ProductionHandoff(){}
  public static void invalidate(Object controller){try{call(call(controller,"getItemStorage"),"registerSlotAction");}catch(Exception|LinkageError ignored){}}
  public static void beforeSmeltTick(Object task,Object controller){
-  try{Object position=get(task,"furnacePos");if(position==null)return;Object furnace=call(call(controller,"getWorld"),"method_8321",position);if(furnace==null)return;
+  try{Object position;
+   try{position=get(task,"furnacePos");}catch(NoSuchFieldException smoker){position=get(task,"smokerPos");}
+   if(position==null)return;Object furnace=call(call(controller,"getWorld"),"method_8321",position);if(furnace==null)return;
    if(ownsPending(task,furnace))set(task,"isSmelting",true);
   }catch(Exception|LinkageError ignored){}
  }
@@ -26,8 +28,11 @@ public final class ProductionHandoff {
   try {
    Object top=get(macro,"sub"),node=top;
    for(int depth=0;node!=null&&depth<64;depth++,node=get(node,"sub")){
-    if(!node.getClass().getName().endsWith(".SmeltInFurnaceTask")||((Task)node).stopped())continue;
-    Object position=get(node,"furnacePos");if(position==null)return null;
+    String type=node.getClass().getName();
+    if((!type.endsWith(".SmeltInFurnaceTask")&&!type.endsWith(".SmeltInSmokerTask"))||((Task)node).stopped())continue;
+    Object position;
+    try{position=get(node,"furnacePos");}catch(NoSuchFieldException smoker){position=get(node,"smokerPos");}
+    if(position==null)return null;
     Object furnace=call(call(controller,"getWorld"),"method_8321",position);if(furnace==null)return null;
     if(!ownsPending(node,furnace)&&!Boolean.TRUE.equals(get(node,"isSmelting")))return null;
     Object storage=call(controller,"getItemStorage");call(storage,"registerSlotAction");
