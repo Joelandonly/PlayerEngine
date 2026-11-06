@@ -49,11 +49,10 @@ public final class AgenticPlannerService {
     }
 
     private static String safePlanFailureMessage(String goalText) {
-        return "I could not make a safe plan for that yet (agentic planning supports explicit get <item> <count>, drop pickup and chest storage). To mine or collect a resource, use the 'get' command directly instead.";
+        return "I could not validate that command. For resources use get <item> <count> or get <count> <item>; count must be 1-"+ResourceAgenticIntegration.MAX_RESOURCE_COUNT+". Exact item names are required: stone and cobblestone differ. Loose-drop pickup and chest storage still work.";
     }
 
     private static String mineGoalRedirectMessage() {
-        return "Agentic planning cannot mine or gather resources \u2014 it handles drop pickup and chest storage only. Use 'get <item> <count>' directly instead (use the drop/item name, e.g. 'get diamond 3', not the ore-block name).";
+        return "Resource request syntax or quantity unsupported (1-"+ResourceAgenticIntegration.MAX_RESOURCE_COUNT+"). Try 'agentic get 300 cobblestone' or 'agentic get cobblestone 300'. Use the item name, not the ore block name.";
     }
 }
-

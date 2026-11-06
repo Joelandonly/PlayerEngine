@@ -30,9 +30,9 @@ expected_existing.update('com/player2/playerengine/'+name+'.class' for name in [
     'agentic/AgenticPlannerService','agentic/elliegps/WaypointIngestionService',
     'PlayerEngineController','tasks/ResourceTask','tasks/container/ScanContainerTask','tasks/container/BoundedContainerTransferTask','agentic/AgenticSchemas','agentic/AgenticStepFactoryRegistry','agentic/AgenticPlanValidator','trackers/storage/InventorySubTracker',
     'commands/BuildStructureCommand','commands/AgenticCommand','commands/random/ScanCommand','commands/base/CommandExecutor',
-    'player2api/SetupDirectRoute','tasks/agentic/LabelChestTask','observatory/ObservatoryOverlay',
+    'player2api/SetupDirectRoute','player2api/manager/ConversationManager','tasks/agentic/LabelChestTask','observatory/ObservatoryOverlay',
     'tasks/construction/build_structure/BuildStructureTask', 'tasks/construction/build_structure/VillageSiteGuard', 'tasks/construction/build_structure/VillageSiteGuard$Site'])
-expected_new={'com/player2/playerengine/tasks/construction/build_structure/VillageSiteGuard$1.class', 'com/player2/playerengine/supervisor/ProjectTaskGateway.class',
+expected_new={'com/player2/playerengine/player2api/RemoteOwnerCommandGate.class', 'com/player2/playerengine/tasks/construction/build_structure/VillageSiteGuard$1.class', 'com/player2/playerengine/supervisor/ProjectTaskGateway.class',
               'com/player2/playerengine/tasks/crafting/CraftTableApproachRecovery.class'}
 expected_new.update('com/player2/playerengine/tasks/setup/'+name+'.class' for name in [
     'StarterBaseLayout','StarterBaseLayout$Pos','StarterBaseLayout$Placement','StarterBaseLayout$Probe',
@@ -59,10 +59,10 @@ source_digest=sha256()
 for p in sorted([ROOT/'build.sh',ROOT/'tools/package.py',*list((ROOT/'src').rglob('*.java')),*list((ROOT/'tools').glob('*.java')),*list((ROOT/'tests').rglob('*'))]):
     if p.is_file():
         source_digest.update(p.relative_to(ROOT).as_posix().encode()+b'\0'+p.read_bytes())
-metadata={'build_id':'20261105-basic-batched-home-v9','source_revision':revision,'source_sha256':source_digest.hexdigest(),'baseline_sha256':sha256(base.read_bytes()).hexdigest(),'live_minecraft_validated':False}
+metadata={'build_id':'20261106-remote-chunk-ticket-rescue-v11','source_revision':revision,'source_sha256':source_digest.hexdigest(),'baseline_sha256':sha256(base.read_bytes()).hexdigest(),'live_minecraft_validated':False}
 with ZipFile(out,'w',compression=ZIP_DEFLATED,compresslevel=6) as z:
     info=ZipInfo('META-INF/ELLIE_BUILD_REVISION.txt',date_time=(2026,11,5,0,0,0));info.compress_type=ZIP_DEFLATED
-    z.writestr(info,'20261105-basic-batched-home-v9\n'+revision+'\n')
+    z.writestr(info,'20261106-remote-chunk-ticket-rescue-v11\n'+revision+'\n')
     info=ZipInfo('META-INF/ELLIE_BUILD.json',date_time=(2026,11,5,0,0,0));info.compress_type=ZIP_DEFLATED
     z.writestr(info,json.dumps(metadata,sort_keys=True,indent=2)+'\n')
     for key in sorted((set(orig)|set(changes))-removed):

@@ -10,6 +10,12 @@ public final class AutonomyIntegrationTest {
   check(ResourceAgenticIntegration.parse("get cobblestone 64").equals(new ResourceAgenticIntegration.Parsed("cobblestone",64)),"parse exact get syntax");
   check(ResourceAgenticIntegration.parse("\"get cobblestone 64\"").equals(new ResourceAgenticIntegration.Parsed("cobblestone",64)),"parse quoted get syntax");
   check(ResourceAgenticIntegration.parse("craft minecraft:chest 8").item().equals("chest"),"namespaced vanilla item");
+  check(ResourceAgenticIntegration.parse("get 300 cobblestone").equals(new ResourceAgenticIntegration.Parsed("cobblestone",300)),"count-first resource");
+  check(ResourceAgenticIntegration.parse("get cobblestone 300").equals(new ResourceAgenticIntegration.Parsed("cobblestone",300)),"item-first resource");
+  check(ResourceAgenticIntegration.parse("gather me 300 minecraft:cobblestone").equals(new ResourceAgenticIntegration.Parsed("cobblestone",300)),"polite gather");
+  check(ResourceAgenticIntegration.parse("get 300 stone").item().equals("stone"),"stone not silently changed to cobblestone");
+  check(ResourceAgenticIntegration.parse("get cobblestone 576").count()==576,"bounded maximum");
+  check(ResourceAgenticIntegration.parse("get cobblestone 577")==null,"above bound rejected");
   check(ResourceAgenticIntegration.parse("get diamond 9999")==null,"reject unbounded item count");
   check(ResourceAgenticIntegration.parse("get command_block 1")==null,"reject unsafe target");
   check(ResourceAgenticIntegration.parse("collect loose drops")==null,"do not hijack existing loose pickup intent");
@@ -23,6 +29,8 @@ public final class AutonomyIntegrationTest {
   check(result.hasExecutablePlan(),"new planner route must pass full existing validator: "+result);
   check(result.validation().sanitizedPlan().steps().get(0).kind().equals("get_resource"),"new plan runs through native resource factory");
   check(AgenticPlannerService.plan(bot,goal("\"get coal 12\"")).hasExecutablePlan(),"quoted command accepted through planner");
+  check(AgenticPlannerService.plan(bot,goal("get 300 cobblestone")).hasExecutablePlan(),"300-item intent passes existing validator");
+  check(AgenticPlannerService.plan(bot,goal("get cobblestone 300")).hasExecutablePlan(),"both quantity orders validate");
   var old=AgenticPlannerService.plan(bot,goal("collect loose drops"));
   check(old.hasExecutablePlan(),"prior fallback remains intact");
   System.out.println("AutonomyIntegrationTest: 13 parser, freshness, schema, native planner and existing fallback checks passed");
