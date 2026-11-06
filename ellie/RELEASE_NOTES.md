@@ -1,3 +1,18 @@
+# Independent NPC chunk ticking v12 — gameplay UNVERIFIED
+
+Based on experimental v11 cc9f999. Keeps the proven 14-stage setup source unchanged.
+World-scoped, idempotent native chunk ownership and independent global tick maintenance
+replace the circular dependency on NPC/controller ticking. The native footprint remains
+at most four distinct cells; old cells are released before movement/teleport acquisition.
+Vanilla forced entity-ticking tickets are reasserted independently of saved force flags.
+Controller stop, death/removal, unregistration, world change, tracker reset and native
+clear release owned claims; pre-existing external forced flags remain intact.
+No manual NPC/controller tick, new executor, remote command authorization change,
+recipe/navigation/recovery rewrite or setup redesign is included.
+
+CI substitutes Minecraft world generation/tick eligibility. It does not establish actual
+unloaded-NPC gameplay execution. See docs/ELLIE_REMOTE_EXECUTION_V12.md for the live gate.
+
 # Setup output handoff v7
 
 Build ID: `20261105-setup-output-handoff-v7`. Gameplay UNVERIFIED.

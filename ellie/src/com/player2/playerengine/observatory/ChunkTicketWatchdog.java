@@ -1,115 +1,109 @@
 package com.player2.playerengine.observatory;
 
 import java.lang.reflect.*;
+import java.lang.ref.WeakReference;
 import java.util.*;
 
-/**
- * Server-tick reconciliation for the four chunk tickets ALREADY owned by the
- * native NPC tracker. Does not expand the footprint or keep offline NPCs alive.
- * Works while the NPC/controller tick is suspended because the global server
- * tick is independent of the NPC chunk.
- *
- * Important: failures must never be silent. In the field, the old watchdog
- * reported "4 tracked" while the NPC was unforced and not ticking hundreds
- * of blocks from the owner.
- */
+/** Native chunk ownership, maintained from the global server clock, never an AI executor. */
 public final class ChunkTicketWatchdog {
- private ChunkTicketWatchdog() {}
- private static final Map<Object,Long> lastRepair=new WeakHashMap<>();
- private static final Map<Object,Long> lastWarning=new WeakHashMap<>();
- private static Object field(Object o,String name)throws Exception{
-  for(Class<?> c=o.getClass();c!=null;c=c.getSuperclass())try{
-   Field f=c.getDeclaredField(name);f.setAccessible(true);return f.get(o);
-  }catch(NoSuchFieldException ignored){}return null;
+ private ChunkTicketWatchdog(){}
+ private static final Set<UUID> stoppedOwners=new HashSet<>();
+ private static final Map<Object,Map<Long,Claim>> worlds=new WeakHashMap<>();
+ private static final Map<Object,Session> sessions=new WeakHashMap<>();
+ private static final Map<Object,Long> warnings=new WeakHashMap<>();
+ private static final class Claim {final Set<UUID> owners=new HashSet<>();boolean external;}
+ private static final class Session {Object world;UUID uuid;WeakReference<Object> tracker;Set<Long> chunks=Set.of();long refreshed=Long.MIN_VALUE;}
+ private static Object field(Object o,String name)throws Exception {for(Class<?> c=o.getClass();c!=null;c=c.getSuperclass())try{Field f=c.getDeclaredField(name);f.setAccessible(true);return f.get(o);}catch(NoSuchFieldException ignored){}throw new NoSuchFieldException(name);}
+ private static void set(Object o,String name,Object value)throws Exception {Field f=o.getClass().getDeclaredField(name);f.setAccessible(true);f.set(o,value);}
+ private static Object call(Object o,String name,Object...args)throws Exception {
+  for(Method m:o.getClass().getMethods())if(m.getName().equals(name)&&m.getParameterCount()==args.length){m.setAccessible(true);return m.invoke(o,args);}
+  throw new NoSuchMethodException(o.getClass().getName()+"."+name);
  }
- private static Object call(Object obj,String name)throws Exception{
-  Method m=obj.getClass().getMethod(name);
-  // A public method on a non-public runtime implementation can still throw
-  // IllegalAccessException. Use the same checked accessibility path as the
-  // known native bridge fixes.
-  m.setAccessible(true);
-  return m.invoke(obj);
+ private static long key(int x,int z){return DistanceDiagnostics.packedChunk(x,z);}
+ private static int x(long p){return (int)p;}private static int z(long p){return (int)(p>>>32);}
+ private static boolean forced(Object world,long p)throws Exception {return Boolean.TRUE.equals(call(call(world,"method_17984"),"contains",p));}
+ private static void force(Object world,long p,boolean enabled)throws Exception {call(world,"method_17988",x(p),z(p),enabled);if(forced(world,p)!=enabled)throw new IllegalStateException("Vanilla forced-set verification failed for "+x(p)+","+z(p)+" enabled="+enabled);}
+ /** These methods back the existing ChunkController API; ownership is world-specific and idempotent. */
+ public static synchronized void load(Object world,UUID owner,int x,int z){
+  try{if(stoppedOwners.contains(owner))return;long p=key(x,z);Map<Long,Claim> claims=worlds.computeIfAbsent(world,w->new HashMap<>());Claim c=claims.get(p);
+   if(c==null){c=new Claim();c.external=forced(world,p);claims.put(p,c);}c.owners.add(owner);
+   if(!forced(world,p))force(world,p,true);
+  }catch(Exception|LinkageError e){warn(world,0,"load",e);}
  }
- private static int number(Object o,String n)throws Exception{return ((Number)field(o,n)).intValue();}
- private static boolean contains(Object forced,long packed)throws Exception{
-  Method m=forced.getClass().getMethod("contains",long.class);
-  m.setAccessible(true);
-  return Boolean.TRUE.equals(m.invoke(forced,packed));
+ public static synchronized void unload(Object world,UUID owner,int x,int z){
+  try{Map<Long,Claim> claims=worlds.get(world);long p=key(x,z);Claim c=claims==null?null:claims.get(p);if(c==null)return;
+   if(c.owners.size()==1&&c.owners.contains(owner)&&!c.external&&forced(world,p))force(world,p,false);c.owners.remove(owner);if(c.owners.isEmpty())claims.remove(p);
+  }catch(Exception|LinkageError e){warn(world,0,"unload",e);}
  }
- private static Object setForced(Object world,int x,int z)throws Exception{
-  Method m=world.getClass().getMethod("method_17988",int.class,int.class,boolean.class);
-  m.setAccessible(true);
-  return m.invoke(world,x,z,true);
+ public static synchronized int size(){return worlds.values().stream().mapToInt(Map::size).sum();}
+ public static synchronized void clear(){
+  for(var world:new ArrayList<>(worlds.keySet()))try{for(var e:new ArrayList<>(worlds.get(world).entrySet())){if(!e.getValue().external&&forced(world,e.getKey()))force(world,e.getKey(),false);worlds.get(world).remove(e.getKey());}}catch(Exception|LinkageError e){warn(world,0,"clear",e);}
+  sessions.clear();stoppedOwners.clear();
  }
- private static String error(Throwable t){
-  if(t instanceof InvocationTargetException wrapped && wrapped.getCause()!=null)t=wrapped.getCause();
-  String msg=t.getMessage();
-  return t.getClass().getSimpleName()+(msg==null?"":": "+msg.replace('\n',' ').replace('\r',' ').substring(0,Math.min(140,msg.length())));
+ public static synchronized void release(UUID uuid){
+  if(uuid==null)return;stoppedOwners.remove(uuid);
+  for(var world:new ArrayList<>(worlds.keySet()))for(long p:new ArrayList<>(worlds.get(world).keySet()))unload(world,uuid,x(p),z(p));
+  sessions.entrySet().removeIf(e->uuid.equals(e.getValue().uuid));
  }
- private static void warning(Object controller,long tick,String reason){
-  Long last=lastWarning.get(controller);
-  ObservatoryTelemetry.set("chunkTicketsLastFailure",reason);
-  if(last==null||tick<last||tick-last>=100){
-   lastWarning.put(controller,tick);
-   ObservatoryTelemetry.event("CHUNK_TICKETS_UNAVAILABLE",reason);
-  }
+ public static synchronized void stopped(Object controller){
+  try{UUID uuid=(UUID)call(call(controller,"getEntity"),"method_5667");release(uuid);stoppedOwners.add(uuid);((Collection<?>)field(field(controller,"chunkLoader"),"chunks")).clear();}
+  catch(Exception|LinkageError e){warn(controller,0,"controller stop",e);}
  }
- private static double coordinate(Object entity,String method)throws Exception{
-  Object v=call(entity,method);
-  return ((Number)v).doubleValue();
+ public static synchronized void reset(Object tracker){
+  try{Object entity=field(tracker,"entity");release((UUID)call(entity,"method_5667"));((Collection<?>)field(tracker,"chunks")).clear();}
+  catch(Exception|LinkageError e){warn(tracker,0,"tracker reset",e);}
+ }
+ private static void releaseSession(Object controller)throws Exception {
+  Session s=sessions.get(controller);if(s==null)return;
+  Map<Long,Claim> claims=worlds.get(s.world);if(claims!=null)for(long p:new ArrayList<>(claims.keySet()))if(claims.get(p).owners.contains(s.uuid))unload(s.world,s.uuid,x(p),z(p));
+  Object tracker=s.tracker.get();if(tracker!=null)((Collection<?>)field(tracker,"chunks")).clear();sessions.remove(controller);
+ }
+ public static synchronized void retainControllers(Collection<?> active,long tick){
+  Map<UUID,Object> registeredWorlds=new HashMap<>();for(Object c:active)try{Object npc=call(c,"getEntity");registeredWorlds.put((UUID)call(npc,"method_5667"),call(npc,"method_37908"));}catch(Exception|LinkageError e){warn(c,tick,"registry identity",e);return;}
+  // Weak controller references may have vanished before cleanup; ownership must still be released.
+  for(Object world:new ArrayList<>(worlds.keySet()))for(var entry:new ArrayList<>(worlds.get(world).entrySet()))for(UUID owner:new ArrayList<>(entry.getValue().owners))
+   if(registeredWorlds.get(owner)!=world)unload(world,owner,x(entry.getKey()),z(entry.getKey()));
+  stoppedOwners.retainAll(registeredWorlds.keySet());
+  for(Object c:new ArrayList<>(sessions.keySet()))if(!active.contains(c))try{releaseSession(c);}catch(Exception|LinkageError e){warn(c,tick,"registry cleanup",e);}
+ }
+ private static String error(Throwable e){if(e instanceof InvocationTargetException t&&t.getCause()!=null)e=t.getCause();String s=String.valueOf(e.getMessage()).replace('\n',' ').replace('\r',' ');return e.getClass().getSimpleName()+": "+s.substring(0,Math.min(s.length(),160));}
+ private static void warn(Object c,long tick,String stage,Throwable e){String reason=stage+": "+error(e);ObservatoryTelemetry.set("chunkTicketsLastFailure",reason);ObservatoryTelemetry.set("chunkTicketsStatus","Maintenance unavailable: "+reason);Long last=warnings.get(c);if(last==null||tick<last||tick-last>=100){warnings.put(c,tick);ObservatoryTelemetry.event("CHUNK_TICKETS_UNAVAILABLE",reason);}}
+ private static Set<Long> footprint(double x,double z){
+  Set<Long> result=new LinkedHashSet<>();int a=(int)Math.floor(x/16),b=(int)Math.ceil(x/16),c=(int)Math.floor(z/16),d=(int)Math.ceil(z/16);
+  result.add(key(a,c));result.add(key(b,d));result.add(key(a,d));result.add(key(b,c));return result;
+ }
+ private static List<Object> positions(Set<Long> cells)throws Exception {List<Object> out=new ArrayList<>();Constructor<?> ctor=Class.forName("net.minecraft.class_1923").getConstructor(int.class,int.class);for(long p:cells)out.add(ctor.newInstance(x(p),z(p)));return out;}
+ /** Reassert the native forced ticket even if its saved forced-set flag already exists.
+  * Vanilla uses ENTITY_TICKING (31), not the weaker FULL/BLOCK_TICKING status.
+  */
+ private static void reassert(Object world,long p)throws Exception {
+  Object manager=call(world,"method_14178");Object pos=Class.forName("net.minecraft.class_1923").getConstructor(int.class,int.class).newInstance(x(p),z(p));
+  call(manager,"method_12124",pos,true);
  }
  public static synchronized int reconcile(Object controller,long tick){
   if(controller==null)return 0;
   try{
-   Object tracker=field(controller,"chunkLoader");
-   if(tracker==null)return 0;
-   Object requested=field(tracker,"chunks");
-   if(!(requested instanceof Collection<?> chunks)||chunks.isEmpty())return 0;
-   if(chunks.size()>4){warning(controller,tick,"Tracker has "+chunks.size()+" chunks; refusing to change ownership");return 0;}
-   Object entity=call(controller,"getEntity");
-   if(entity==null)return 0;
-   try{if(Boolean.FALSE.equals(call(entity,"method_5805")))return 0;}catch(NoSuchMethodException ignored){}
-   Object world=call(entity,"method_37908");
-   if(world==null)return 0;
-   Object forced=call(world,"method_17984");
-   if(forced==null){warning(controller,tick,"Current world did not expose forced chunks");return 0;}
-   Set<Long> tracked=new HashSet<>();
-   List<int[]> missing=new ArrayList<>();
-   for(Object chunk:chunks){
-    int x=number(chunk,"field_9181"),z=number(chunk,"field_9180");
-    long packed=DistanceDiagnostics.packedChunk(x,z);
-    tracked.add(packed);
-    if(!contains(forced,packed))missing.add(new int[]{x,z});
-   }
-   // A 4-item list in the NPC loader is not proof that it still covers the
-   // entity. Detect stale coordinates without creating unowned forced chunks.
-   int cx=(int)Math.floor(coordinate(entity,"method_23317")/16.0);
-   int cz=(int)Math.floor(coordinate(entity,"method_23321")/16.0);
-   if(!tracked.contains(DistanceDiagnostics.packedChunk(cx,cz))){
-    warning(controller,tick,"NPC current chunk "+cx+","+cz+" absent from four tracked chunks; controller loader must refresh");
-    return 0;
-   }
-   int repaired=0;
-   for(int[] chunk:missing){
-    setForced(world,chunk[0],chunk[1]);
-    // Verify the real world after calling setChunkForced. Its return value
-    // alone cannot establish that the ticket was installed.
-    if(contains(call(world,"method_17984"),DistanceDiagnostics.packedChunk(chunk[0],chunk[1])))repaired++;
-   }
-   if(!missing.isEmpty()){
-    ObservatoryTelemetry.set("chunkTicketsStatus","tracked="+chunks.size()+" missing="+missing.size()+" verified_restored="+repaired+" current="+cx+","+cz);
-    if(repaired<missing.size())warning(controller,tick,"Force request did not establish "+(missing.size()-repaired)+"/"+missing.size()+" native tracked tickets");
-   }
-   if(repaired>0){
-    Long last=lastRepair.get(controller);
-    lastRepair.put(controller,tick);
-    if(last==null||tick<last||tick-last>=100)
-     ObservatoryTelemetry.event("CHUNK_TICKETS_RESTORED","verified="+repaired+"/"+missing.size()+" tracked="+chunks.size()+" center="+cx+","+cz);
-   }
-   return repaired;
-  }catch(Exception|LinkageError e){
-   warning(controller,tick,"Reconciliation failed: "+error(e));
-   return 0;
-  }
+   Object entity=call(controller,"getEntity"),tracker=field(controller,"chunkLoader");
+   if(entity==null||tracker==null){releaseSession(controller);return 0;}
+   UUID identity=(UUID)call(entity,"method_5667");
+   if(!Boolean.TRUE.equals(call(entity,"method_5805"))||Boolean.TRUE.equals(call(entity,"method_31481"))||!Boolean.TRUE.equals(call(call(controller,"getTaskRunner"),"isActive"))){release(identity);stoppedOwners.add(identity);((Collection<?>)field(tracker,"chunks")).clear();return 0;}
+   stoppedOwners.remove(identity);
+   Object world=call(entity,"method_37908");UUID uuid=(UUID)call(entity,"method_5667");if(world==null){releaseSession(controller);return 0;}
+   Session s=sessions.get(controller);
+   if(s!=null&&(s.world!=world||!s.uuid.equals(uuid)||s.tracker.get()!=tracker)){releaseSession(controller);s=null;}
+   if(s==null){s=new Session();s.world=world;s.uuid=uuid;s.tracker=new WeakReference<>(tracker);sessions.put(controller,s);}
+   double px=((Number)call(entity,"method_23317")).doubleValue(),pz=((Number)call(entity,"method_23321")).doubleValue();
+   if(!Double.isFinite(px)||!Double.isFinite(pz)||Math.abs(px)>30000000||Math.abs(pz)>30000000)throw new IllegalStateException("NPC coordinates out of world bounds");
+   Set<Long> desired=footprint(px,pz);
+   // Release old footprint before acquiring new cells: never accumulate teleport trails.
+   Map<Long,Claim> claims=worlds.get(world);
+   if(claims!=null)for(long p:new ArrayList<>(claims.keySet()))if(claims.get(p).owners.contains(uuid)&&!desired.contains(p))unload(world,uuid,x(p),z(p));
+   int restored=0;for(long p:desired){if(!forced(world,p))restored++;load(world,uuid,x(p),z(p));if(!forced(world,p))throw new IllegalStateException("Native claim did not establish forced flag at "+x(p)+","+z(p));}
+   set(tracker,"chunks",positions(desired));s.chunks=desired;
+   if(s.refreshed==Long.MIN_VALUE||tick<s.refreshed||tick-s.refreshed>=20){for(long p:desired)reassert(world,p);s.refreshed=tick;}
+   ObservatoryTelemetry.set("chunkTicketsStatus","owned="+desired.size()+" restored="+restored+" center="+(int)Math.floor(px/16)+","+(int)Math.floor(pz/16)+" native ENTITY_TICKING ticket requested; execution checked separately");
+   if(restored>0)ObservatoryTelemetry.event("CHUNK_TICKETS_RESTORED","verified="+restored+"/"+desired.size()+" world="+world+"; awaiting measured NPC/controller heartbeat");
+   return restored;
+  }catch(Exception|LinkageError e){warn(controller,tick,"reconcile",e);return 0;}
  }
 }

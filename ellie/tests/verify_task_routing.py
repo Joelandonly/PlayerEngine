@@ -17,6 +17,8 @@ assert not any(row['route'] == 'legacy-user-task' and row['caller'].split('#')[0
 with zipfile.ZipFile(root / 'baseline/playerengine-acquisition-safety.jar') as baseline, \
      zipfile.ZipFile(root / 'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar') as built:
     setup_changes = {
+        'com/player2/playerengine/util/ChunkController.class',
+        'com/player2/playerengine/trackers/ChunkLoadingTracker.class',
         'com/player2/playerengine/tasks/setup/EllieSetupTask.class',
         'com/player2/playerengine/tasks/setup/EllieSetupTask$Step.class',
         'com/player2/playerengine/tasks/setup/CoreAcquisitionProgress.class',
