@@ -1,3 +1,19 @@
+# Non-loading water escape v15 — gameplay UNVERIFIED
+
+The supplied long-running world stops at the same Unstuck/Completing-goal boundary
+as the earlier freeze. The client launched before v14 existed, so this run cannot
+establish v14 failure. Native water-escape goal
+callbacks still query live world blocks from A*; use the existing non-loading
+loaded-chunk view and exclude unknown/stale-world escape destinations.
+
+Keep native task/recovery orchestration, setup and bridging unchanged. Extend the
+existing observatory client-tick diagnostics to capture full JVM thread/monitor
+stacks to `logs/ellie-server-stall.txt` after a sustained unpaused server stall.
+No new thread, executor or recovery controller. Actual Minecraft stall resolution
+remains unverified; tests reproduce the access hazard with substituted worlds.
+Record embedded build identity at client startup to disambiguate future runs.
+See docs/ELLIE_WATER_ESCAPE_STALL_V15.md.
+
 # Non-loading descent collision view v14 — gameplay UNVERIFIED
 
 Use native CalculationContext.bsi.access for planning collision callbacks;

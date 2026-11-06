@@ -34,7 +34,9 @@ public final class PatchDistanceDiagnostics implements Opcodes {
    MethodNode unregister=method(controller,"unregisterFromGlobalRegistry","(Ljava/util/UUID;)V");InsnList unregisterHook=new InsnList();unregisterHook.add(new VarInsnNode(ALOAD,0));unregisterHook.add(new MethodInsnNode(INVOKESTATIC,watchdog,"release","(Ljava/util/UUID;)V",false));unregister.instructions.insert(unregisterHook);
    write(controller,existing);
    ClassNode overlay=read(fromJar(z,P+"observatory/ObservatoryOverlay"));
+   InsnList identity=new InsnList();identity.add(new MethodInsnNode(INVOKESTATIC,D,"announceBuild","()V",false));method(overlay,"onInitializeClient","()V").instructions.insert(identity);
    MethodNode render=method(overlay,"render","(Ljava/lang/Object;)V");
+   InsnList stallHook=new InsnList();stallHook.add(new FieldInsnNode(GETSTATIC,overlay.name,"client","Ljava/lang/Object;"));stallHook.add(new MethodInsnNode(INVOKESTATIC,D,"clientTick","(Ljava/lang/Object;)V",false));method(overlay,"poll","()V").instructions.insert(stallHook);
    int hits=0;
    for(AbstractInsnNode i:render.instructions.toArray()) {
     if(i instanceof LdcInsnNode ldc && "Exact Baritone target and path nodes are NOT exposed".equals(ldc.cst)) {

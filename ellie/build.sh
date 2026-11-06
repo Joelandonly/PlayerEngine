@@ -9,7 +9,7 @@ baseline = Path('baseline/playerengine-acquisition-safety.jar')
 if hashlib.sha256(baseline.read_bytes()).hexdigest() != manifest['baseline_sha256']:
     raise SystemExit('Baseline checksum mismatch; refusing to patch an unknown JAR')
 PY
-rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses build/distance-testclasses build/game-hooks build/inventory-testclasses build/survival-testclasses build/material-testclasses build/legacy-testclasses build/descent-testclasses
+rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses build/distance-testclasses build/game-hooks build/inventory-testclasses build/survival-testclasses build/material-testclasses build/legacy-testclasses build/descent-testclasses build/water-testclasses
 mkdir -p build/{classes,patches,tools,testclasses} dist
 javac --release 21 -cp baseline/playerengine-acquisition-safety.jar -d build/classes $(find src -name '*.java' | LC_ALL=C sort)
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchNativeCommands.java
@@ -35,6 +35,8 @@ javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-e
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchInventoryTracker baseline/playerengine-acquisition-safety.jar build/patches
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchSafeDescents.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchSafeDescents baseline/playerengine-acquisition-safety.jar build/patches
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchWaterEscapeGoal.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchWaterEscapeGoal baseline/playerengine-acquisition-safety.jar build/patches
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree.analysis=ALL-UNNAMED -d build/tools tools/VerifyASM.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree.analysis=ALL-UNNAMED -cp build/tools VerifyASM $(find build/classes build/patches -name '*.class' | LC_ALL=C sort)
 javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses $(find tests/fixtures -name '*.java' | LC_ALL=C sort) tests/SupervisorTest.java
@@ -185,3 +187,12 @@ java -cp build/descent-testclasses:build/testclasses:dist/PlayerEngine-Fabric-1.
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/descent-testclasses:build/testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/tools tools/VerifySafeDescents.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools:build/descent-testclasses:build/testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar ellie.descent.VerifySafeDescents dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar baseline/playerengine-acquisition-safety.jar
 python3 tests/verify_descent_scope.py
+
+# Execute the actual packaged water escape goal against isolated non-loading world/cache boundaries.
+mkdir -p build/water-testclasses
+javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/water-testclasses $(find tests/waterfixtures -name '*.java' | LC_ALL=C sort) tests/WaterEscapeGoalTest.java
+java -cp build/water-testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar WaterEscapeGoalTest
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/VerifyWaterEscapeGoal.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyWaterEscapeGoal dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar baseline/playerengine-acquisition-safety.jar
+javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/distance-testclasses tests/ServerStallCaptureTest.java
+java -cp build/distance-testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar com.player2.playerengine.observatory.ServerStallCaptureTest
