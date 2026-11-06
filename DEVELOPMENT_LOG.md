@@ -10,6 +10,23 @@ A chronological record of **observations, decisions, preview artifacts and verif
 - No unredacted log files in this public repository. Local usernames, identifiers, paths, tokens and conversation payloads must not be published.
 - Preserve combat retaliation, independent Player2NPC teleport extension, Observatory shortcuts and successful building logic.
 
+## 2026-11-06: Post-success architecture audit and deferred reliability work
+
+**LIVE / USER-OBSERVED baseline:** The owner reported that the fixed 14-stage basic setup completed in **four fresh survival worlds** using the earlier v9 build at commit `6290ef647051bc4f1be1898b795c031d80295252`. Treat this as the known-good gameplay baseline. The subsequent shared-recovery experiment was not accepted as a replacement; it must not be implicitly merged into the working setup. Current `main` may receive documentation-only commits while the original code remains unchanged.
+
+**REVIEW / NOT IMPLEMENTED:** A targeted read of `CoreGoalSupervisor.java`, `SharedTargetRecovery.java`, `BasicSetupTask.java`, build tools, controller fixture and regression tests produced six **future** backlog entries, [ELLIE-024 through ELLIE-029](docs/ELLIE_BACKLOG.md). None is reported as a proven active gameplay regression or a completed fix.
+
+- **ELLIE-024 P1:** Make the task-context `ThreadLocal` cleanup exception-safe. Normal `after()` and `stopped()` cleanup exists, but the ASM-wrapped tick does not visibly guarantee cleanup on an exceptional return.
+- **ELLIE-025 P1:** Audit recovery's 2,400-tick no-output watchdog and terminal `BLOCKED` classification against transient world/safety/crafting states; add bounded evidence-based criteria, not endless retries. The stable v9 watchdog's explicit legacy setup type differs from `BasicSetupTask`; retest any compatibility adjustments.
+- **ELLIE-026 P1:** Stage the build and atomically publish verified JARs. Existing script *already* validates baseline checksums, bytecode patches, packaged identity and tests; the gap is preserving the last passing published artifact during interrupted/failed runs.
+- **ELLIE-027 P2:** Move external `onComplete` callbacks outside the global supervisor monitor if safe. **Correction to the audit:** Java `synchronized` is reentrant, so same-thread nested submit alone is not a deadlock. Existing `SupervisorTest` covers nested callback chaining; multi-thread lock ordering and long-running callback occupancy remain risks.
+- **ELLIE-028 P2:** Centralize mappings-dependent waypoint/BlockPos reflection for future version upgrades. This is version coupling, not a present 1.21.1 failure.
+- **ELLIE-029 P2:** Add production controller API/bytecode parity checks. Existing narrow fixtures are appropriate for unit tests but cannot validate Minecraft/NPC world behavior.
+
+**Decision:** No architecture rewrite, strong-reference `IdentityHashMap` substitution, timer inflation, new scheduler, or supervisor executor solely on speculation. Keep real owner/NPC tests separate from mock/CI tests. Prefer small patches with explicit terminal receipts, regression evidence and a gameplay acceptance gate. Named constants and unified `RETRY/YIELD/BLOCKED/FAILED` semantics can be maintained incrementally.
+
+**Concurrent work:** PR #15 proposes friendlier command parsing and authenticated long-range owner commands, with a passing CI build; it remains an **unmerged, not-yet-gameplay-validated candidate**. Do not conflate its status with either these six future issues or the four-world-proven v9 setup.
+
 ## 2026-11-02: House builds, gear and follow-up design
 
 **LIVE / OBSERVED (older session):**
