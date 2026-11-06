@@ -27,22 +27,34 @@ public final class SafeDescentTest {
  }
  public static final class State {
   final String id;final double top;final int level;
+  boolean inspectNeighbors;
   State(String id,double top,int level){this.id=id;this.top=top;this.level=level;}
   public Block method_26204(){return new Block(id);}
-  public Shape method_26220(World w,class_2338 p){return new Shape(top);}
+  public Shape method_26220(BlockView w,class_2338 p){
+   if(inspectNeighbors)w.method_8320(new class_2338(p.x()+1,p.y(),p.z()));
+   return new Shape(top);
+  }
   public String toString(){return method_26204()+"[level="+level+"]";}
  }
- public static final class World {
+ public interface BlockView {State method_8320(class_2338 p);}
+ public static final class World implements BlockView {
   final Map<Pos,State> cells=new HashMap<>();public boolean loaded=true;
+  boolean forbidLiveReads;int liveReads,cachedCollisionReads;
   public boolean method_22340(class_2338 p){return loaded;}
-  public State method_8320(class_2338 p){return cells.getOrDefault(new Pos(p.x(),p.y(),p.z()),new State("air",0,0));}
+  State cachedState(class_2338 p){return cells.getOrDefault(new Pos(p.x(),p.y(),p.z()),new State("air",0,0));}
+  public State method_8320(class_2338 p){liveReads++;if(forbidLiveReads)throw new IllegalStateException("worker queried live world; chunk request could wait for server");return cachedState(p);}
   public void put(int y,String id,double top){cells.put(new Pos(1,y,0),new State(id,top,0));}
  }
+ public static final class CachedAccess implements BlockView {
+  final World world;CachedAccess(World w){world=w;}
+  public State method_8320(class_2338 p){world.cachedCollisionReads++;return world.cachedState(p);}
+ }
+ public static final class Bsi {public BlockView access;Bsi(World w){access=new CachedAccess(w);}}
  public static final class Context {
-  public World world;public boolean hasWaterBucket;
-  Context(World w){world=w;}
+  public World world;public Bsi bsi;public boolean hasWaterBucket;
+  Context(World w){world=w;bsi=new Bsi(w);}
   public boolean isLoaded(int x,int z){return world.loaded;}
-  public State get(int x,int y,int z){return world.method_8320(new class_2338(x,y,z));}
+  public State get(int x,int y,int z){return world.cachedState(new class_2338(x,y,z));}
  }
  public static final class Result {
   public int x=1,y,z=0;public double cost=2;

@@ -1,3 +1,13 @@
+# Non-loading descent collision view v14 — gameplay UNVERIFIED
+
+Use native CalculationContext.bsi.access for planning collision callbacks;
+neighbor lookups must not escape to the live world from a path worker. No descent
+policy, native movement hooks, setup, chunk ownership or lifecycle changes.
+A regression fails against v13 and covers alternating world contexts and old
+context unloading. This demonstrates the access defect, not the exact reported
+Minecraft freeze. Real rapid-world-switch testing remains required.
+See docs/ELLIE_DESCENT_BLOCK_VIEW_V14.md.
+
 # Pre-commit descent safety v13 — gameplay UNVERIFIED
 
 Preserve outward bridging while rejecting unsafe downward candidates in shared

@@ -1,3 +1,13 @@
+# Non-loading descent collision view v14 (experimental)
+
+Build ID: `20261106-descent-block-view-v14`. **Gameplay UNVERIFIED.**
+Corrects v13's planning collision callbacks to use native `bsi.access` instead
+of the live world. A worker/view regression fails against v13 and passes with
+this change. The reported intermittent Minecraft freeze is not reproduced or
+conclusively explained by the supplied log. Setup and bridging remain unchanged.
+
+See [evidence, correction and live validation](../docs/ELLIE_DESCENT_BLOCK_VIEW_V14.md).
+
 # Pre-commit descent safety v13 (experimental)
 
 Build ID: `20261106-safe-descents-v13`. **Gameplay UNVERIFIED.**

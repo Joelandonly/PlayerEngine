@@ -52,8 +52,10 @@ public final class SafeDescent {
   return new Surface(SOLID,top,id);
  }
  private static Probe planning(Object context)throws Exception {
-  Object world=get(context,"world");
-  return (x,y,z)->Boolean.TRUE.equals(call(context,"isLoaded",x,z))?surface(world,call(context,"get",x,y,z),x,y,z):new Surface(UNKNOWN,0,"unloaded chunk");
+  // Shape callbacks may read neighbors. Never give a path worker the live world:
+  // native BSI.access serves loaded chunk data without a synchronous chunk fetch.
+  Object access=get(get(context,"bsi"),"access");
+  return (x,y,z)->Boolean.TRUE.equals(call(context,"isLoaded",x,z))?surface(access,call(context,"get",x,y,z),x,y,z):new Surface(UNKNOWN,0,"unloaded chunk");
  }
  /** Called after native Moves.apply and before A* accepts the candidate cost. */
  public static void filter(Object context,int fromY,Object result){

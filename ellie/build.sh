@@ -179,8 +179,9 @@ java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safet
 
 # Shared pre-commit descent guard: deterministic terrain, packaged gate and bridge-body preservation.
 mkdir -p build/descent-testclasses
-javac --release 21 -cp build/testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/descent-testclasses tests/nativefixtures/net/minecraft/class_2338.java tests/descentfixtures/net/minecraft/class_2350.java tests/SafeDescentTest.java
+javac --release 21 -cp build/testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/descent-testclasses tests/nativefixtures/net/minecraft/class_2338.java tests/descentfixtures/net/minecraft/class_2350.java tests/SafeDescentTest.java tests/SafeDescentThreadTest.java
 java -cp build/descent-testclasses:build/testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar ellie.descent.SafeDescentTest
+java -cp build/descent-testclasses:build/testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar ellie.descent.SafeDescentThreadTest
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/descent-testclasses:build/testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/tools tools/VerifySafeDescents.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools:build/descent-testclasses:build/testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar ellie.descent.VerifySafeDescents dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar baseline/playerengine-acquisition-safety.jar
 python3 tests/verify_descent_scope.py
