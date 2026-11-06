@@ -61,6 +61,8 @@ public final class ChunkTicketWatchdogTest {
    ok(scenario.npc.world.manager.ticking.contains(packed(-2,-3)),"global callback restores eligibility while controller tick is absent");
    com.player2.playerengine.PlayerEngineController.staticControllers.clear();server.tick=1041;DistanceDiagnostics.onServerTick(server);
    ok(scenario.npc.world.forced.values.isEmpty(),"global registry cleanup releases remote NPC footprint");
+   server.tick=1100;DistanceDiagnostics.onServerTick(server);
+   ok(ObservatoryTelemetry.view().get("distanceControllerTick").contains("MISSING FROM REGISTRY"),"actual global callback reports vanished controller instead of leaving stale TICKING telemetry");
   }
   Controller boundary=new Controller();for(double coordinate:new double[]{-.01,0,.01,15.99,16,16.01}){
    boundary.npc.x=boundary.npc.z=coordinate;ChunkTicketWatchdog.reconcile(boundary,2000);

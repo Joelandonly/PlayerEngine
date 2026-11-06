@@ -71,7 +71,9 @@ They cover missing flags; saved flags with missing effective tickets; stale foot
 negative/exact-boundary coordinates; repeated moves without a ticket trail; world-specific
 shared and duplicate owners; stop/re-enable; death/despawn; registry loss; reset and clear;
 external flags; force rejection and visible diagnostics. Modeled owners teleport 100,
-250 and 400 blocks in already-generated and new-terrain cases. NPC age/controller
+250 and 400 blocks, while NPC ticket creation is tested with the NPC footprint
+already generated or absent in the fixture. This is not an emulation of generating
+the owner's remote destination or of generation stalling the real server. NPC age/controller
 heartbeats advance only after the modeled world's ticket eligibility is restored.
 
 These cases test maintenance/control flow. The modeled world is not Minecraft's actual

@@ -24,6 +24,7 @@ public class VerifyDistanceDiagnostics {
    check(calls(overlay,"render",d,"appendNavigationLines")==1,"Navigation HUD diagnostics installed");
    check(calls(get(z,p+"trackers/ChunkLoadingTracker"),"tick",p+"util/ChunkController","load")>=1,"existing chunk loader left in place");
    String w=p+"observatory/ChunkTicketWatchdog";
+   check(calls(get(z,d),"onServerTick",d,"checkMissing")==1,"global callback reports missing registered controllers");
    check(calls(get(z,d),"onServerTick",w,"reconcile")==1,"independent global maintenance invokes reconciler");
    check(calls(get(z,p+"util/ChunkController"),"load",w,"load")==1,"native chunk acquisition uses world-scoped owner accounting");
    check(calls(get(z,p+"util/ChunkController"),"unload",w,"unload")==1,"native chunk release uses shared owner accounting");

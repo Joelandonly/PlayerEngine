@@ -3,7 +3,7 @@ package com.player2.playerengine.observatory;
 import java.lang.reflect.*;
 import java.util.*;
 
-/** Read-only server-clock-driven distance/tick/chunk diagnostics. Never modifies AI or chunks. */
+/** Independent server-clock ticket maintenance and measured tick diagnostics; never executes AI. */
 public final class DistanceDiagnostics {
     private static final Map<Object, Sample> SAMPLES = new WeakHashMap<>();
     private static long serverClock = -1, lastSample = -1, lastCleanup = -1;
@@ -86,11 +86,14 @@ public final class DistanceDiagnostics {
             if(!(registry instanceof Map<?,?> controllers))return;
             List<?> active=new ArrayList<>(controllers.values());
             ChunkTicketWatchdog.retainControllers(active,tick);
+            Set<String> activeIds=new HashSet<>();
             for(Object controller:active)if(controller!=null){
-                // Read-only sample first, then repair only tickets the existing loader still owns.
+                activeIds.add(entityId(call(controller,"getEntity")));
+                // Measure execution separately from ticket repair.
                 if(tick%20==0)sample(controller,tick);
                 ChunkTicketWatchdog.reconcile(controller,tick);
             }
+            checkMissing(tick,activeIds);
             synchronized(DistanceDiagnostics.class){
                 if(lastCleanup<0||tick<lastCleanup||tick-lastCleanup>=400){
                     SAMPLES.entrySet().removeIf(e->tick-e.getValue().lastSeen>1200);
