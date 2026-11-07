@@ -1,3 +1,18 @@
+# Partial-block navigation v17
+
+Build `20261107-partial-block-navigation-v17` builds on the owner-tested v16 food
+fix. Shared navigation uses collision support for foot height, ordinary partial
+floors and small rises, covering stairs, slabs, layered snow, carpets, beds,
+trapdoors and other solid partial shapes. Hazardous, unstable and vertical-only
+shapes are excluded from the new floor fallback. Thin overlays keep their native
+walking rules. Solid waterlogged shapes are not treated as open swimming space.
+No setup stage or bridge-placement body was rewritten.
+
+The suite executes packaged feet/support methods against a snapshot exported from
+vanilla Minecraft 1.21.1 (1,470 states in 66 representative block types). Entity,
+chunk and physics boundaries are substituted; smooth live NPC movement is still
+unverified. See [scope, tests and live checks](../docs/ELLIE_PARTIAL_BLOCK_NAVIGATION_V17.md).
+
 # Food reliability v16 (experimental)
 
 Build ID: `20261106-food-reliability-v16`. **Gameplay UNVERIFIED.**

@@ -1,3 +1,18 @@
+# v17 — partial-block navigation (live Minecraft unverified)
+
+- Replace the incorrect slab-only chunk lookup at shared feet calculation with
+  non-loading collision-supported foot height, including hops and negative coordinates.
+- Recognize ordinary partial floor shapes at the existing support predicate; keep
+  thin-overlay, hazard, slab-setting, liquid and climbable rules.
+- Request a native jump when a level path cell rises above automatic step height.
+  Missing bridge floors, paused/backing/sneaking movements and emergency airborne
+  control retain their existing inputs.
+- Reject impossible ascents from low supports while retaining native stair ascent.
+- Preserve the 14-stage setup, v16 food repairs and all unrelated classes. Protected
+  setup hashes, scope hashes and native-body comparisons run in the full suite.
+
+See `docs/ELLIE_PARTIAL_BLOCK_NAVIGATION_V17.md` for exact boundaries and live checks.
+
 # Food reliability v16 — gameplay UNVERIFIED
 
 Fixes the first food/supervision/result-contract portion of the command audit.
