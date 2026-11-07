@@ -13,6 +13,17 @@ public final class VerifySafeDescents implements Opcodes {
   ClassNode node=new ClassNode();new ClassReader(jar.getInputStream(jar.getEntry(name+".class")).readAllBytes()).accept(node,0);return node;
  }
  static class Loader extends ClassLoader {Class<?> define(byte[] bytes){return defineClass(PROBE.replace('/','.'),bytes,0,bytes.length);}}
+ static ClassNode nativeAscend(ClassNode node,boolean patched){
+  if(patched){
+   MethodNode cost=node.methods.stream().filter(m->m.name.equals("cost")).findFirst().orElseThrow();
+   AbstractInsnNode n=cost.instructions.getFirst();int calls=0;
+   while(n!=null){AbstractInsnNode next=n.getNext();
+    if(n instanceof MethodInsnNode c){check(c.owner.equals("com/player2/playerengine/reliability/PartialBlockSupport")&&c.name.equals("allowAscent"),"only the reviewed partial-rise gate may precede native ascend");calls++;}
+    cost.instructions.remove(n);if(n instanceof FrameNode){check(calls==1,"single partial-rise gate");break;}n=next;
+   }
+  }
+  return node;
+ }
  public static void main(String[] args)throws Exception {
   ClassNode movement,astar,executor;
   try(ZipFile jar=new ZipFile(args[0]);ZipFile baseline=new ZipFile(args[1])){
@@ -20,6 +31,9 @@ public final class VerifySafeDescents implements Opcodes {
    int retained=0;
    for(var entries=baseline.entries();entries.hasMoreElements();){var entry=entries.nextElement();String n=entry.getName();
     if(n.startsWith(P+"pathing/movement/movements/")||n.equals(P+"pathing/movement/Moves.class")||n.equals(P+"pathing/path/PathExecutor.class")){
+     if(n.equals(P+"pathing/movement/movements/MovementAscend.class")){
+      check(ellie.verification.NativeMethodShape.equivalent(nativeAscend(read(baseline,n.substring(0,n.length()-6)),false),nativeAscend(read(jar,n.substring(0,n.length()-6)),true)),"native ascend body preserved after partial-rise gate");retained++;continue;
+     }
      check(Arrays.equals(baseline.getInputStream(entry).readAllBytes(),jar.getInputStream(jar.getEntry(n)).readAllBytes()),"native bridging/construction/executor changed: "+n);retained++;
     }
    }

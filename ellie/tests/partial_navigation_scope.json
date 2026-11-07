@@ -1,0 +1,16 @@
+{
+  "source_revision": "41d57410d912eb77dca72291bd76167f77ad4a4d",
+  "v16_jar_sha256": "3c3645781fa778b5dd24e9866f22cba32d94be2e7166ba3957b133fa0c390963",
+  "unchanged_classes": 1878,
+  "unchanged_sha256": "7ec3493b6cadcd120138756686a1b7170f5f85225f3d1d01a8d737a75b363fe4",
+  "allowed_existing_changes": [
+    "com/player2/playerengine/automaton/utils/player/EntityContext.class",
+    "com/player2/playerengine/automaton/pathing/movement/MovementHelper.class",
+    "com/player2/playerengine/automaton/pathing/movement/Movement.class",
+    "com/player2/playerengine/automaton/pathing/movement/movements/MovementAscend.class"
+  ],
+  "new_classes": [
+    "com/player2/playerengine/reliability/PartialBlockSupport.class",
+    "com/player2/playerengine/reliability/PartialBlockSupport$Box.class"
+  ]
+}
