@@ -1,0 +1,34 @@
+{
+  "source_revision": "c09e0355008159b6142792997b65e0be3a304041",
+  "allowed_existing_changes": [
+    "com/player2/playerengine/PlayerEngineCommands.class",
+    "com/player2/playerengine/automaton/process/BuilderProcess.class",
+    "com/player2/playerengine/mixins/MixinBlockPlaceContext.class",
+    "com/player2/playerengine/nativecommands/NativeCommandText.class",
+    "com/player2/playerengine/agentic/StorageIntelligence.class",
+    "com/player2/playerengine/reliability/WorkshopPlacement.class",
+    "com/player2/playerengine/reliability/SharedTargetRecovery.class"
+  ],
+  "new_classes": [
+    "com/player2/playerengine/commands/PrepareSchematicCommand.class",
+    "com/player2/playerengine/commands/BuildSchematicCommand.class",
+    "com/player2/playerengine/schematic/SchematicPlan.class",
+    "com/player2/playerengine/schematic/SchematicPlan$Pos.class",
+    "com/player2/playerengine/schematic/SchematicPlan$State.class",
+    "com/player2/playerengine/schematic/SchematicPlan$Cell.class",
+    "com/player2/playerengine/schematic/SchematicFiles.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Environment.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Depot.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Section.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Kind.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Action.class",
+    "com/player2/playerengine/schematic/SchematicWorld.class",
+    "com/player2/playerengine/schematic/SchematicWorld$DepotPlacement.class",
+    "com/player2/playerengine/schematic/SchematicBuildSupport.class",
+    "com/player2/playerengine/schematic/SchematicBuildSupport$Layer.class",
+    "com/player2/playerengine/schematic/SchematicFiles$RegionData.class"
+  ],
+  "unchanged_classes": 1877,
+  "unchanged_sha256": "439b252a3ecff6d20effee8048a19b3362670a50746b42dac659a91d54a3e455"
+}

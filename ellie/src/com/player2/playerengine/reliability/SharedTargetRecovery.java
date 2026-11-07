@@ -38,6 +38,7 @@ public final class SharedTargetRecovery {
   return s;
  }
  public static boolean rejected(Object controller,Object position){
+  if(com.player2.playerengine.schematic.SchematicProjectTask.rejectWaterSource(controller,position))return true;
   try{Session s=session(controller);String key=RecoveryWorld.cell(position).key();Long until=s.rejected.get(key);if(until==null)return false;if(System.nanoTime()<until)return true;s.rejected.remove(key);}catch(Exception|LinkageError ignored){}return false;
  }
  public static void reject(Object controller,Object position){try{session(controller).rejected.put(RecoveryWorld.cell(position).key(),System.nanoTime()+120_000_000_000L);}catch(Exception|LinkageError e){warn(e);}}

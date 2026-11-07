@@ -20,7 +20,7 @@ public final class CommandDispatchTest {
                 Probe probe = new Probe(fields[1]); probes.add(probe); executor.registerNewCommand(probe);
             } else unavailable.add(fields[1]);
         }
-        if (probes.size() != 46 || unavailable.size() != 8) throw new AssertionError("Registry inventory changed; review coverage");
+        if (probes.size() != 48 || unavailable.size() != 8) throw new AssertionError("Registry inventory changed; review coverage");
         for (Probe probe : probes) {
             AtomicInteger completed = new AtomicInteger();
             executor.execute("@" + probe.getName(), completed::incrementAndGet, error -> { throw new AssertionError(error); });
@@ -39,6 +39,6 @@ public final class CommandDispatchTest {
                 .equals(List.of("build_structure","1","64","1","\"small house\"","\"cobblestone cube\""))) {
             throw new AssertionError("Quoted argument tokenization");
         }
-        System.out.println("CommandDispatchTest: 46 canonical lookups pass, 8 unregistered IDs rejected, drop alias and quoted tokenizer pass; actual game handlers NOT executed");
+        System.out.println("CommandDispatchTest: 48 canonical lookups pass, 8 unregistered IDs rejected, drop alias and quoted tokenizer pass; actual game handlers NOT executed");
     }
 }

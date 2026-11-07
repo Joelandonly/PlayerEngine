@@ -1,3 +1,15 @@
+# Schematic projects v18 — gameplay unverified
+
+`schematic_prepare <file> <x> <y> <z>` makes project storage and gathers/crafts the
+remaining material bill. `schematic_build` prepares supplies and builds through
+existing native workers in verified layers. Put `.litematic` or modern `.schem`
+files in the game/server `schematics` folder. Repeat the same file/coordinates to
+resume from actual world and storage state. The 14-stage setup is preserved.
+
+Read [commands, limits, tests and first live checks](../docs/ELLIE_SCHEMATIC_PROJECTS_V18.md)
+before using a tall or complex blueprint. Automated tests substitute game
+execution; this is an experimental build, not a proven mob-farm builder.
+
 # Partial-block navigation v17
 
 Build `20261107-partial-block-navigation-v17` builds on the owner-tested v16 food

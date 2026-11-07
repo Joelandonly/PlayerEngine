@@ -1,3 +1,16 @@
+# v18 — schematic preparation/building (live Minecraft unverified)
+
+- Add supervised `schematic_prepare` and `schematic_build` commands for `.litematic`
+  and modern `.schem` files, with bounded parsing and corrected region indexing.
+- Stage remaining finished-item supplies in actual project chests, retaining gear.
+- Use native acquisition/crafting/navigation/transfer/build workers, strict world
+  postconditions, layered construction, deferred fluids and bounded failure states.
+- Scope native property and NPC-facing prediction fixes to imported projects.
+- Preserve the 14-stage setup and all unrelated v17 classes; keep live validation
+  explicitly false in the revision-stamped JAR.
+
+See `docs/ELLIE_SCHEMATIC_PROJECTS_V18.md` for precise tests and limitations.
+
 # v17 — partial-block navigation (live Minecraft unverified)
 
 - Replace the incorrect slab-only chunk lookup at shared feet calculation with

@@ -3,7 +3,7 @@ import java.util.*;
 /** Conservative exact-command parser. Ordinary conversation is left to optional chat. */
 public final class NativeCommandText {
  private NativeCommandText(){}
- public static final Set<String> IDS=Set.of("agentic","attack","audit_waypoint","bodylang","build_structure","chatclef","compare_waypoint","create_waypoint","delete_waypoint","deposit","deposit_storage_slot","deposit_to_storage","eat_food","equip","fish","follow","food","get","give","goto","harvest_farm","hero","idle","leaveboat","locate_storage","locate_structure","locate_waypoints","meat","mine","pickup_drops","place_sign","plant_farm","read_signs","reload_settings","resetmemory","scan","scan_storage","set_attack_hostiles","set_follow_mode","setup","setup_farm","smelt","smith","stop","withdraw_from_storage","withdraw_storage_slot");
+ public static final Set<String> IDS=Set.of("agentic","attack","audit_waypoint","bodylang","build_structure","chatclef","compare_waypoint","create_waypoint","delete_waypoint","deposit","deposit_storage_slot","deposit_to_storage","eat_food","equip","fish","follow","food","get","give","goto","harvest_farm","hero","idle","leaveboat","locate_storage","locate_structure","locate_waypoints","meat","mine","pickup_drops","place_sign","plant_farm","read_signs","reload_settings","resetmemory","scan","scan_storage","set_attack_hostiles","set_follow_mode","setup","setup_farm","schematic_prepare","schematic_build","smelt","smith","stop","withdraw_from_storage","withdraw_storage_slot");
  /**
   * Input-only normalization. Never make the executor guess: preserve all exact
   * registered commands, coordinates, names, quoted strings and command chains.
@@ -17,6 +17,7 @@ public final class NativeCommandText {
   text=text.replaceFirst("(?i)^please\\s+","")
       .replaceFirst("(?i)^(?:can|could|would)\\s+you\\s+(?:please\\s+)?","").trim();
   if(text.isEmpty())return null;
+  text=text.replaceFirst("(?i)^schematica?\\s+(prepare|build)\\s+", "schematic_$1 ");
   String lower=text.toLowerCase(Locale.ROOT);
   String alias=lower.replaceAll("[.!?]+$","").trim().replaceAll("\\s+"," ");
   if(Set.of("setup","get started","prepare yourself","start setup","begin setup",
