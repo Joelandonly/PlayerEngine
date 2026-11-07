@@ -1,4 +1,4 @@
-"""Freeze all v17 classes except the four reviewed shared geometry boundaries."""
+"""Freeze v17 classes except schematic integration boundaries and the shared resolver."""
 import hashlib,json
 from pathlib import Path
 from zipfile import ZipFile
@@ -13,4 +13,4 @@ with ZipFile(root/'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RE
     assert digest.hexdigest()==receipt['unchanged_sha256'], 'An unrelated v17 class changed'
     assert added<=set(jar.namelist()), 'Schematic helper missing'
     assert not any(n.startswith(('net/minecraft/','PartialBlockNavigationTest','PartialNative')) for n in jar.namelist()), 'Test types leaked into JAR'
-print(f"Schematic scope: all {len(classes)} unrelated classes byte-identical to v17 {receipt['source_revision']}; seven reviewed integration boundaries only")
+print(f"Schematic scope: all {len(classes)} unrelated classes byte-identical to v17 {receipt['source_revision']}; reviewed integration boundaries and shared constructor resolver only")

@@ -244,3 +244,9 @@ java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-ex
 python3 tests/verify_schematic_scope.py
 
 python3 tests/verify_schematic_prepare_scope.py
+
+# Shared reflection boundary: primitive flags, reference/null handling and native failure propagation.
+mkdir -p build/native-constructor-testclasses
+javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/native-constructor-testclasses tests/NativeConstructorTest.java
+java -cp build/native-constructor-testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar NativeConstructorTest
+python3 tests/verify_schematic_native_bindings_scope.py

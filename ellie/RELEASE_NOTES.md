@@ -1,3 +1,17 @@
+# v18.2 — shared native constructor bindings
+
+- Fix primitive boolean arguments rejected by the shared constructor resolver.
+  This repairs the logged foundation and depot-travel task creation failures,
+  plus the same binding error in later interaction tasks.
+- Verify exact flags/targets/counts against actual packaged task constructors
+  and Minecraft 1.21.1 registries in GitHub Actions before publishing artifacts.
+  Add primitive/reference/null/exception regressions and retain the full suite.
+- Freeze all 1,901 other classes and all other resources against v18.1, excluding
+  build identity. All 32 protected setup hashes remain unchanged.
+- Live NPC execution and complete survival construction remain unverified.
+
+See [diagnosis, test boundaries and live checks](../docs/ELLIE_SCHEMATIC_NATIVE_BINDINGS_V18_2.md).
+
 # v18.1 — material preparation independent of protected-site clearance
 
 The logged `schematic_prepare` imported successfully, then stopped at a protected

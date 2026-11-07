@@ -7,7 +7,7 @@ public final class ServerStallCaptureTest {
  static void check(boolean value,String reason){checks++;if(!value)throw new AssertionError(reason);}
  public static void main(String[] args)throws Exception {
   DistanceDiagnostics.announceBuild();
-  check(ObservatoryTelemetry.view().get("buildRevision").contains("20261107-schematic-prepare-clearance-v18.1"),"actual packaged build identity recorded at startup");
+  check(ObservatoryTelemetry.view().get("buildRevision").contains("20261107-schematic-native-bindings-v18.2"),"actual packaged build identity recorded at startup");
   Object server=new Object(),other=new Object();Path file=Path.of("build/reports/stall-capture-regression.txt");Files.deleteIfExists(file);
   DistanceDiagnostics.serverHeartbeat(server,100*SEC);
   check(!DistanceDiagnostics.captureIfStalled(server,false,true,100*SEC,file),"healthy server produces no dump");

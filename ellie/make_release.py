@@ -38,7 +38,7 @@ manifest = {
     'source_upload_jar_sha256': original.get('source_upload_jar_sha256', original['jar_sha256']),
     'target': 'Minecraft 1.21.1 Fabric, PlayerEngine 1.4.0, Java 21, native Player2',
     'build_kind': 'binary-overlay; recovered upstream source used as reference; custom overlay preserved',
-    'release': 'Ellie partial-block navigation v17 — CI candidate; gameplay UNVERIFIED',
+    'release': 'Ellie schematic native bindings v18.2 — CI candidate; gameplay UNVERIFIED',
     'craft_recovery_upload_jar_sha256': 'f36e4210a31024c113f7be6d2afa97385c878a15b1ab1d9f590a4ea745980b9f',
     'changed_existing_classes': [
         'com/player2/playerengine/supervisor/CoreGoalSupervisor.class',
@@ -47,7 +47,7 @@ manifest = {
         'com/player2/playerengine/supervisor/GoalLifecycle$Snapshot.class',
         'com/player2/playerengine/supervisor/GoalLifecycle$Status.class',
     ],
-    'tests': 'Run bash build.sh: supervisor, native commands, setup/base, production/NPC-use, shared recovery policy/runtime, packaged bytecode and Player2 integrity checks; live Minecraft requires separate validation',
+    'tests': 'Run bash build.sh, node --test tests/*.test.mjs, and python3 tests/run_native_schematic_bindings.py (downloads pinned game test dependencies): full regression, preservation and actual Minecraft/native constructor checks; live Minecraft requires separate validation',
 }
 with ZipFile(BASE) as base_archive, ZipFile(JAR) as jar_archive:
     previous={n:base_archive.read(n) for n in base_archive.namelist() if not n.endswith('/')}
