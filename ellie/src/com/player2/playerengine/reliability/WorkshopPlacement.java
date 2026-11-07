@@ -27,7 +27,7 @@ public final class WorkshopPlacement {
  public static boolean allowed(Object task,Object position){
   try{
    if(!workshop(task))return true;
-   Object controller=get(task,"controller");RecoveryWorld game=new RecoveryWorld(controller);Cell p=RecoveryWorld.cell(position);double[] at=game.position();
+   Object controller=get(task,"controller");if(com.player2.playerengine.schematic.SchematicProjectTask.insideProject(controller,position))return false;RecoveryWorld game=new RecoveryWorld(controller);Cell p=RecoveryWorld.cell(position);double[] at=game.position();
    if(Math.abs(p.y()-Math.floor(at[1]))>1||Math.pow(p.x()+.5-at[0],2)+Math.pow(p.z()+.5-at[2],2)>25)return false;
    if(Math.abs(at[0]-(p.x()+.5))<.8&&Math.abs(at[2]-(p.z()+.5))<.8&&at[1]<p.y()+1&&at[1]+1.8>p.y())return false;
    return geometry(game,p,true);

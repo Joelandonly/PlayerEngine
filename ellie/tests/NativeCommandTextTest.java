@@ -25,6 +25,8 @@ public final class NativeCommandTextTest {
   check(NativeCommandText.resolve("Ellie, get 9999 cobblestone").equals("agentic get 9999 cobblestone"),"oversized resource routed to validator");
   check(NativeCommandText.resolve("Ellie, get 4 stone").equals("get stone 4"),"no arbitrary stone conversion");
   check(NativeCommandText.resolve("Ellie, agentic collect loose drops").equals("agentic collect loose drops"),"loose drop fallback preserved");
-  System.out.println("NativeCommandTextTest: all 46 command IDs and 10 parser/alias checks pass");
+  check(NativeCommandText.resolve("Ellie, schematic prepare small.litematic 1 64 -2").equals("schematic_prepare small.litematic 1 64 -2"),"schematic preparation alias");
+  check(NativeCommandText.resolve("Ellie, schematica build small.litematic 1 64 -2").equals("schematic_build small.litematic 1 64 -2"),"schematica build alias");
+  System.out.println("NativeCommandTextTest: all 48 command IDs and 10 parser/alias checks pass");
  }
 }

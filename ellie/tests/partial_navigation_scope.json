@@ -1,16 +1,42 @@
 {
   "source_revision": "41d57410d912eb77dca72291bd76167f77ad4a4d",
   "v16_jar_sha256": "3c3645781fa778b5dd24e9866f22cba32d94be2e7166ba3957b133fa0c390963",
-  "unchanged_classes": 1878,
-  "unchanged_sha256": "7ec3493b6cadcd120138756686a1b7170f5f85225f3d1d01a8d737a75b363fe4",
+  "unchanged_classes": 1871,
+  "unchanged_sha256": "ccf2e8e341718a58afef5b1e77aaae5625d638a740c5c429180ef023fdf5a52c",
   "allowed_existing_changes": [
     "com/player2/playerengine/automaton/utils/player/EntityContext.class",
     "com/player2/playerengine/automaton/pathing/movement/MovementHelper.class",
     "com/player2/playerengine/automaton/pathing/movement/Movement.class",
-    "com/player2/playerengine/automaton/pathing/movement/movements/MovementAscend.class"
+    "com/player2/playerengine/automaton/pathing/movement/movements/MovementAscend.class",
+    "com/player2/playerengine/PlayerEngineCommands.class",
+    "com/player2/playerengine/automaton/process/BuilderProcess.class",
+    "com/player2/playerengine/mixins/MixinBlockPlaceContext.class",
+    "com/player2/playerengine/nativecommands/NativeCommandText.class",
+    "com/player2/playerengine/agentic/StorageIntelligence.class",
+    "com/player2/playerengine/reliability/WorkshopPlacement.class",
+    "com/player2/playerengine/reliability/SharedTargetRecovery.class"
   ],
   "new_classes": [
     "com/player2/playerengine/reliability/PartialBlockSupport.class",
-    "com/player2/playerengine/reliability/PartialBlockSupport$Box.class"
-  ]
+    "com/player2/playerengine/reliability/PartialBlockSupport$Box.class",
+    "com/player2/playerengine/commands/PrepareSchematicCommand.class",
+    "com/player2/playerengine/commands/BuildSchematicCommand.class",
+    "com/player2/playerengine/schematic/SchematicPlan.class",
+    "com/player2/playerengine/schematic/SchematicPlan$Pos.class",
+    "com/player2/playerengine/schematic/SchematicPlan$State.class",
+    "com/player2/playerengine/schematic/SchematicPlan$Cell.class",
+    "com/player2/playerengine/schematic/SchematicFiles.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Environment.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Depot.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Section.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Kind.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Action.class",
+    "com/player2/playerengine/schematic/SchematicWorld.class",
+    "com/player2/playerengine/schematic/SchematicWorld$DepotPlacement.class",
+    "com/player2/playerengine/schematic/SchematicBuildSupport.class",
+    "com/player2/playerengine/schematic/SchematicBuildSupport$Layer.class",
+    "com/player2/playerengine/schematic/SchematicFiles$RegionData.class"
+  ],
+  "extension": "v18 excludes seven reviewed schematic integration classes and eighteen new feature classes; schematic_scope.json separately freezes all other v17 classes."
 }

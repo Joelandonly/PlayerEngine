@@ -18,3 +18,5 @@ ScanStorageCommand
 StashCommand
 WithdrawFromStorageCommand
 WithdrawStorageSlotCommand
+PrepareSchematicCommand
+BuildSchematicCommand

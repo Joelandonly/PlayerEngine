@@ -19,7 +19,7 @@ public final class StorageIntelligence {
  private static final Map<Object,Object> setupChests=Collections.synchronizedMap(new WeakHashMap<>());
  public static void setupChest(Object controller,Object pos){if(pos==null)setupChests.remove(controller);else setupChests.put(controller,pos);}
  public static boolean allowedSetupStorage(Object controller,Object pos){
-  Object allowed=setupChests.get(controller);if(allowed==null)return true;
+  if(com.player2.playerengine.schematic.SchematicProjectTask.reservedSource(controller,pos))return false;Object allowed=setupChests.get(controller);if(allowed==null)return true;
   try{return Arrays.equals(coords(allowed),coords(pos));}catch(Exception invalid){return false;}
  }
  /** Fresh verified stock only; passive sightings never count as supplies. */

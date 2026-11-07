@@ -9,7 +9,7 @@ baseline = Path('baseline/playerengine-acquisition-safety.jar')
 if hashlib.sha256(baseline.read_bytes()).hexdigest() != manifest['baseline_sha256']:
     raise SystemExit('Baseline checksum mismatch; refusing to patch an unknown JAR')
 PY
-rm -rf build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses build/distance-testclasses build/game-hooks build/inventory-testclasses build/survival-testclasses build/material-testclasses build/legacy-testclasses build/descent-testclasses build/water-testclasses build/food-testclasses build/command-testclasses
+rm -rf build/schematic-testclasses build/schematic-game-testclasses build/schematic-fixtures build/classes build/patches build/tools build/testclasses build/native-testclasses build/shared-testclasses build/table-testclasses build/distance-testclasses build/game-hooks build/inventory-testclasses build/survival-testclasses build/material-testclasses build/legacy-testclasses build/descent-testclasses build/water-testclasses build/food-testclasses build/command-testclasses
 mkdir -p build/{classes,patches,tools,testclasses} dist
 javac --release 21 -cp baseline/playerengine-acquisition-safety.jar -d build/classes $(find src -name '*.java' | LC_ALL=C sort)
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchNativeCommands.java
@@ -47,6 +47,8 @@ javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-e
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree.analysis=ALL-UNNAMED -cp build/tools VerifyASM $(find build/classes build/patches -name '*.class' | LC_ALL=C sort)
 javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/testclasses $(find tests/fixtures -name '*.java' | LC_ALL=C sort) tests/SupervisorTest.java
 java -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SupervisorTest
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchSchematicProjects.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchSchematicProjects baseline/playerengine-acquisition-safety.jar build/patches
 python3 tools/package.py
 python3 tests/verify_player2_integrity.py
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED -d build/tools tools/AuditTaskRouting.java
@@ -220,3 +222,22 @@ java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-ex
 python3 tests/verify_partial_navigation_scope.py
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/NativeMethodShape.java tools/VerifyPartialBlockNavigation.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyPartialBlockNavigation dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar baseline/playerengine-acquisition-safety.jar
+
+# Execute the project coordinator, real bundled file parser, and immutable native layer adapter.
+mkdir -p build/schematic-testclasses build/schematic-game-testclasses build/schematic-fixtures
+python3 tests/make_schematic_fixtures.py build/schematic-fixtures
+python3 - <<'PY'
+from zipfile import ZipFile
+from pathlib import Path
+with ZipFile('baseline/playerengine-acquisition-safety.jar') as z:
+    Path('build/schematic4j.jar').write_bytes(z.read('META-INF/jars/schematic4j-1.1.0.jar'))
+PY
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/schematic-testclasses $(find tests/schematicfixtures -name '*.java' | LC_ALL=C sort) tests/SchematicProjectTest.java tests/SchematicFilesTest.java
+java -cp build/schematic-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SchematicProjectTest
+java -cp build/schematic-testclasses:build/classes:build/schematic4j.jar SchematicFilesTest build/schematic-fixtures
+javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/schematic-game-testclasses $(find tests/schematicgamefixtures -name '*.java' | LC_ALL=C sort) tests/nativefixtures/net/minecraft/class_2338.java tests/SchematicBuildSupportTest.java tests/SchematicWorldSlotsTest.java
+java -cp build/schematic-game-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SchematicBuildSupportTest
+java -cp build/schematic-game-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SchematicWorldSlotsTest
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools -d build/tools tools/VerifySchematicProjects.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifySchematicProjects dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar baseline/playerengine-acquisition-safety.jar
+python3 tests/verify_schematic_scope.py

@@ -56,6 +56,14 @@ expected_new.update('com/player2/playerengine/reliability/'+name+'.class' for na
 expected_new.update('com/player2/playerengine/supervisor/'+name+'.class' for name in ['CommandCompletion','CommandCompletion$Receipt','CommandCompletion$TaskOutcome'])
 expected_existing.update('com/player2/playerengine/automaton/'+name+'.class' for name in ['utils/player/EntityContext','pathing/movement/MovementHelper','pathing/movement/movements/MovementAscend'])
 expected_new.update('com/player2/playerengine/reliability/'+name+'.class' for name in ['PartialBlockSupport','PartialBlockSupport$Box'])
+schematic_commands={'com/player2/playerengine/commands/'+n+'.class' for n in ['PrepareSchematicCommand','BuildSchematicCommand']}
+expected_existing-=schematic_commands
+expected_new|=schematic_commands
+expected_existing.update('com/player2/playerengine/'+n+'.class' for n in ['PlayerEngineCommands','automaton/process/BuilderProcess','mixins/MixinBlockPlaceContext'])
+expected_new.update('com/player2/playerengine/schematic/'+n+'.class' for n in [
+    'SchematicPlan','SchematicPlan$Pos','SchematicPlan$State','SchematicPlan$Cell','SchematicFiles','SchematicFiles$RegionData',
+    'SchematicProjectTask','SchematicProjectTask$Environment','SchematicProjectTask$Depot','SchematicProjectTask$Section','SchematicProjectTask$Kind','SchematicProjectTask$Action',
+    'SchematicWorld','SchematicWorld$DepotPlacement','SchematicBuildSupport','SchematicBuildSupport$Layer'])
 removed={'com/player2/playerengine/commands/random/DummyTaskCommand.class',
          'com/player2/playerengine/commands/random/DummyTaskCommand$DummyTask.class'}
 assert set(changes)==expected_existing|expected_new,(set(changes)-(expected_existing|expected_new),(expected_existing|expected_new)-set(changes))
@@ -68,10 +76,10 @@ source_digest=sha256()
 for p in sorted([ROOT/'build.sh',ROOT/'tools/package.py',*list((ROOT/'src').rglob('*.java')),*list((ROOT/'tools').glob('*.java')),*list((ROOT/'tests').rglob('*'))]):
     if p.is_file():
         source_digest.update(p.relative_to(ROOT).as_posix().encode()+b'\0'+p.read_bytes())
-metadata={'build_id':'20261107-partial-block-navigation-v17','source_revision':revision,'source_sha256':source_digest.hexdigest(),'baseline_sha256':sha256(base.read_bytes()).hexdigest(),'live_minecraft_validated':False}
+metadata={'build_id':'20261107-schematic-projects-v18','source_revision':revision,'source_sha256':source_digest.hexdigest(),'baseline_sha256':sha256(base.read_bytes()).hexdigest(),'live_minecraft_validated':False}
 with ZipFile(out,'w',compression=ZIP_DEFLATED,compresslevel=6) as z:
     info=ZipInfo('META-INF/ELLIE_BUILD_REVISION.txt',date_time=(2026,11,5,0,0,0));info.compress_type=ZIP_DEFLATED
-    z.writestr(info,'20261107-partial-block-navigation-v17\n'+revision+'\n')
+    z.writestr(info,'20261107-schematic-projects-v18\n'+revision+'\n')
     info=ZipInfo('META-INF/ELLIE_BUILD.json',date_time=(2026,11,5,0,0,0));info.compress_type=ZIP_DEFLATED
     z.writestr(info,json.dumps(metadata,sort_keys=True,indent=2)+'\n')
     for key in sorted((set(orig)|set(changes))-removed):
