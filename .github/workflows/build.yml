@@ -63,7 +63,7 @@ jobs:
           ELLIE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir -p build/install/smoke-test
-          cp build/schematic-fixtures/small.litematic build/install/smoke-test/
+          cp build/schematic-fixtures/smoke.litematic build/install/smoke-test/
           cp ../docs/ELLIE_SCHEMATIC_PROJECTS_V18.md build/install/smoke-test/README.md
           cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar "build/install/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SchematicProjects-${ELLIE_REVISION:0:7}-UNVERIFIED.jar"
           (cd build/install && sha256sum *.jar > SHA256SUMS.txt)

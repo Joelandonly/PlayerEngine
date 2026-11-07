@@ -100,7 +100,7 @@ been built or produces drops.
   carrying inventory, false acquisition/deposit/click completion, obstruction,
   stalled building, suspension/cancellation, changed/unloaded worlds, late damage
   and scoped source reservations. Native task execution/worlds are substituted.
-- 22 import/data checks using the actual bundled parser and independently encoded
+- 23 import/data checks using the actual bundled parser and independently encoded
   NBT fixtures: normal, negative and multiple regions, modern Sponge data,
   malformed lengths/nesting, allocation bounds, path escape, legacy refusal,
   immutable bills and multi-part item counts. Only logging is substituted.
@@ -116,10 +116,10 @@ The historical Node sidecar suite is run separately and is not shipped in the
 native JAR. Packaged build metadata records the exact Git revision and source
 checksum and explicitly says `live_minecraft_validated: false`.
 
-First use the generated `small.litematic` from the JAR artifact's smoke-test
-folder. In a survival test world, choose a loaded, unobstructed 3×2×3 site with
-solid ground beneath the target water source. It has a nine-block cobblestone
-floor, one trapdoor and one water source. Run preparation, inspect project chests,
+First use the generated `smoke.litematic` from the JAR artifact's smoke-test
+folder. In a survival test world, choose a loaded, unobstructed 4×2×3 site with
+solid ground beneath the target water source. It needs 20 cobblestone blocks for a floor and retaining walls,
+one trapdoor and one reusable water bucket. The ring contains its source water. Run preparation, inspect project chests,
 then building. Verify orientation/open state, water, stock changes, stop/resume,
 and that an obstruction or missing supply reports BLOCKED. Verify ordinary setup,
 mining/bridging and food commands still work in that session. Then test a taller

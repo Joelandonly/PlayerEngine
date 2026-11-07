@@ -6,6 +6,7 @@ public final class SchematicFilesTest {
  static void refused(Path p,String f)throws Exception{try{SchematicFiles.read(p,f);throw new AssertionError("Accepted "+f);}catch(java.io.IOException|ReflectiveOperationException|IllegalArgumentException expected){checks++;}}
  public static void main(String[]a)throws Exception{
   Path folder=Path.of(a[0]);var p=SchematicFiles.read(folder,"small.litematic");check(p.width==3&&p.height==2&&p.length==3,"real litematica dimensions");check(p.materialCounts.equals(Map.of("minecraft:cobblestone",9,"minecraft:oak_trapdoor",1,"minecraft:water_bucket",1)),"independent fixture material bill");check(p.targets.size()==11,"saved zombie and NBT data ignored");check(p.layers.equals(List.of(0,1)),"deterministic section order");
+  var smoke=SchematicFiles.read(folder,"smoke.litematic");check(smoke.width==4&&smoke.height==2&&smoke.length==3&&smoke.materialCounts.equals(Map.of("minecraft:cobblestone",20,"minecraft:oak_trapdoor",1,"minecraft:water_bucket",1)),"contained live smoke sample has exact bill");
   var n=SchematicFiles.read(folder,"negative.litematic");check(n.width==3&&n.length==3&&n.targets.size()==11,"negative region axes normalized");
   var m=SchematicFiles.read(folder,"multi.litematic");check(m.width==7&&m.targets.size()==22,"multiple regions combined with correct gap");
   for(String file:List.of("simple.schem")){var s=SchematicFiles.read(folder,file);check(s.materialCounts.get("minecraft:cobblestone")==2,"real parser supports "+file);}
