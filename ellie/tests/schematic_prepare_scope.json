@@ -1,0 +1,15 @@
+{
+  "source_revision": "240796ba7392c661eefdef540d6b9e4e929a8501",
+  "v18_jar_sha256": "31b8e1c5081b3a5a0f99b98fe6da92c7fce5f05d45f7e6aeb07487d24e4813d0",
+  "allowed_existing_changes": [
+    "com/player2/playerengine/schematic/SchematicProjectTask.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Environment.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Action.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask$Kind.class",
+    "com/player2/playerengine/schematic/SchematicWorld.class",
+    "com/player2/playerengine/schematic/SchematicWorld$DepotPlacement.class"
+  ],
+  "new_classes": [],
+  "unchanged_classes": 1896,
+  "unchanged_sha256": "3d669eecdb269dfbeec316da5559b6aabcdf7f464143e1a10bae12d23540e022"
+}

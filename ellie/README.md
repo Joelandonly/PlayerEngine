@@ -1,3 +1,13 @@
+# Schematic preparation hotfix v18.1
+
+Fixes preparation stopping on a protected wall torch in the selected blueprint's
+air space. `schematic_prepare` now stages materials and reports build-site
+conflicts separately. `schematic_build` still protects existing blocks and names
+the conflicting coordinates. The 14-stage setup is unchanged.
+
+See [the logged failure, fix and validation](../docs/ELLIE_SCHEMATIC_PREPARE_V18_1.md).
+Live Minecraft acquisition and construction remain unverified for this patch.
+
 # Schematic projects v18 — gameplay unverified
 
 `schematic_prepare <file> <x> <y> <z>` makes project storage and gathers/crafts the

@@ -12,9 +12,9 @@ public final class SchematicProjectTest {
  static final State AIR=new State("minecraft:air",Map.of()),STONE=new State("minecraft:cobblestone",Map.of()),TRAP=new State("minecraft:oak_trapdoor",Map.of("open","true")),WATER=new State("minecraft:water",Map.of("level","0"));
  static SchematicPlan small(){int[] cells=new int[18];Arrays.fill(cells,0,9,1);cells[9]=2;cells[10]=3;return new SchematicPlan("small.litematic","abc",3,2,3,List.of(AIR,STONE,TRAP,WATER),cells);}
  static final class Leaf extends Task {final Runnable work;boolean done;Leaf(Runnable work){this.work=work;}void advance(){if(!done){work.run();done=true;}}public boolean isFinished(){return done;}public String toString(){return "substituted native worker";}}
- static final class Env implements SchematicProjectTask.Environment {
+ static class Env implements SchematicProjectTask.Environment {
   SchematicPlan plan;Pos origin;final Map<String,Integer> inv=new TreeMap<>();final List<Map<String,Integer>> chests=new ArrayList<>();final List<Pos> depots=new ArrayList<>();final Set<Integer> placedDepots=new HashSet<>();final Map<Pos,State> world=new HashMap<>();final List<String> events=new ArrayList<>();
-  Map<String,Integer> bill=Map.of();boolean near=true,closed,fluids,active,full,obstructed,changed,unloaded,stall,falseDeposit,falseAcquire,finishedPostNoOutput,wrongFinal,supplyLost;int layer,verified,places,acquires,transfers,closeCalls;String mismatch,lastAcquire;
+  Map<String,Integer> bill=Map.of();boolean near=true,closed,fluids,active,full,obstructed,changed,unloaded,stall,falseDeposit,falseAcquire,finishedPostNoOutput,wrongFinal,supplyLost,conflictOnRecheck,lateConflict;int layer,verified,places,acquires,transfers,closeCalls;String mismatch,lastAcquire,siteConflict;
   Env(SchematicPlan p){plan=p;inv.put("minecraft:diamond_pickaxe",1);}
   public CompletableFuture<SchematicPlan> load(String f){return CompletableFuture.completedFuture(plan);}
   public void initialize(SchematicPlan p,Pos o){origin=o;}
@@ -29,7 +29,7 @@ public final class SchematicProjectTest {
     if((c.state().source()||c.state().waterlogged())&&!same(c))remaining.put("minecraft:water_bucket",1);
    }bill=Map.copyOf(remaining);return true;
   }
-  public void recheck(){}public Map<String,Integer> requirements(){return bill;}public String worldMismatch(){return mismatch;}
+  public void recheck(){if(conflictOnRecheck)siteConflict="wall_torch at 104,106,289 expected air";}public String buildSiteConflict(){return siteConflict;}public Map<String,Integer> requirements(){return bill;}public String worldMismatch(){return mismatch;}
   public List<Pos> depotPositions(){return List.copyOf(depots);}
   public void allocateDepot(int replacement){if(replacement>=0){depots.set(replacement,new Pos(20+replacement*2,64,20+places));return;}if(depots.size()>=64)throw new IllegalStateException("storage cap");depots.add(new Pos(20+depots.size()*2,64,20));chests.add(new TreeMap<>());}
   public boolean depotPresent(int i){if(obstructed&&placedDepots.contains(i))throw new IllegalStateException("BLOCKED_DEPOT_OBSTRUCTED");return placedDepots.contains(i);}
@@ -54,7 +54,7 @@ public final class SchematicProjectTest {
     if(!f&&b&&(c.state().interactiveOpen()||c.state().source()||c.state().doubleSlab()))post.add(c);
    }return new SchematicProjectTask.Section(plan.width*plan.length,base,fin,problem,need,post);
   }
-  public void startSection(int y){layer=y;active=true;}public void pauseBuilder(){active=false;}public boolean builderActive(){return active;}public void enableFluids(){fluids=true;}
+  public void startSection(int y){layer=y;active=true;if(lateConflict)siteConflict="protected chest appeared at active target";}public void pauseBuilder(){active=false;}public boolean builderActive(){return active;}public void enableFluids(){fluids=true;}
   public Task postAction(Cell c){return new Leaf(()->{if(!finishedPostNoOutput){world.put(c.pos(),c.state());if(c.state().source()){inv.put("minecraft:water_bucket",0);inv.merge("minecraft:bucket",1,Integer::sum);}}});}
   public boolean cellComplete(Cell c){return same(c);}
   public void checkpoint(String s,int l){if(wrongFinal&&s.equals("BUILDING")&&l>=plan.layers.size())world.put(new Pos(0,0,0),AIR);if(supplyLost&&s.equals("PREPARED"))for(var c:chests)c.clear();}
@@ -91,6 +91,16 @@ public final class SchematicProjectTest {
   for(int i=0;i<100&&!"minecraft:water_bucket".equals(e.lastAcquire);i++)tick(t);
   check(SchematicProjectTask.rejectWaterSource(controller,new Point(1,65,1)),"bucket collection cannot steal already built project water");check(!SchematicProjectTask.rejectWaterSource(controller,new Point(10,65,1)),"outside natural water sources remain allowed");
   run(t,1000);check(!SchematicProjectTask.insideProject(controller,new Point(1,80,1))&&!SchematicProjectTask.reservedSource(controller,new Point(20,64,20)),"terminal project releases exclusions");
+  e=new Env(small());e.siteConflict="wall_torch at 104,106,289 expected air";t=task(e,false);run(t,500);
+  check(t.isSuccessful()&&e.chests.getFirst().get("minecraft:cobblestone")==9,"prepare stages materials despite a protected selection-air conflict");
+  check(t.controlledReason().contains("104,106,289")&&t.controlledReason().contains("construction has not started"),"prepared outcome names unresolved site without claiming construction success");
+  check(e.events.stream().filter(x->x.startsWith("SCHEMATIC_SITE_WARNING")).count()==1,"stable site conflict warns once across preflight/recheck");
+  check(e.world.isEmpty()&&!e.active,"prepare never clears or builds the obstructed selection");
+  e=new Env(small());e.siteConflict="wall_torch at 104,106,289 expected air";t=task(e,true);run(t,100);
+  check(!t.isSuccessful()&&t.controlledReason().startsWith("BLOCKED_SCHEMATIC_PROTECTED_SITE")&&e.acquires==0&&e.depots.isEmpty(),"build rejects the same conflict before stock acquisition or any placement");
+  e=new Env(small());e.conflictOnRecheck=true;t=task(e,false);run(t,500);check(t.isSuccessful()&&t.controlledReason().contains("104,106,289"),"new protection at preparation's final check remains a reported site issue");
+  e=new Env(small());e.conflictOnRecheck=true;t=task(e,true);run(t,500);check(!t.isSuccessful()&&!e.active,"build rechecks protection after material stocking");
+  e=new Env(small());e.lateConflict=true;t=task(e,true);run(t,500);check(!t.isSuccessful()&&t.controlledReason().contains("PROTECTED_SITE")&&e.closed&&!e.active,"late protected conflict stops the owned builder");
   int[] large=new int[2000];Arrays.fill(large,1);var big=new SchematicPlan("big.litematic","def",40,1,50,List.of(AIR,STONE),large);e=new Env(big);t=task(e,false);run(t,1000);check(t.isSuccessful()&&e.depots.size()==2,"more than carrying and single-chest capacity is staged in multiple chests");
   System.out.println("SchematicProjectTest: "+checks+" full coordinator success/failure checks; game actions and world substituted, no live gameplay claim");
  }

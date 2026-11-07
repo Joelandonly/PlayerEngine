@@ -235,9 +235,12 @@ PY
 javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/schematic-testclasses $(find tests/schematicfixtures -name '*.java' | LC_ALL=C sort) tests/SchematicProjectTest.java tests/SchematicFilesTest.java
 java -cp build/schematic-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SchematicProjectTest
 java -cp build/schematic-testclasses:build/classes:build/schematic4j.jar SchematicFilesTest build/schematic-fixtures
-javac --release 21 -cp build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/schematic-game-testclasses $(find tests/schematicgamefixtures -name '*.java' | LC_ALL=C sort) tests/nativefixtures/net/minecraft/class_2338.java tests/SchematicBuildSupportTest.java tests/SchematicWorldSlotsTest.java
+javac --release 21 -cp build/schematic-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/schematic-game-testclasses $(find tests/schematicgamefixtures -name '*.java' | LC_ALL=C sort) tests/nativefixtures/net/minecraft/class_2338.java tests/SchematicBuildSupportTest.java tests/SchematicWorldSlotsTest.java tests/SchematicPreparationClearanceTest.java
 java -cp build/schematic-game-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SchematicBuildSupportTest
 java -cp build/schematic-game-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SchematicWorldSlotsTest
+java -cp build/schematic-game-testclasses:build/schematic-testclasses:build/testclasses:build/classes:baseline/playerengine-acquisition-safety.jar SchematicPreparationClearanceTest
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools -d build/tools tools/VerifySchematicProjects.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifySchematicProjects dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar baseline/playerengine-acquisition-safety.jar
 python3 tests/verify_schematic_scope.py
+
+python3 tests/verify_schematic_prepare_scope.py

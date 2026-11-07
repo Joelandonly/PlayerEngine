@@ -24,6 +24,8 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
         void recheck();
         Map<String,Integer> requirements();
         String worldMismatch();
+        /** Material preparation may proceed while the selected build site is obstructed. */
+        String buildSiteConflict();
         List<Pos> depotPositions();
         void allocateDepot(int replaceIndex)throws Exception;
         boolean depotPresent(int index)throws Exception;
@@ -68,6 +70,7 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
     private int settling,fluidIndex;
     private List<Cell> fluidTargets=List.of();
     private String reason="Not started",phase="IMPORT";
+    private String lastSiteNotice="";
     private Map<String,Integer> required=Map.of();
 
     public SchematicProjectTask(String filename,int x,int y,int z,boolean build){
@@ -94,9 +97,10 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
             if(!preflightDone){
                 phase="PREFLIGHT";if(!environment.atDepot())return travel();if(!environment.preflight())return null;
                 required=Map.copyOf(environment.requirements());preflightDone=true;
+                if(!checkBuildSite())return null;
             }
             if(!prepared)return prepare();
-            if(!build)return success("Required materials verified in project storage");
+            if(!build)return success("Required materials verified in project storage; construction has not started. "+siteSummary());
             return construct();
         }catch(Exception|LinkageError e){return block("BOUNDARY",rootMessage(e));}
     }
@@ -136,17 +140,37 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
         // Re-read actual placed blocks once the stock target is met; no stale resume bill.
         if(!checkingPrepared){environment.recheck();checkingPrepared=true;return null;}
         if(!environment.preflight())return null;
+        if(!checkBuildSite())return null;
         Map<String,Integer> revised=Map.copyOf(environment.requirements());
         if(!revised.equals(required)){
             if(++stockRechecks>2)return block("WORLD_CHANGED","Blueprint requirements kept changing during preparation");
             required=revised;checkingPrepared=false;return null;
         }
         prepared=true;checkingPrepared=false;environment.checkpoint("PREPARED",layerIndex);
-        event("SCHEMATIC_PREPARED","Fresh storage stock verified: "+stored+"; depots="+positions);
+        event("SCHEMATIC_PREPARED","Fresh storage stock verified: "+stored+"; depots="+positions+"; "+siteSummary());
         return null;
     }
 
+    private String siteSummary(){
+        String conflict=environment.buildSiteConflict();
+        return conflict==null?"No protected build-site conflicts found":"Build site requires attention: "+conflict;
+    }
+    private boolean checkBuildSite(){
+        String conflict=environment.buildSiteConflict();
+        if(conflict!=null&&build){
+            block("PROTECTED_SITE",conflict+". Move/remove the conflicting blocks yourself or choose another origin; schematic_prepare can stage materials separately.");
+            return false;
+        }
+        String notice=conflict==null?"CLEAR":conflict;
+        if(!notice.equals(lastSiteNotice)){
+            lastSiteNotice=notice;
+            event(conflict==null?"SCHEMATIC_SITE_CLEAR":"SCHEMATIC_SITE_WARNING",siteSummary());
+        }
+        return true;
+    }
+
     private Task construct()throws Exception {
+        if(!checkBuildSite())return null;
         if(fluids&&fluidIndex<fluidTargets.size()){
             Cell cell=fluidTargets.get(fluidIndex);phase="FLUID_SOURCES";
             if(environment.cellComplete(cell)){fluidIndex++;return null;}
@@ -158,11 +182,13 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
             phase="FINAL_VERIFY";
             if(!checkingPrepared){environment.pauseBuilder();environment.recheck();checkingPrepared=true;return null;}
             if(!environment.preflight())return null;
+            if(!checkBuildSite())return null;
             Map<String,Integer> remaining=environment.requirements();
             if(environment.worldMismatch()!=null)return block("FINAL_WORLD_MISMATCH",environment.worldMismatch()+"; remaining="+remaining);
             return success("Schematic block states and required air/fluid cells verified in the actual world");
         }
-        int y=plan.layers.get(layerIndex);Section section=environment.section(y);if(section==null)return null;
+        int y=plan.layers.get(layerIndex);Section section=environment.section(y);
+        if(!checkBuildSite()||section==null)return null;
         phase="BUILD_LAYER_"+y;
         if(!sectionBaseline){bestBase=section.baseCorrect;bestFinal=section.finalCorrect;sectionBaseline=true;}
         else if(section.baseCorrect>bestBase||section.finalCorrect>bestFinal){

@@ -1,3 +1,14 @@
+# v18.1 — material preparation independent of protected-site clearance
+
+The logged `schematic_prepare` imported successfully, then stopped at a protected
+wall torch at 104,106,289 in selection air. Preparation now warns and stages
+supplies; building still requires those protected conflicts to be resolved.
+Adds separate site telemetry and tests the reported startup failure through the
+real coordinator and preflight with substituted game boundaries.
+
+See `docs/ELLIE_SCHEMATIC_PREPARE_V18_1.md`. Setup/native workers are unchanged;
+live Minecraft success is not claimed.
+
 # v18 — schematic preparation/building (live Minecraft unverified)
 
 - Add supervised `schematic_prepare` and `schematic_build` commands for `.litematic`
