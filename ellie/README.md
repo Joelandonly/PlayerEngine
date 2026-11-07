@@ -1,3 +1,13 @@
+# Schematic native bindings hotfix v18.2
+
+Fixes the shared reflection helper rejecting primitive boolean flags, which
+blocked foundation placement, travel to the project chest and later interactions.
+The release now tests these actual native constructors with real Minecraft
+1.21.1 registries. Every other production class and the 14-stage setup are
+unchanged. Live gathering, navigation and construction still need testing.
+
+See [failure evidence, scope and live checks](../docs/ELLIE_SCHEMATIC_NATIVE_BINDINGS_V18_2.md).
+
 # Schematic preparation hotfix v18.1
 
 Fixes preparation stopping on a protected wall torch in the selected blueprint's

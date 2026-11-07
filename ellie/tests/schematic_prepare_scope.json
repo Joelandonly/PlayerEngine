@@ -7,9 +7,11 @@
     "com/player2/playerengine/schematic/SchematicProjectTask$Action.class",
     "com/player2/playerengine/schematic/SchematicProjectTask$Kind.class",
     "com/player2/playerengine/schematic/SchematicWorld.class",
-    "com/player2/playerengine/schematic/SchematicWorld$DepotPlacement.class"
+    "com/player2/playerengine/schematic/SchematicWorld$DepotPlacement.class",
+    "com/player2/playerengine/reliability/FoodAcquisition.class"
   ],
   "new_classes": [],
-  "unchanged_classes": 1896,
-  "unchanged_sha256": "3d669eecdb269dfbeec316da5559b6aabcdf7f464143e1a10bae12d23540e022"
+  "unchanged_classes": 1895,
+  "unchanged_sha256": "c6f09d70ab7d7a41f207d4ba46a02cf3fbc6522c136ac3b53f35c8713a5abc72",
+  "v18_2_extension": "Shared constructor resolver only; schematic_native_bindings_scope.json separately freezes every other v18.1 entry."
 }

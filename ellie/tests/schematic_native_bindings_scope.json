@@ -1,0 +1,12 @@
+{
+  "source_revision": "9b4a674066e70d04f83d8d563b3a9854d1eb0da9",
+  "v18_1_jar_sha256": "14623682ff4a1c63d2156969a719f62e7b6a4bbe62d58515a629ed8f5db1e0c4",
+  "allowed_changes": [
+    "com/player2/playerengine/reliability/FoodAcquisition.class",
+    "META-INF/ELLIE_BUILD.json",
+    "META-INF/ELLIE_BUILD_REVISION.txt"
+  ],
+  "unchanged_entries": 1931,
+  "unchanged_classes": 1901,
+  "unchanged_sha256": "093ca31f2b0c6522d10c803b1d6c223b11a2995d27b1c34bd165879b241f6639"
+}

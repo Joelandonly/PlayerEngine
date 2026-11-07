@@ -282,13 +282,29 @@ public final class FoodAcquisition {
             if (types.length!=arguments.length) continue;
             boolean matches = true;
             for (int i=0; i<types.length; i++) {
-                if (arguments[i] == null) continue;
-                Class<?> type = types[i]==int.class ? Integer.class : types[i];
+                if (arguments[i] == null) {
+                    if (types[i].isPrimitive()) { matches=false; break; }
+                    continue;
+                }
+                Class<?> type = boxed(types[i]);
                 if (!type.isInstance(arguments[i])) { matches=false; break; }
             }
             if (matches) return ctor.newInstance(arguments);
         }
-        throw new NoSuchMethodException(name+" constructor");
+        throw new NoSuchMethodException(name+" constructor for "+java.util.Arrays.toString(
+                java.util.Arrays.stream(arguments).map(a->a==null?"null":a.getClass().getTypeName()).toArray(String[]::new)));
+    }
+
+    private static Class<?> boxed(Class<?> type) {
+        if (type==boolean.class) return Boolean.class;
+        if (type==int.class) return Integer.class;
+        if (type==long.class) return Long.class;
+        if (type==double.class) return Double.class;
+        if (type==float.class) return Float.class;
+        if (type==short.class) return Short.class;
+        if (type==byte.class) return Byte.class;
+        if (type==char.class) return Character.class;
+        return type;
     }
 
     private static boolean isMeat(Object root) { return root.getClass().getSimpleName().equals("CollectMeatTask"); }
