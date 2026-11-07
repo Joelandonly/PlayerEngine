@@ -21,6 +21,8 @@ clear site. This hotfix changes only `SchematicProjectTask` and `SchematicWorld`
   it again after stocking and during layer scans, and reports
   `BLOCKED_SCHEMATIC_PROTECTED_SITE` with coordinates and a remedy. It does not
   remove protected torches, containers or parts of the existing base.
+- Already-correct protected targets, including water, are reusable. A protected
+  container in a required water cell remains a conflict.
 - `schematicBuildSite` in observatory status separates site readiness from the
   active material objective. Unchanged warnings are not repeatedly announced.
 

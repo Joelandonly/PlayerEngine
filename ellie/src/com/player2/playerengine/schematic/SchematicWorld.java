@@ -137,7 +137,7 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
         return desired.placementItems();
     }
     private boolean protectedConflict(Pos p,Object current,State desired)throws Exception {
-        if(Boolean.TRUE.equals(call(current,"method_26215"))||(!desired.water()&&baseMatch(current,desired)))return false;
+        if(Boolean.TRUE.equals(call(current,"method_26215"))||finalMatch(current,desired)||(!desired.water()&&baseMatch(current,desired)))return false;
         if(call(world,"method_8321",position(p))!=null)return true;
         Object store=callStatic(P+"structureprotection.PlayerPlacedBlockStore","get");
         return store!=null&&Boolean.TRUE.equals(call(store,"contains",dimension,position(p)));
