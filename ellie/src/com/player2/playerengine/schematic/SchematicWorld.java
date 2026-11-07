@@ -39,6 +39,8 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
     private int paletteCursor,scanCursor,savedLayer,sectionY=-1,sectionCursor;
     private boolean scanComplete,closed,missingWater,missingSolid,fluids;
     private String mismatch;
+    private int siteConflicts;
+    private final List<String> siteConflictSamples=new ArrayList<>();
     private Map<String,Integer> requirements=new TreeMap<>(),scanBill=new TreeMap<>();
     private int sectionBase,sectionFinal;
     private String sectionMismatch;
@@ -135,10 +137,16 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
         return desired.placementItems();
     }
     private boolean protectedConflict(Pos p,Object current,State desired)throws Exception {
-        if(Boolean.TRUE.equals(call(current,"method_26215"))||(!desired.water()&&baseMatch(current,desired)))return false;
+        if(Boolean.TRUE.equals(call(current,"method_26215"))||finalMatch(current,desired)||(!desired.water()&&baseMatch(current,desired)))return false;
         if(call(world,"method_8321",position(p))!=null)return true;
         Object store=callStatic(P+"structureprotection.PlayerPlacedBlockStore","get");
         return store!=null&&Boolean.TRUE.equals(call(store,"contains",dimension,position(p)));
+    }
+    private void recordSiteConflict(Pos p,Object current,State desired)throws Exception {
+        if(!protectedConflict(p,current,desired))return;
+        siteConflicts++;
+        if(siteConflictSamples.size()<8)siteConflictSamples.add("at "+p.key()+"; expected="+desired+" actual="+current);
+        protectedPositions.add(p);
     }
     public boolean preflight()throws Exception {
         checkWorld();
@@ -154,7 +162,7 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
             State desired=plan.at(x,y,z);Pos p=origin.add(x,y,z);Object current=state(p);
             boolean matches=finalMatch(current,desired);
             if(!matches&&mismatch==null)mismatch=p.key()+" expected="+desired+" actual="+current;
-            if(protectedConflict(p,current,desired))throw new IllegalStateException("BLOCKED_PROTECTED_SITE at "+p.key()+"; expected="+desired+" actual="+current);
+            recordSiteConflict(p,current,desired);
             int n=missingItems(current,desired);if(n>0)scanBill.merge(placementItem(desired),n,Math::addExact);
             missingSolid|=!desired.air()&&!desired.water()&&!matches;
             missingWater|=(desired.source()||desired.waterlogged())&&!matches;
@@ -166,9 +174,10 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
         requirements=Map.copyOf(scanBill);scanComplete=true;publishProtection();
         return true;
     }
-    public void recheck(){scanCursor=0;scanComplete=false;scanBill=new TreeMap<>();mismatch=null;missingWater=missingSolid=false;}
+    public void recheck(){scanCursor=0;scanComplete=false;scanBill=new TreeMap<>();mismatch=null;missingWater=missingSolid=false;siteConflicts=0;siteConflictSamples.clear();}
     public Map<String,Integer> requirements(){return requirements;}
     public String worldMismatch(){return mismatch;}
+    public String buildSiteConflict(){return siteConflicts==0?null:"Protected build-site conflicts="+siteConflicts+"; "+String.join(" | ",siteConflictSamples);}
     public List<Pos> depotPositions(){return List.copyOf(positions);}
     public boolean atDepot()throws Exception {
         Pos p=positions.isEmpty()?origin:positions.getFirst();Object e=call(controller,"getEntity");
@@ -273,6 +282,7 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
         int size=plan.width*plan.length,end=Math.min(size,sectionCursor+500);
         for(;sectionCursor<end;sectionCursor++){
             int x=sectionCursor%plan.width,z=sectionCursor/plan.width;State desired=plan.at(x,y,z);Cell cell=new Cell(new Pos(x,y,z),desired);Pos p=absolute(cell.pos());Object current=state(p);
+            recordSiteConflict(p,current,desired);
             boolean base=baseMatch(current,desired),complete=finalMatch(current,desired);
             if(!fluids&&(desired.water()||desired.waterlogged()))complete=desired.water()||finalMatch(current,dryFinal(desired));
             if(base)sectionBase++;if(complete)sectionFinal++;
@@ -328,7 +338,7 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
         if(!journal.isPersistent())throw new IllegalStateException("Project checkpoint unavailable: "+journal.error());
     }
     public void verified(String evidence){SharedTargetRecovery.verifiedWorldOutput(controller,evidence);}
-    public void report(String event,String detail){ObservatoryTelemetry.set("schematicProject",detail);ObservatoryTelemetry.event(event,detail);System.out.println("[EllieSchematic] "+event+": "+detail);if(event.equals("SCHEMATIC_PREPARED")||event.equals("SCHEMATIC_COMPLETED")||event.equals("SCHEMATIC_BLOCKED"))try{call(controller,"reportAgenticProgress",detail,true);}catch(Exception ignored){}}
+    public void report(String event,String detail){ObservatoryTelemetry.set("schematicProject",detail);if(event.equals("SCHEMATIC_SITE_WARNING")||event.equals("SCHEMATIC_SITE_CLEAR"))ObservatoryTelemetry.set("schematicBuildSite",detail);ObservatoryTelemetry.event(event,detail);System.out.println("[EllieSchematic] "+event+": "+detail);if(event.equals("SCHEMATIC_PREPARED")||event.equals("SCHEMATIC_COMPLETED")||event.equals("SCHEMATIC_BLOCKED")||event.equals("SCHEMATIC_SITE_WARNING"))try{call(controller,"reportAgenticProgress",detail,true);}catch(Exception ignored){}}
     public void close(){
         if(closed)return;
         try{pauseBuilder();}catch(Exception e){report("SCHEMATIC_CLEANUP",e.getMessage());}

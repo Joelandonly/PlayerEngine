@@ -40,6 +40,12 @@ public final class SchematicWorldSlotsTest {
   w.blocks.put(new Pos(0,64,0),class_2680.state(new class_7923.Block("minecraft:oak_trapdoor"),"open","true","waterlogged","false"));section=e.section(0);check(section.complete(),"dry final properties finish solid pass");
   e.enableFluids();section=e.section(0);check(!section.complete()&&section.post().getFirst().state().waterlogged(),"fluid pass requires remaining waterlogging");
   w.blocks.put(new Pos(0,64,0),class_2680.state(new class_7923.Block("minecraft:oak_trapdoor"),"open","true","waterlogged","true"));check(e.section(0).complete(),"full final state verified after waterlogging");
+  var water=new State("minecraft:water",Map.of());set(e,"plan",new SchematicPlan("water.litematic","water",1,1,1,List.of(water),new int[]{0}));
+  var protectedCell=new Pos(0,64,0);var store=com.player2.playerengine.structureprotection.PlayerPlacedBlockStore.get();store.add("minecraft:overworld",new class_2338(0,64,0));
+  w.blocks.put(protectedCell,class_2680.state(new class_7923.Block("minecraft:water")));e.recheck();while(!e.preflight()){}
+  check(e.buildSiteConflict()==null&&e.worldMismatch()==null,"already-correct protected water is reusable rather than a conflicting site");
+  w.blocks.put(protectedCell,class_2680.state(new class_7923.Block("minecraft:chest")));w.inventories.put(protectedCell,new Inventory());e.recheck();while(!e.preflight()){}
+  check(e.buildSiteConflict()!=null&&e.buildSiteConflict().contains("chest"),"a protected container at a water target remains a conflict");store.clear();
   System.out.println("SchematicWorldSlotsTest: "+checks+" production adapter checks; actual game world/registries/slots substituted");
  }
 }

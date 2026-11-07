@@ -1,3 +1,7 @@
+> v18.1 update: material preparation reports protected-site conflicts and can
+> continue stocking. Construction still requires clearance. See
+> [the preparation hotfix](ELLIE_SCHEMATIC_PREPARE_V18_1.md).
+
 # Schematic preparation and building v18 — live Minecraft unverified
 
 This adds file-backed survival projects through the existing task supervisor and
