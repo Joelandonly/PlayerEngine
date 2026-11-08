@@ -20,6 +20,8 @@ with ZipFile(JAR) as z:
  pinned={
   "com/player2/playerengine/tasks/resources/CraftWithMatchingMaterialsTask.class":
    "f36e362ee7cd35d3e89b9122943fda5a5d4eaa1c759405c60f33165ce0f75c83",
+  "com/player2/playerengine/tasks/resources/CraftWithMatchingPlanksTask.class":
+   "c7c3f19f0a1758255e585626504552b66b0fe716ace1882f82a9c7f66f2d0a30",
   "com/player2/playerengine/schematic/SchematicWorld.class":
    "ae14bf7a89033bdfdc202f1b19db12e42b536b3e34fab1a1f93d74d66e6080fc",
   "com/player2/playerengine/schematic/SchematicProjectTask.class":
