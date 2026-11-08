@@ -8,7 +8,12 @@
     "com/player2/playerengine/agentic/StorageIntelligence.class",
     "com/player2/playerengine/reliability/WorkshopPlacement.class",
     "com/player2/playerengine/reliability/SharedTargetRecovery.class",
-    "com/player2/playerengine/reliability/FoodAcquisition.class"
+    "com/player2/playerengine/reliability/FoodAcquisition.class",
+    "com/player2/playerengine/agentic/ResourceAgenticIntegration.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask.class",
+    "com/player2/playerengine/schematic/SchematicWorld.class",
+    "com/player2/playerengine/schematic/SchematicWorld$DepotPlacement.class",
+    "com/player2/playerengine/tasks/crafting/CraftMacroResourceTask.class"
   ],
   "new_classes": [
     "com/player2/playerengine/commands/PrepareSchematicCommand.class",
@@ -30,7 +35,8 @@
     "com/player2/playerengine/schematic/SchematicBuildSupport$Layer.class",
     "com/player2/playerengine/schematic/SchematicFiles$RegionData.class"
   ],
-  "unchanged_classes": 1876,
-  "unchanged_sha256": "4b854c195c1ea02cab2460b92670b1aa528766f120ef7ea515c6a1c7a71df96a",
-  "v18_2_extension": "Shared constructor resolver only; schematic_native_bindings_scope.json separately freezes every other v18.1 entry."
+  "unchanged_classes": 1874,
+  "unchanged_sha256": "e8cfe45f1fb4eba9a12d15a479f8be1dacf9c1683a158c012735d4715339bda8",
+  "v18_2_extension": "Shared constructor resolver only; schematic_native_bindings_scope.json separately freezes every other v18.1 entry.",
+  "v18_3_extension": "Shared native acquisition, schematic material reporting and bounded macro handoff; schematic_acquisition_scope.json freezes every other v18.2 entry."
 }

@@ -1,3 +1,12 @@
+# Schematic acquisition hotfix v18.3
+
+Schematic preparation now shares the working native acquisition lookup with
+`agentic get`. The dynamic macro remains a fallback for catalogue misses, with a
+bounded repair for its collection-to-crafting convergence handoff. Material
+status distinguishes carried items, verified project stock and remaining work.
+The working 14-stage setup is preserved. Live survival execution still needs
+validation. See [evidence, tests and live checks](../docs/ELLIE_SCHEMATIC_ACQUISITION_V18_3.md).
+
 # Schematic native bindings hotfix v18.2
 
 Fixes the shared reflection helper rejecting primitive boolean flags, which

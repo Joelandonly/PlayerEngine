@@ -1,5 +1,7 @@
 import com.player2.playerengine.reliability.FoodAcquisition;
 import com.player2.playerengine.tasks.base.Task;
+import com.player2.playerengine.agentic.ResourceAgenticIntegration;
+import com.player2.playerengine.agentic.AgenticStepSpec;
 import java.lang.reflect.Array;
 import java.util.*;
 import static com.player2.playerengine.nativecommands.NativeAccess.*;
@@ -43,6 +45,18 @@ public final class NativeSchematicBindingsTest {
   Task fluid=task("tasks.InteractWithBlockTask",bucket,up,pos,right,false,true);
   check(get(fluid,"direction")==up&&get(fluid,"interactInput")==right&&!(Boolean)get(fluid,"walkInto")&&(Boolean)get(fluid,"shiftClick"),"source/waterlogging action retains separate false and true flags");
   check(foundation.getClass().getProtectionDomain().getCodeSource().getLocation().equals(Task.class.getProtectionDomain().getCodeSource().getLocation()),"constructor bodies come from the packaged mod, not action stubs");
+  var factory=ResourceAgenticIntegration.class.getDeclaredMethod("task",AgenticStepSpec.class,Class.forName(P+"agentic.AgenticExecutionContext"));factory.setAccessible(true);
+  for(String id:List.of("cobblestone_slab","chest","cobblestone","hopper","ladder","oak_trapdoor","water_bucket")){
+   Task shared=ResourceAgenticIntegration.nativeAcquisition("minecraft:"+id,64).orElseThrow(()->new AssertionError("Native project material missing: "+id));
+   Task agentic=(Task)((Optional<?>)factory.invoke(null,new AgenticStepSpec("collect_resource","get_resource",Map.of("item",id,"count","64"),"test shared native worker"),null)).orElseThrow();
+   check(shared.getClass()==agentic.getClass(),"schematic and agentic share actual native worker for "+id);
+   Object[] targets=(Object[])call(shared,"getItemTargets");
+   check(targets.length==1&&((Number)call(targets[0],"getTargetCount")).intValue()==64,"native acquisition preserves exact requested output quantity for "+id);
+   if(id.equals("cobblestone_slab"))check(shared.getClass().getSimpleName().equals("CraftInTableTask"),"slabs choose the owner-tested native table worker");
+  }
+  check(ResourceAgenticIntegration.nativeAcquisition("not_an_actual_item",64).isEmpty(),"unknown catalogue item remains eligible for explicit recipe fallback");
+  check(ResourceAgenticIntegration.nativeAcquisition("minecraft:white_carpet",48).isEmpty(),"this pinned catalogue lacks the exact white carpet name; retain dynamic recipe fallback rather than substituting another item");
+  check(ResourceAgenticIntegration.nativeAcquisition("minecraft:cobblestone_slab",0).isEmpty()&&ResourceAgenticIntegration.nativeAcquisition("minecraft:cobblestone_slab",577).isEmpty(),"invalid native batch counts are rejected");
   System.out.println("NativeSchematicBindingsTest: "+checks+" checks using actual Minecraft 1.21.1 and packaged task constructors; no world/NPC execution or gameplay claim");
  }
 }

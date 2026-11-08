@@ -11,6 +11,16 @@ public final class SchematicProjectTest {
  static void check(boolean b,String why){checks++;if(!b)throw new AssertionError(why);}
  static final State AIR=new State("minecraft:air",Map.of()),STONE=new State("minecraft:cobblestone",Map.of()),TRAP=new State("minecraft:oak_trapdoor",Map.of("open","true")),WATER=new State("minecraft:water",Map.of("level","0"));
  static SchematicPlan small(){int[] cells=new int[18];Arrays.fill(cells,0,9,1);cells[9]=2;cells[10]=3;return new SchematicPlan("small.litematic","abc",3,2,3,List.of(AIR,STONE,TRAP,WATER),cells);}
+ static SchematicPlan slabs(){int[] cells=new int[420];Arrays.fill(cells,0,404,1);return new SchematicPlan("slabs.litematic","slab-log-replay",20,1,21,List.of(AIR,new State("minecraft:cobblestone_slab",Map.of("type","bottom"))),cells);}
+ static class SlabEnv extends Env {
+  final List<Integer> slabTargets=new ArrayList<>();
+  SlabEnv(){super(slabs());allocateDepot(-1);placedDepots.add(0);inv.put("minecraft:cobblestone_slab",66);}
+  public Task acquire(String id,int target){
+   if(!id.equals("minecraft:cobblestone_slab"))return super.acquire(id,target);
+   slabTargets.add(target);acquires++;
+   return new Leaf(()->{if(!falseAcquire){int have=inv.getOrDefault(id,0);inv.put(id,have+6*((Math.max(0,target-have)+5)/6));}});
+  }
+ }
  static final class Leaf extends Task {final Runnable work;boolean done;Leaf(Runnable work){this.work=work;}void advance(){if(!done){work.run();done=true;}}public boolean isFinished(){return done;}public String toString(){return "substituted native worker";}}
  static class Env implements SchematicProjectTask.Environment {
   SchematicPlan plan;Pos origin;final Map<String,Integer> inv=new TreeMap<>();final List<Map<String,Integer>> chests=new ArrayList<>();final List<Pos> depots=new ArrayList<>();final Set<Integer> placedDepots=new HashSet<>();final Map<Pos,State> world=new HashMap<>();final List<String> events=new ArrayList<>();
@@ -102,6 +112,18 @@ public final class SchematicProjectTest {
   e=new Env(small());e.conflictOnRecheck=true;t=task(e,true);run(t,500);check(!t.isSuccessful()&&!e.active,"build rechecks protection after material stocking");
   e=new Env(small());e.lateConflict=true;t=task(e,true);run(t,500);check(!t.isSuccessful()&&t.controlledReason().contains("PROTECTED_SITE")&&e.closed&&!e.active,"late protected conflict stops the owned builder");
   int[] large=new int[2000];Arrays.fill(large,1);var big=new SchematicPlan("big.litematic","def",40,1,50,List.of(AIR,STONE),large);e=new Env(big);t=task(e,false);run(t,1000);check(t.isSuccessful()&&e.depots.size()==2,"more than carrying and single-chest capacity is staged in multiple chests");
+  SlabEnv slab=new SlabEnv();t=task(slab,false);run(t,500);
+  check(t.isSuccessful()&&slab.chests.getFirst().get("minecraft:cobblestone_slab")==404,"logged 66 carried slabs count toward the full 404-slab project");
+  check(slab.slabTargets.equals(List.of(64,64,64,64,64,8)),"successive six-output crafts request only remaining material in bounded batches");
+  check(slab.inv.get("minecraft:cobblestone_slab")==4&&slab.inv.get("minecraft:diamond_pickaxe")==1,"recipe surplus and owner gear are retained");
+  check(slab.events.stream().anyMatch(s->s.contains("required=404 stored=66 carried=0 remainingToGather=338 batchTarget=64")),"next-batch logging preserves verified stored slabs instead of showing a total of zero");
+  slab=new SlabEnv();slab.inv.put("minecraft:cobblestone_slab",0);slab.chests.getFirst().put("minecraft:cobblestone_slab",66);t=task(slab,false);
+  for(int i=0;i<100&&slab.chests.getFirst().get("minecraft:cobblestone_slab")<198;i++)tick(t);
+  int before=slab.chests.getFirst().get("minecraft:cobblestone_slab");STOP.invoke(t,new Object[]{null});t=task(slab,false);run(t,500);
+  check(before>=198&&t.isSuccessful()&&slab.chests.getFirst().get("minecraft:cobblestone_slab")==404,"restarting midway reuses actual chest stock without redoing completed batches");
+  slab=new SlabEnv();slab.inv.put("minecraft:cobblestone_slab",0);slab.chests.getFirst().put("minecraft:cobblestone_slab",66);slab.falseAcquire=true;t=task(slab,false);run(t,100);
+  check(!t.isSuccessful()&&t.controlledReason().contains("stored=66")&&t.controlledReason().contains("remainingToGather=338"),"failed later batch reports specific remaining work and retained storage");
+  check(slab.chests.getFirst().get("minecraft:cobblestone_slab")==66,"failure never discards or falsely replaces staged stock");
   System.out.println("SchematicProjectTest: "+checks+" full coordinator success/failure checks; game actions and world substituted, no live gameplay claim");
  }
 }

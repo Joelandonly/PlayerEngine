@@ -24,6 +24,8 @@ javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-e
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchAutonomy baseline/playerengine-acquisition-safety.jar build/patches
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchReliability.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchReliability baseline/playerengine-acquisition-safety.jar build/patches
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchCraftConvergence.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchCraftConvergence baseline/playerengine-acquisition-safety.jar build/patches
 # Repair existing food/cooking workers and bind command completion to their exact executor receipt.
 javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/PatchFoodReliability.java
 java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools PatchFoodReliability baseline/playerengine-acquisition-safety.jar build/patches
@@ -250,3 +252,19 @@ mkdir -p build/native-constructor-testclasses
 javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/native-constructor-testclasses tests/NativeConstructorTest.java
 java -cp build/native-constructor-testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar NativeConstructorTest
 python3 tests/verify_schematic_native_bindings_scope.py
+
+mkdir -p build/macro-convergence-testclasses
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.commons=ALL-UNNAMED -cp build/testclasses:baseline/playerengine-acquisition-safety.jar -d build/macro-convergence-testclasses tests/MacroConvergenceTest.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.commons=ALL-UNNAMED -cp build/macro-convergence-testclasses:build/testclasses:baseline/playerengine-acquisition-safety.jar MacroConvergenceTest dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/tools tools/NativeMethodShape.java tools/VerifyCraftConvergence.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/tools VerifyCraftConvergence dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar tests/craft-convergence-native-methods.properties
+python3 tests/verify_schematic_acquisition_scope.py
+
+# v18.3 LIVE HOTFIX SYNCHRONIZATION: the historical v18.3 checks above intentionally
+# verify the unmodified build. Only now overlay the reviewed lifecycle and chest
+# reconciliation bytecode; this final JAR is what GitHub Actions must publish.
+python3 tools/apply_v18_hotfix.py
+mkdir -p build/storage-recovery-testclasses
+javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/storage-recovery-testclasses tests/StorageRecoveryRegression.java
+java -Xverify:all -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar:build/storage-recovery-testclasses StorageRecoveryRegression
+python3 tests/verify_v18_hotfix_packaging.py

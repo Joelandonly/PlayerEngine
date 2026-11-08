@@ -72,6 +72,8 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
     private String reason="Not started",phase="IMPORT";
     private String lastSiteNotice="";
     private Map<String,Integer> required=Map.of();
+    private Map<String,Integer> verifiedStock=Map.of();
+    private volatile String materialStatus="";
 
     public SchematicProjectTask(String filename,int x,int y,int z,boolean build){
         this.filename=Objects.requireNonNull(filename);this.origin=new Pos(x,y,z);this.build=build;
@@ -92,7 +94,10 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
                 plan=importing.join();fluidTargets=plan.targets.stream().filter(c->c.state().source()||c.state().waterlogged()).toList();
             }
             if(!initialized){environment.initialize(plan,origin);initialized=true;event("SCHEMATIC_PLAN",plan.width+"x"+plan.height+"x"+plan.length+" targets="+plan.targets.size()+" bill="+plan.materialCounts);}
-            if(allTicks%100==0)event("SCHEMATIC_PROGRESS","objective="+(build?"build":"prepare")+" file="+filename+" phase="+phase+" layer="+layerIndex+"/"+plan.layers.size()+" inventory="+environment.inventory()+" emptyMain="+environment.freeSlots()+" subtask="+getTaskTree()+" noPlacement="+buildIdle+" failure="+reason);
+            if(allTicks%100==0){
+                if(action!=null)reportMaterial(action,environment.inventory());
+                event("SCHEMATIC_PROGRESS","objective="+(build?"build":"prepare")+" file="+filename+" phase="+phase+" layer="+layerIndex+"/"+plan.layers.size()+" inventory="+environment.inventory()+" emptyMain="+environment.freeSlots()+" subtask="+getTaskTree()+" noPlacement="+buildIdle+" failure="+reason);
+            }
             if(action!=null)return pollAction();
             if(!preflightDone){
                 phase="PREFLIGHT";if(!environment.atDepot())return travel();if(!environment.preflight())return null;
@@ -116,7 +121,7 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
             return begin(next);
         }
         if(!environment.atDepot())return travel();
-        List<Depot> depots=environment.depots();Map<String,Integer> stored=total(depots);
+        List<Depot> depots=inspectDepots();Map<String,Integer> stored=verifiedStock;
         int slots=0;
         for(var need:required.entrySet()){
             int max=environment.maxStack(need.getKey());int missing=Math.max(0,need.getValue()-stored.getOrDefault(need.getKey(),0));
@@ -146,7 +151,7 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
             if(++stockRechecks>2)return block("WORLD_CHANGED","Blueprint requirements kept changing during preparation");
             required=revised;checkingPrepared=false;return null;
         }
-        prepared=true;checkingPrepared=false;environment.checkpoint("PREPARED",layerIndex);
+        prepared=true;checkingPrepared=false;materialStatus="";environment.checkpoint("PREPARED",layerIndex);
         event("SCHEMATIC_PREPARED","Fresh storage stock verified: "+stored+"; depots="+positions+"; "+siteSummary());
         return null;
     }
@@ -209,7 +214,7 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
         for(var need:section.materials.entrySet())if(held.getOrDefault(need.getKey(),0)<Math.min(need.getValue(),environment.maxStack(need.getKey()))){
             environment.pauseBuilder();
             if(!environment.atDepot())return travel();
-            List<Depot> depots=environment.depots();Map<String,Integer> stored=total(depots);
+            List<Depot> depots=inspectDepots();Map<String,Integer> stored=verifiedStock;
             int missing=Math.min(need.getValue(),environment.maxStack(need.getKey()))-held.getOrDefault(need.getKey(),0);
             if(stored.getOrDefault(need.getKey(),0)>0){
                 if(environment.freeSlots()<2)return block("INVENTORY_CAPACITY","Construction supplies need two actual free carrying slots");
@@ -227,7 +232,7 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
         Map<String,Integer> held=environment.inventory();
         if(needed!=null&&held.getOrDefault(needed,0)<1){
             if(environment.freeSlots()<2)return block("INVENTORY_CAPACITY","No verified room for final placement supplies");
-            if(!environment.atDepot())return travel();List<Depot> stock=environment.depots();
+            if(!environment.atDepot())return travel();List<Depot> stock=inspectDepots();
             if(total(stock).getOrDefault(needed,0)>0)return transfer(stock,needed,1,false,held);
             return acquire(needed,1);
         }
@@ -247,31 +252,49 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
         }
         return block("STORAGE_CAPACITY","No live slot/stack room for "+item+" x"+count);
     }
-    private Task begin(Action next){action=next;next.task.controller=controller;event("SCHEMATIC_ACTION","phase="+phase+" action="+next.kind+" item="+next.item+" inventoryTarget="+next.target+" depot="+next.index);return next.task;}
+    private List<Depot> inspectDepots()throws Exception {
+        List<Depot> depots=environment.depots();verifiedStock=Map.copyOf(total(depots));return depots;
+    }
+    private void reportMaterial(Action a,Map<String,Integer> inventory){
+        if(prepared||a.item==null||!required.containsKey(a.item))return;
+        int need=required.get(a.item),stored=verifiedStock.getOrDefault(a.item,0),carried=inventory.getOrDefault(a.item,0);
+        materialStatus="item="+a.item+" required="+need+" stored="+stored+" carried="+carried
+                +" remainingToGather="+Math.max(0,need-stored-carried)+(a.kind==Kind.ACQUIRE?" batchTarget=":" inventoryTarget=")+a.target
+                +" action="+a.kind+" stock=lastVerifiedChestScan";
+        event("SCHEMATIC_MATERIAL",materialStatus);
+    }
+    private Task begin(Action next)throws Exception {
+        action=next;materialStatus="";next.task.controller=controller;Map<String,Integer> inventory=environment.inventory();next.highWater.putAll(inventory);
+        event("SCHEMATIC_ACTION","phase="+phase+" action="+next.kind+" item="+next.item+" inventoryTarget="+next.target+" depot="+next.index);
+        reportMaterial(next,inventory);return next.task;
+    }
     private Task pollAction()throws Exception {
         Action a=action;environment.checkWorld();
         Map<String,Integer> inventory=environment.inventory();int held=a.item==null?0:inventory.getOrDefault(a.item,0);
         boolean gain=false;for(var e:inventory.entrySet())if(e.getValue()>a.highWater.getOrDefault(e.getKey(),0)){a.highWater.put(e.getKey(),e.getValue());gain=true;}
         a.idle=gain?0:a.idle+1;
+        List<Depot> depots=(a.kind==Kind.WITHDRAW||a.kind==Kind.DEPOSIT)?inspectDepots():List.of();
         boolean met=switch(a.kind){
             case ACQUIRE->held>=a.target;
-            case WITHDRAW->held>=a.target&&environment.depots().get(a.index).stock.getOrDefault(a.item,0)<=a.stockTarget;
-            case DEPOSIT->held<=a.target&&environment.depots().get(a.index).stock.getOrDefault(a.item,0)>=a.stockTarget;
+            case WITHDRAW->held>=a.target&&depots.get(a.index).stock.getOrDefault(a.item,0)<=a.stockTarget;
+            case DEPOSIT->held<=a.target&&depots.get(a.index).stock.getOrDefault(a.item,0)>=a.stockTarget;
             case PLACE->environment.depotPresent(a.index);
             case TRAVEL->environment.atDepot();
             case POST->environment.cellComplete(a.cell);
         };
         if(met){
             action=null;environment.checkpoint(prepared?"BUILDING":"PREPARING",layerIndex);
+            reportMaterial(a,inventory);
             event("SCHEMATIC_ACTION_VERIFIED",a.kind+" item="+a.item+" inventory="+held);return null;
         }
         boolean ended=a.task.stopped()||a.task.isFinished();
         if(ended&&(a.kind==Kind.POST||a.kind==Kind.PLACE)&&++a.endedTicks<=20)return null;
         if(++a.ticks>16000||a.idle>2400||ended){
             String nativeReason="";
-            try{nativeReason=String.valueOf(call(a.task,"getAggregatedFailureReason"));}catch(Exception ignored){}
+            try{Object detail=call(a.task,"getAggregatedFailureReason");nativeReason=detail instanceof Optional<?> optional?optional.map(Object::toString).orElse(""):String.valueOf(detail);}catch(Exception ignored){}
             if(a.kind==Kind.PLACE&&placementAlternatives++<2){environment.allocateDepot(a.index);action=null;return null;}
-            return block(a.kind.name(),"Native action ended or timed out without its postcondition; item="+a.item+" have="+held+" need="+a.target+" child="+a.task+" "+nativeReason);
+            reportMaterial(a,inventory);
+            return block(a.kind.name(),"Native action ended or timed out without its postcondition; "+(!materialStatus.isEmpty()?materialStatus+"; ":"")+"item="+a.item+" carried="+held+" batchTarget="+a.target+" child="+a.task+" "+nativeReason);
         }
         return a.task;
     }
@@ -287,7 +310,7 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
     public String controlledReason(){return reason;}
     protected void onStop(Task next){if(environment!=null)environment.close();if(!terminal){terminal=true;reason="BLOCKED_SCHEMATIC_INTERRUPTED: project stopped; deposited stock and placed blocks remain";event("SCHEMATIC_INTERRUPTED",reason);}}
     protected boolean isEqual(Task other){return other instanceof SchematicProjectTask t&&filename.equals(t.filename)&&origin.equals(t.origin)&&build==t.build;}
-    protected String toDebugString(){return terminal?reason:"Schematic "+(build?"build ":"prepare ")+filename+" "+phase+" layer="+layerIndex;}
+    protected String toDebugString(){return terminal?reason:"Schematic "+(build?"build ":"prepare ")+filename+" "+phase+" layer="+layerIndex+(materialStatus.isEmpty()?"":" "+materialStatus);}
     public boolean prepareForTransientResume(TaskSuspensionCause cause){return !terminal&&(cause==TaskSuspensionCause.GESTURE_OVERLAY||cause==TaskSuspensionCause.HIGHER_PRIORITY_CHAIN);}
     public void afterChildrenStopped(){try{if(environment!=null)environment.pauseBuilder();action=null;}catch(Exception e){block("SUSPENSION",e.getMessage());}}
     public void onTransientResumeAbandoned(){block("INTERRUPTION","Transient resume abandoned");}
