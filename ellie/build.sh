@@ -278,3 +278,12 @@ mkdir -p build/p0-testclasses
 javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/p0-testclasses tests/P0ReliabilityRegression.java
 java -Xverify:all -cp build/p0-testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar P0ReliabilityRegression
 python3 tests/verify_p0_packaging.py
+
+# WHITE CARPET RESOURCE P0: post-P0, preserve all historical class hashes.
+# Override ONLY schematic white_carpet acquire: shears -> native white wool ->
+# verified two-wool/three-carpet crafting; do not choose 128 spider string.
+python3 tools/apply_carpet_route.py
+mkdir -p build/carpet-route-testclasses
+javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/carpet-route-testclasses tests/CarpetWoolRouteRegression.java
+java -Xverify:all -cp build/carpet-route-testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar CarpetWoolRouteRegression
+python3 tests/verify_carpet_packaging.py
