@@ -119,6 +119,13 @@ public final class SchematicWhiteCarpetAcquisition extends Task {
         item.setAccessible(true);
         Object wool=item.invoke(environment,"minecraft:white_wool");
         Object carpet=item.invoke(environment,"minecraft:white_carpet");
+        return directCraftTask(wool,carpet,amount);
+    }
+
+    /** Exposed for checks against actual Minecraft 1.21.1 item registries. */
+    public static Task directCraftTask(Object wool,Object carpet,int amount)throws Exception {
+        if(wool==null||carpet==null||amount<1||amount>64)
+            throw new IllegalArgumentException("Invalid wool/carpet recipe inputs");
         String type=PREFIX+"util.ItemTarget";
         Object required=FoodAcquisition.construct(type,wool,1);
         Object slots=Array.newInstance(Class.forName(type),4);
