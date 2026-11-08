@@ -33,9 +33,10 @@ One callback per controller/world avoids accumulating duplicate guards.
 ## Exact binary changes
 
 `ellie/tools/apply_p0_hotfix.py` runs after the verified prior hotfixes.
-It pins the input hashes and permits exactly three production class edits:
+It pins the input hashes and permits exactly four production class edits:
 
 - `CraftWithMatchingMaterialsTask.class`
+- `CraftWithMatchingPlanksTask.class`
 - `SchematicWorld.class`
 - `SchematicProjectTask.class`
 
@@ -48,6 +49,44 @@ storage/stop patches, must remain byte-identical.
 count conversion, runtime tracker reads, retained guard after simulated
 stop, per-world release and new depot updates. The existing native test
 suite and `tests/verify_p0_packaging.py` check final packaged call sites.
+
+## Live recurrence: 2026-11-08 22:17–22:23 local time
+
+The P0 candidate built from `b3531a45` **did improve** the first
+plank-acquisition failure, but still stalled before crafting any trapdoors.
+The actual released class version is proved by the Minecraft log's
+`BUILD_IDENTITY` event.
+
+New event sequence:
+- The original missing-planks request of 92 no longer repeats. Ellie gathers
+  and crafts plank stock, reaching 188 oak planks, with one oak log remaining.
+- From 22:20:03 until the 22:23:21 timeout, the native child remains
+  `Crafting 1 planks [minecraft:oak_planks]`, with 188 planks held and
+  zero oak trapdoors produced.
+- At 22:23:21, `SharedTargetRecovery` reports no verified resource/world
+  output for 2,400 ticks and blocks the schematic. This was a watchdog stop
+  *after* the acquisition stalled, not an origin of the deadlock.
+- No `agentic deposit` or chest-destruction sequence occurred in this run.
+
+**Confirmed second callsite in the packaged 1.21.1 bytecode:**
+`CraftWithMatchingPlanksTask.getSpecificSameResourceTask()` invokes
+`TaskCatalogue.getItemTask(plankItem, 1)` whenever it has a matching log.
+That API expects a TOTAL inventory target, not a request for one more item.
+With 188 existing planks, an absolute target of one is already satisfied.
+The delegate returns without converting the remaining log and the parent
+repeats indefinitely. The parent knows the log's four-plank potential,
+but cannot move it from potential to actual stock.
+
+**Second P0 correction:** add a narrowly-pinned callsite patch
+`PatchSpecificPlankTarget.java` that reads live inventory of the selected
+plank item and requests `held + 1` rather than absolute `1`.
+In this live reproduction, 188 + 1 = 189, so the existing native
+`CollectPlanksTask` converts one log to four planks, reaching at least 192,
+the actual requirement for 64 trapdoors. No item grant or new crafting task
+is involved.
+
+Regression includes the 188-plank state and native bytecode check.
+This specific follow-up still requires a fresh in-game acceptance test.
 
 ## Important limits
 
