@@ -268,3 +268,13 @@ mkdir -p build/storage-recovery-testclasses
 javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/storage-recovery-testclasses tests/StorageRecoveryRegression.java
 java -Xverify:all -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar:build/storage-recovery-testclasses StorageRecoveryRegression
 python3 tests/verify_v18_hotfix_packaging.py
+
+# P0 LIVE-INCIDENT FIXES. Apply only after the frozen v18.3 release and both
+# preceding runtime hotfixes have passed their original release checks.
+# These overlays preserve source history while patching the pinned native
+# matching-plank task and retaining schematic chest protection across stop().
+python3 tools/apply_p0_hotfix.py
+mkdir -p build/p0-testclasses
+javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/p0-testclasses tests/P0ReliabilityRegression.java
+java -Xverify:all -cp build/p0-testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar P0ReliabilityRegression
+python3 tests/verify_p0_packaging.py
