@@ -25,14 +25,20 @@ with ZipFile(jar) as z:
     for directory in ('classes','patches'):
         for p in (root/'build'/directory).rglob('*.class'):
             expected[p.relative_to(root/'build'/directory).as_posix()]=p.read_bytes()
-    # The GitHub release build applies two reviewed v18.3 binary hotfixes AFTER
+    # The GitHub release build applies two reviewed v18.3 binary hotfixes plus the P0 overlay AFTER
     # historical compile/scope checks. Accept only the known-good replacement
     # for the schematic coordinator, never an arbitrary class mismatch.
     reviewed_hotfixes={
         'com/player2/playerengine/tasks/base/Task.class':
             '164d10015b94591bd5cf4ecd833bc1212e5761f58ea628ba531c1e591c2a5637',
         'com/player2/playerengine/schematic/SchematicProjectTask.class':
-            'd56fe212cec636b67af2c93dc81e4e5c07a9066ef739204dec7181ca4be69956',
+            'f605c5275c746f93e6c5fdaefd632c17f36b13fa2d0832426c5f366b71cf7c5f',
+        'com/player2/playerengine/schematic/SchematicWorld.class':
+            'ae14bf7a89033bdfdc202f1b19db12e42b536b3e34fab1a1f93d74d66e6080fc',
+        'com/player2/playerengine/tasks/resources/CraftWithMatchingMaterialsTask.class':
+            'f36e362ee7cd35d3e89b9122943fda5a5d4eaa1c759405c60f33165ce0f75c83',
+        'com/player2/playerengine/tasks/resources/CraftWithMatchingPlanksTask.class':
+            'c7c3f19f0a1758255e585626504552b66b0fe716ace1882f82a9c7f66f2d0a30',
     }
     for name,data in expected.items():
         packaged=z.read(name)
