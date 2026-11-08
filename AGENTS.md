@@ -7,10 +7,13 @@ This repository contains **two distinct code lines**:
   release code and tests built by `bash ellie/build.sh`.
 
 Do NOT use old `main` as the latest active Ellie 1.21.1 implementation.
-Before editing, inspect the active series of PRs and their target branches,
-starting with PR #24 (v18.3 schematic acquisition) and PR #25 (lifecycle +
-storage reconciliation). New Ellie work must preserve the combined lineage
-or explicitly rebase it and verify the same runtime class outputs.
+Before editing, inspect the active series of PRs and their target branches.
+As of 2026-11-08: PR #24 owns the v18.3 schematic acquisition branch; PR #25
+(lifecycle and storage reconciliation) is MERGED into that branch. PR #26
+(P0 crafting shortfall and retained schematic depot protection) is the current
+development head on branch `fix/ellie-v18-3-p0-crafting-protected-storage-20261108`.
+New Ellie work must preserve this combined lineage, not branch from old `main`
+or omit any unmerged P0 work. Check live PR/branch state for newer changes.
 
 ## Mandatory JAR-to-GitHub handoff (every new build, including hotfixes)
 
@@ -81,8 +84,10 @@ See `docs/ELLIE_RELEASE_HANDOFF.md` for the current detailed workflow.
    in-game success. Keep the hotfix PR in draft until CI passes; keep live
    gameplay claims separate.
 
-Read `docs/ELLIE_V18_3_LIFECYCLE_STORAGE_SYNC.md` for the active baseline,
-dependency/merge order, known limitations, and clay-removal reproduction.
+Read `docs/ELLIE_V18_3_LIFECYCLE_STORAGE_SYNC.md` for earlier hotfixes;
+read `docs/ELLIE_P0_CRAFTING_DEPOT_20261108.md` for the current PR #26
+P0 diagnosis, production patch boundaries, tests, and live-world limitations.
+Do not silently replace either tested P0 patcher with old native classes.
 
 For any code change to task shutdown, inventory, native transfers,
 schematics, or the release pipeline, run the complete Ellie build and verify
