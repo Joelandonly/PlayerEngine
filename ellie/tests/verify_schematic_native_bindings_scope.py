@@ -16,4 +16,4 @@ with ZipFile(root / 'dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-
     assert sum(n.endswith('.class') for n in names) == receipt['unchanged_classes']
     assert digest.hexdigest() == receipt['unchanged_sha256'], 'An unrelated v18.1 entry changed'
     assert allowed <= set(jar.namelist())
-print(f"Native bindings hotfix scope: {len(names)} entries, including {receipt['unchanged_classes']} classes, byte-identical to v18.1; only FoodAcquisition.class and build identity may change")
+print(f"Native bindings hotfix scope: {len(names)} entries, including {receipt['unchanged_classes']} classes, byte-identical to v18.1; reviewed changes are listed in the receipt; v18.3 separately freezes other v18.2 entries")

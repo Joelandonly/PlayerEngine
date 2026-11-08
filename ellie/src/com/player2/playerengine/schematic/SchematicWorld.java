@@ -239,9 +239,17 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
     public Map<String,Integer> inventory()throws Exception {Map<String,Integer> result=new TreeMap<>();for(var e:FoodAcquisition.inventory(controller).entrySet())result.merge(idOfItem(e.getKey()),e.getValue(),Math::addExact);return result;}
     public int freeSlots()throws Exception {var snapshot=com.player2.playerengine.agentic.InventorySpace.inspect(controller);if(!snapshot.known())throw new IllegalStateException("Actual main inventory slots unavailable");return snapshot.free();}
     public Task acquire(String id,int target)throws Exception {
+        Optional<Task> known=com.player2.playerengine.agentic.ResourceAgenticIntegration.nativeAcquisition(id,target);
+        if(known.isPresent()){
+            report("SCHEMATIC_ACQUISITION","item="+id+" inventoryTarget="+target+" route=native_catalogue worker="+known.get().getClass().getSimpleName());
+            return known.get();
+        }
         Object itemTarget=FoodAcquisition.construct(P+"util.ItemTarget",item(id),target);
         Object probe=callStatic(P+"tasks.crafting.CraftMacroTasks","macroOutcome",controller,itemTarget);
-        if(String.valueOf(call(probe,"outcome")).equals("MACRO_CREATED"))return (Task)call(probe,"task");
+        if(String.valueOf(call(probe,"outcome")).equals("MACRO_CREATED")){
+            report("SCHEMATIC_ACQUISITION","item="+id+" inventoryTarget="+target+" route=dynamic_recipe");
+            return (Task)call(probe,"task");
+        }
         Object nativeTask=callStatic(P+"TaskCatalogue","getItemTask",itemTarget);
         if(nativeTask instanceof Task t)return t;
         throw new IllegalStateException("BLOCKED_ACQUISITION_UNSUPPORTED: no enabled recipe/catalogue acquisition for "+id);
@@ -338,7 +346,7 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
         if(!journal.isPersistent())throw new IllegalStateException("Project checkpoint unavailable: "+journal.error());
     }
     public void verified(String evidence){SharedTargetRecovery.verifiedWorldOutput(controller,evidence);}
-    public void report(String event,String detail){ObservatoryTelemetry.set("schematicProject",detail);if(event.equals("SCHEMATIC_SITE_WARNING")||event.equals("SCHEMATIC_SITE_CLEAR"))ObservatoryTelemetry.set("schematicBuildSite",detail);ObservatoryTelemetry.event(event,detail);System.out.println("[EllieSchematic] "+event+": "+detail);if(event.equals("SCHEMATIC_PREPARED")||event.equals("SCHEMATIC_COMPLETED")||event.equals("SCHEMATIC_BLOCKED")||event.equals("SCHEMATIC_SITE_WARNING"))try{call(controller,"reportAgenticProgress",detail,true);}catch(Exception ignored){}}
+    public void report(String event,String detail){ObservatoryTelemetry.set("schematicProject",detail);if(event.equals("SCHEMATIC_MATERIAL"))ObservatoryTelemetry.set("schematicMaterials",detail);if(event.equals("SCHEMATIC_SITE_WARNING")||event.equals("SCHEMATIC_SITE_CLEAR"))ObservatoryTelemetry.set("schematicBuildSite",detail);ObservatoryTelemetry.event(event,detail);System.out.println("[EllieSchematic] "+event+": "+detail);if(event.equals("SCHEMATIC_PREPARED")||event.equals("SCHEMATIC_COMPLETED")||event.equals("SCHEMATIC_BLOCKED")||event.equals("SCHEMATIC_SITE_WARNING"))try{call(controller,"reportAgenticProgress",detail,true);}catch(Exception ignored){}}
     public void close(){
         if(closed)return;
         try{pauseBuilder();}catch(Exception e){report("SCHEMATIC_CLEANUP",e.getMessage());}

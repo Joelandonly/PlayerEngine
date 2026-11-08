@@ -26,6 +26,12 @@ public final class VerifySchematicProjects implements Opcodes {
    }check(added==2&&NativeMethodShape.equivalent(b,o),"original placement context injections changed");
    b=read(built,P+"PlayerEngineCommands");Set<String> registered=new HashSet<>();for(MethodNode m:b.methods)for(AbstractInsnNode n:m.instructions)if(n instanceof TypeInsnNode t&&t.getOpcode()==NEW)registered.add(t.desc);
    for(String name:List.of("PrepareSchematicCommand","BuildSchematicCommand"))check(registered.contains(P+"commands/"+name),"new command not registered");
+   b=read(built,P+"schematic/SchematicWorld");boolean nativeFirst=false;
+   for(MethodNode m:b.methods)if(m.name.equals("acquire"))for(AbstractInsnNode n:m.instructions)if(n instanceof MethodInsnNode c){
+    if(c.owner.equals(P+"agentic/ResourceAgenticIntegration")&&c.name.equals("nativeAcquisition"))nativeFirst=true;
+    if(c.owner.equals(P+"tasks/crafting/CraftMacroTasks")&&c.name.equals("macroOutcome"))check(nativeFirst,"dynamic macro must not precede shared native acquisition");
+   }check(nativeFirst,"shared native acquisition absent");
+   b=read(built,P+"agentic/ResourceAgenticIntegration");check(b.methods.stream().filter(m->m.name.equals("task")).anyMatch(m->Arrays.stream(m.instructions.toArray()).anyMatch(n->n instanceof MethodInsnNode c&&c.name.equals("nativeAcquisition"))),"agentic and schematics must delegate to the same acquisition function");
    check(built.stream().noneMatch(e->e.getName().startsWith("org/slf4j/")||e.getName().startsWith("net/minecraft/")),"test game/logger boundary leaked");
    System.out.println("Schematic packaged hooks verified: 3 scoped builder hooks, 2 context overrides, commands registered; all original builder bodies/context injections preserved");
   }

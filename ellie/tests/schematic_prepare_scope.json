@@ -8,10 +8,13 @@
     "com/player2/playerengine/schematic/SchematicProjectTask$Kind.class",
     "com/player2/playerengine/schematic/SchematicWorld.class",
     "com/player2/playerengine/schematic/SchematicWorld$DepotPlacement.class",
-    "com/player2/playerengine/reliability/FoodAcquisition.class"
+    "com/player2/playerengine/reliability/FoodAcquisition.class",
+    "com/player2/playerengine/agentic/ResourceAgenticIntegration.class",
+    "com/player2/playerengine/tasks/crafting/CraftMacroResourceTask.class"
   ],
   "new_classes": [],
-  "unchanged_classes": 1895,
-  "unchanged_sha256": "c6f09d70ab7d7a41f207d4ba46a02cf3fbc6522c136ac3b53f35c8713a5abc72",
-  "v18_2_extension": "Shared constructor resolver only; schematic_native_bindings_scope.json separately freezes every other v18.1 entry."
+  "unchanged_classes": 1893,
+  "unchanged_sha256": "7e2b61738fad09ce6b6bf3f9c9db39f1bdc9f73c7a483d5deb44113b06c5d963",
+  "v18_2_extension": "Shared constructor resolver only; schematic_native_bindings_scope.json separately freezes every other v18.1 entry.",
+  "v18_3_extension": "Shared native acquisition, schematic material reporting and bounded macro handoff; schematic_acquisition_scope.json freezes every other v18.2 entry."
 }

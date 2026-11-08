@@ -60,8 +60,15 @@ public final class ResourceAgenticIntegration {
  private static Optional<Task> task(AgenticStepSpec step,AgenticExecutionContext ctx){
   try{
    String item=step.args().get("item");int count=Integer.parseInt(step.args().getOrDefault("count","1"));
+   return nativeAcquisition(item,count);
+  }catch(Exception | LinkageError failure){return Optional.empty();}
+ }
+ /** Shared native recipe lookup; callers retain their own task ownership and postconditions. */
+ public static Optional<Task> nativeAcquisition(String item,int count){
+  try{
+   if(item!=null&&item.startsWith("minecraft:"))item=item.substring(10);
    if(item==null||!item.matches("[a-z0-9_]{2,56}")||count<1||count>MAX_RESOURCE_COUNT||!Boolean.TRUE.equals(com.player2.playerengine.nativecommands.NativeAccess.callStatic("com.player2.playerengine.TaskCatalogue","taskExists",item)))return Optional.empty();
-   Task task=(Task)com.player2.playerengine.nativecommands.NativeAccess.callStatic("com.player2.playerengine.TaskCatalogue","getItemTask",item,count);return Optional.ofNullable(task);
+   return Optional.ofNullable((Task)com.player2.playerengine.nativecommands.NativeAccess.callStatic("com.player2.playerengine.TaskCatalogue","getItemTask",item,count));
   }catch(Exception | LinkageError failure){return Optional.empty();}
  }
 }

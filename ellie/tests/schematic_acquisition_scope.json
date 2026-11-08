@@ -1,0 +1,16 @@
+{
+  "source_revision": "2ec5b451c27c83f4fc550dd51593ac8674681cd0",
+  "v18_2_jar_sha256": "ab58bc1c2c9e26d7070f3516690965f1dba4798cf934ecca141f463db0821aeb",
+  "allowed_changes": [
+    "com/player2/playerengine/agentic/ResourceAgenticIntegration.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask.class",
+    "com/player2/playerengine/schematic/SchematicWorld.class",
+    "com/player2/playerengine/schematic/SchematicWorld$DepotPlacement.class",
+    "com/player2/playerengine/tasks/crafting/CraftMacroResourceTask.class",
+    "META-INF/ELLIE_BUILD.json",
+    "META-INF/ELLIE_BUILD_REVISION.txt"
+  ],
+  "unchanged_entries": 1927,
+  "unchanged_classes": 1897,
+  "unchanged_sha256": "211dbd85c6e95dbf1aa5ab4164017d61a42bc088b98e735c5d78bdd44e2779b9"
+}

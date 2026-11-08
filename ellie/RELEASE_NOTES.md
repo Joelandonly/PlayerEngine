@@ -1,3 +1,16 @@
+# v18.3 — shared acquisition and truthful schematic stock progress
+
+- Share the existing native catalogue lookup between agentic resource requests
+  and schematic preparation; keep the same owning task and dynamic fallback.
+- Repair the shared macro's false convergence failure at the transition from
+  ingredient gathering to crafting, with a finite handoff allowance.
+- Show required/stored/carried/remaining quantities and verify all transfers
+  against actual storage. Retain staged supplies and recipe surplus on restart.
+- Add packaged convergence, real-game catalogue and full coordinator regressions.
+  Freeze all 32 setup hashes and all 1,897 unrelated v18.2 classes/resources.
+- Live NPC gathering, recipe execution, storage UI, movement and construction
+  remain unverified. See [scope and validation](../docs/ELLIE_SCHEMATIC_ACQUISITION_V18_3.md).
+
 # v18.2 — shared native constructor bindings
 
 - Fix primitive boolean arguments rejected by the shared constructor resolver.

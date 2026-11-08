@@ -4,9 +4,15 @@
   "allowed_changes": [
     "com/player2/playerengine/reliability/FoodAcquisition.class",
     "META-INF/ELLIE_BUILD.json",
-    "META-INF/ELLIE_BUILD_REVISION.txt"
+    "META-INF/ELLIE_BUILD_REVISION.txt",
+    "com/player2/playerengine/agentic/ResourceAgenticIntegration.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask.class",
+    "com/player2/playerengine/schematic/SchematicWorld.class",
+    "com/player2/playerengine/schematic/SchematicWorld$DepotPlacement.class",
+    "com/player2/playerengine/tasks/crafting/CraftMacroResourceTask.class"
   ],
-  "unchanged_entries": 1931,
-  "unchanged_classes": 1901,
-  "unchanged_sha256": "093ca31f2b0c6522d10c803b1d6c223b11a2995d27b1c34bd165879b241f6639"
+  "unchanged_entries": 1926,
+  "unchanged_classes": 1896,
+  "unchanged_sha256": "00edbc47faa85584436eb5852884333ae4f83dbfc0cf8a42d1534e4fe85966a9",
+  "v18_3_extension": "Shared native acquisition, schematic material reporting and bounded macro handoff; schematic_acquisition_scope.json freezes every other v18.2 entry."
 }

@@ -1,8 +1,8 @@
 {
   "source_revision": "41d57410d912eb77dca72291bd76167f77ad4a4d",
   "v16_jar_sha256": "3c3645781fa778b5dd24e9866f22cba32d94be2e7166ba3957b133fa0c390963",
-  "unchanged_classes": 1870,
-  "unchanged_sha256": "8e71f9af3c317acc5d335a053f26db5880e4d96f558973e954cf4ee9de2d7b79",
+  "unchanged_classes": 1868,
+  "unchanged_sha256": "6c5166b1ccba57464aa08f02796c621c1f21463d628e66c5acd812d08fddaf31",
   "allowed_existing_changes": [
     "com/player2/playerengine/automaton/utils/player/EntityContext.class",
     "com/player2/playerengine/automaton/pathing/movement/MovementHelper.class",
@@ -15,7 +15,12 @@
     "com/player2/playerengine/agentic/StorageIntelligence.class",
     "com/player2/playerengine/reliability/WorkshopPlacement.class",
     "com/player2/playerengine/reliability/SharedTargetRecovery.class",
-    "com/player2/playerengine/reliability/FoodAcquisition.class"
+    "com/player2/playerengine/reliability/FoodAcquisition.class",
+    "com/player2/playerengine/agentic/ResourceAgenticIntegration.class",
+    "com/player2/playerengine/schematic/SchematicProjectTask.class",
+    "com/player2/playerengine/schematic/SchematicWorld.class",
+    "com/player2/playerengine/schematic/SchematicWorld$DepotPlacement.class",
+    "com/player2/playerengine/tasks/crafting/CraftMacroResourceTask.class"
   ],
   "new_classes": [
     "com/player2/playerengine/reliability/PartialBlockSupport.class",
@@ -40,5 +45,6 @@
     "com/player2/playerengine/schematic/SchematicFiles$RegionData.class"
   ],
   "extension": "v18 excludes seven reviewed schematic integration classes and eighteen new feature classes; schematic_scope.json separately freezes all other v17 classes.",
-  "v18_2_extension": "Shared constructor resolver only; schematic_native_bindings_scope.json separately freezes every other v18.1 entry."
+  "v18_2_extension": "Shared constructor resolver only; schematic_native_bindings_scope.json separately freezes every other v18.1 entry.",
+  "v18_3_extension": "Shared native acquisition, schematic material reporting and bounded macro handoff; schematic_acquisition_scope.json freezes every other v18.2 entry."
 }

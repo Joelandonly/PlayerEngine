@@ -77,7 +77,8 @@ jobs:
           cp ../docs/ELLIE_SCHEMATIC_PROJECTS_V18.md build/install/smoke-test/README.md
           cp ../docs/ELLIE_SCHEMATIC_PREPARE_V18_1.md build/install/smoke-test/PREPARE-HOTFIX.md
           cp ../docs/ELLIE_SCHEMATIC_NATIVE_BINDINGS_V18_2.md build/install/smoke-test/NATIVE-BINDINGS-HOTFIX.md
-          cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar "build/install/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SchematicNativeBindings-${ELLIE_REVISION:0:7}-UNVERIFIED.jar"
+          cp ../docs/ELLIE_SCHEMATIC_ACQUISITION_V18_3.md build/install/smoke-test/ACQUISITION-HOTFIX.md
+          cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar "build/install/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-SchematicAcquisition-${ELLIE_REVISION:0:7}-UNVERIFIED.jar"
           (cd build/install && sha256sum *.jar > SHA256SUMS.txt)
       - name: Upload installable Ellie JAR
         uses: actions/upload-artifact@v4
