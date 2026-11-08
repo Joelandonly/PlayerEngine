@@ -55,7 +55,32 @@ public final class NativeSchematicBindingsTest {
    if(id.equals("cobblestone_slab"))check(shared.getClass().getSimpleName().equals("CraftInTableTask"),"slabs choose the owner-tested native table worker");
   }
   check(ResourceAgenticIntegration.nativeAcquisition("not_an_actual_item",64).isEmpty(),"unknown catalogue item remains eligible for explicit recipe fallback");
-  check(ResourceAgenticIntegration.nativeAcquisition("minecraft:white_carpet",48).isEmpty(),"this pinned catalogue lacks the exact white carpet name; retain dynamic recipe fallback rather than substituting another item");
+  check(ResourceAgenticIntegration.nativeAcquisition("minecraft:white_carpet",48).isEmpty(),
+    "the pinned native catalogue lacks a direct white carpet worker");
+  Task shearsWorker=ResourceAgenticIntegration.nativeAcquisition("minecraft:shears",1)
+    .orElseThrow(()->new AssertionError("wool-first route needs native shears acquisition"));
+  Task woolWorker=ResourceAgenticIntegration.nativeAcquisition("minecraft:white_wool",32)
+    .orElseThrow(()->new AssertionError("wool-first route needs native white wool acquisition"));
+  check(shearsWorker instanceof Task,"shears use the existing native resource runner");
+  check(woolWorker.getClass().getSimpleName().equals("CollectWoolTask"),
+    "white wool must use native sheep/wool acquisition rather than 128 string");
+  Object wool=registered("field_41178","minecraft:white_wool");
+  Object carpet=registered("field_41178","minecraft:white_carpet");
+  Task carpetWorker=com.player2.playerengine.schematic.SchematicWhiteCarpetAcquisition
+    .directCraftTask(wool,carpet,48);
+  check(carpetWorker.getClass().getSimpleName().equals("CraftInInventoryTask"),
+    "native 2x2 carpet crafting bypasses the generic string macro");
+  Object recipeTarget=get(carpetWorker,"target");
+  Object recipe=call(recipeTarget,"getRecipe");
+  check(((Number)call(recipe,"outputCount")).intValue()==3 &&
+    ((Number)call(recipe,"getSlotCount")).intValue()==4,
+    "native carpet recipe must output three from a 2x2 inventory crafting grid");
+  Object first=call(recipe,"getSlot",0),second=call(recipe,"getSlot",1);
+  check(((Object[])call(first,"getMatches"))[0]==wool &&
+    ((Object[])call(second,"getMatches"))[0]==wool,
+    "only registered white wool may satisfy the explicit carpet recipe");
+  check(Boolean.FALSE.equals(get(carpetWorker,"collect")),
+    "crafting stage must not recursively collect string or choose another recipe");
   check(ResourceAgenticIntegration.nativeAcquisition("minecraft:cobblestone_slab",0).isEmpty()&&ResourceAgenticIntegration.nativeAcquisition("minecraft:cobblestone_slab",577).isEmpty(),"invalid native batch counts are rejected");
   System.out.println("NativeSchematicBindingsTest: "+checks+" checks using actual Minecraft 1.21.1 and packaged task constructors; no world/NPC execution or gameplay claim");
  }
