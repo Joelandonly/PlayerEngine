@@ -29,6 +29,8 @@ with ZipFile(jar) as z:
     # historical compile/scope checks. Accept only the known-good replacement
     # for the schematic coordinator, never an arbitrary class mismatch.
     reviewed_hotfixes={
+        'com/player2/playerengine/tasks/base/Task.class':
+            '164d10015b94591bd5cf4ecd833bc1212e5761f58ea628ba531c1e591c2a5637',
         'com/player2/playerengine/schematic/SchematicProjectTask.class':
             'd56fe212cec636b67af2c93dc81e4e5c07a9066ef739204dec7181ca4be69956',
     }
