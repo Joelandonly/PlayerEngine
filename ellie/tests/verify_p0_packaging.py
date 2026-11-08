@@ -17,6 +17,16 @@ with ZipFile(JAR) as z:
  assert z.testzip() is None,"Corrupt output JAR"
  assert len(names)==1940 and len(names)==len(set(names)),"Expected precisely three new P0 helper classes"
  assert EXPECTED_NEW <= set(names), "Missing P0 helper"
+ pinned={
+  "com/player2/playerengine/tasks/resources/CraftWithMatchingMaterialsTask.class":
+   "f36e362ee7cd35d3e89b9122943fda5a5d4eaa1c759405c60f33165ce0f75c83",
+  "com/player2/playerengine/schematic/SchematicWorld.class":
+   "ae14bf7a89033bdfdc202f1b19db12e42b536b3e34fab1a1f93d74d66e6080fc",
+  "com/player2/playerengine/schematic/SchematicProjectTask.class":
+   "f605c5275c746f93e6c5fdaefd632c17f36b13fa2d0832426c5f366b71cf7c5f",
+ }
+ for name,expected in pinned.items():
+  assert sha256(z.read(name)).hexdigest()==expected,"Unexpected P0 bytecode: "+name
  assert sha256(z.read("com/player2/playerengine/tasks/base/Task.class")).hexdigest()==(
   "164d10015b94591bd5cf4ecd833bc1212e5761f58ea628ba531c1e591c2a5637"
  ),"Previous stop reentrancy fix was lost"
