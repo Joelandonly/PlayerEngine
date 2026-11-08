@@ -32,7 +32,7 @@ public final class PlankTargetReconciliation {
             Object matches=call(sameResourceTarget,"getMatches");
             int held=((Number)call(tracker,"getItemCount",matches)).intValue();
             return absoluteCount(held,shortfall);
-        } catch (ReflectiveOperationException exception) {
+        } catch (Exception exception) {
             throw new IllegalStateException("Cannot verify native plank inventory before re-targeting",exception);
         }
     }
