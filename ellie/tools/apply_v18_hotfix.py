@@ -8,6 +8,7 @@ actually include both the tested lifecycle and chest-state changes.
 from __future__ import annotations
 
 import hashlib
+from copy import copy
 import subprocess
 import tempfile
 from pathlib import Path
@@ -85,7 +86,7 @@ def main():
             try:
                 with ZipFile(temporary, "w") as target:
                     for entry in original.infolist():
-                        target.writestr(entry, modified.get(entry.filename, original.read(entry)))
+                        target.writestr(copy(entry), modified.get(entry.filename, original.read(entry)))
                     for name in sorted(new):
                         target.writestr(name, new[name])
                 with ZipFile(temporary) as patched:
