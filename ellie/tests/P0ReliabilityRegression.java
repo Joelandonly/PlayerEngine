@@ -56,6 +56,18 @@ public final class P0ReliabilityRegression {
         ctrl.storage.planks=120;
         check(PlankTargetReconciliation.absoluteTarget(ctrl,new FakeMatch(),72)==192,
             "live inventory change must affect absolute target");
+
+        // Real 2026-11-08 recurrence: the generic 92-plank loop was fixed,
+        // but the native specific-plank fallback still requested target=1.
+        ctrl.storage.planks=188;
+        check(PlankTargetReconciliation.absoluteTargetForItem(ctrl,"minecraft:oak_planks",1)==189,
+            "188 held + one additional plank must target 189, not absolute 1");
+        check(188/6*2<64,"188 planks must not falsely satisfy 64 trapdoors");
+        // One log yields four more planks, bringing stock to 192.
+        ctrl.storage.planks=192;
+        check(192/6*2>=64,"one log should complete material bill for 64 trapdoors");
+        check(PlankTargetReconciliation.absoluteTargetForItem(ctrl,"minecraft:oak_planks",1)==193,
+            "specific handoff must use current inventory after crafting");
         try {PlankTargetReconciliation.absoluteCount(-1,2);throw new AssertionError("negative inventory accepted");}
         catch(IllegalArgumentException expected){checked++;}
         try {PlankTargetReconciliation.absoluteCount(12,0);throw new AssertionError("zero deficit accepted");}
