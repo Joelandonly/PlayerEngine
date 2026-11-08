@@ -22,16 +22,16 @@ public final class StorageRecoveryBytecodePatch implements Opcodes {
         while (first != null && first.getOpcode() < 0) first = first.getNext();
         if (!(first instanceof VarInsnNode v) || first.getOpcode() != ALOAD || v.var != 0)
             throw new IllegalStateException("Unexpected block() entry");
-        LabelNode original = new LabelNode();
+        LabelNode originalBlock = new LabelNode();
         InsnList guard = new InsnList();
         guard.add(new VarInsnNode(ALOAD,0));
         guard.add(new VarInsnNode(ALOAD,1));
         guard.add(new VarInsnNode(ALOAD,2));
         guard.add(new MethodInsnNode(INVOKESTATIC, HELPER, "interceptBlock", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;)Z", false));
-        guard.add(new JumpInsnNode(IFEQ,original));
+        guard.add(new JumpInsnNode(IFEQ,originalBlock));
         guard.add(new InsnNode(ACONST_NULL));
         guard.add(new InsnNode(ARETURN));
-        guard.add(original);
+        guard.add(originalBlock);
         guard.add(new FrameNode(F_SAME,0,null,0,null));
         block.instructions.insert(guard);
 
