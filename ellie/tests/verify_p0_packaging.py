@@ -36,11 +36,13 @@ with ZipFile(JAR) as z:
 for classname,hook in [
  ("com.player2.playerengine.tasks.resources.CraftWithMatchingMaterialsTask",
   "PlankTargetReconciliation.absoluteTarget"),
+ ("com.player2.playerengine.tasks.resources.CraftWithMatchingPlanksTask",
+  "PlankTargetReconciliation.absoluteTargetForItem"),
  ("com.player2.playerengine.schematic.SchematicWorld","SchematicDepotGuard.retain"),
  ("com.player2.playerengine.schematic.SchematicProjectTask","SchematicDepotGuard.protects"),
 ]:
  proc=subprocess.run(["javap","-p","-c","-classpath",str(JAR),classname],
   capture_output=True,text=True,check=True)
  assert hook in proc.stdout, f"Missing production hook {hook} in {classname}"
-print("PASS P0 final packaged bytecode: native plank target, durable chest registration and reserved-resource hook")
+print("PASS P0 final packaged bytecode: both native plank targets, durable chest registration and reserved-resource hook")
 print("PASS 1,940 JAR entries; stop-loop and 14-stage setup preserved")
