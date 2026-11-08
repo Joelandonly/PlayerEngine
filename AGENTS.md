@@ -8,12 +8,13 @@ This repository contains **two distinct code lines**:
 
 Do NOT use old `main` as the latest active Ellie 1.21.1 implementation.
 Before editing, inspect the active series of PRs and their target branches.
-As of 2026-11-08: PR #24 owns the v18.3 schematic acquisition branch; PR #25
+As of 2026-11-08: PR #24 owns v18.3 schematic acquisition; PR #25
 (lifecycle and storage reconciliation) is MERGED into that branch. PR #26
-(P0 crafting shortfall and retained schematic depot protection) is the current
-development head on branch `fix/ellie-v18-3-p0-crafting-protected-storage-20261108`.
-New Ellie work must preserve this combined lineage, not branch from old `main`
-or omit any unmerged P0 work. Check live PR/branch state for newer changes.
+(P0 plank shortfalls and depot protection) is DRAFT. PR #27 builds directly
+on PR #26 and is the current wool-first white-carpet development head on
+`fix/ellie-v18-3-white-carpet-wool-first-20261108`. New Ellie work
+must preserve both PR #26 and PR #27 changes, not start from old `main`.
+Check live PR/branch state for newer changes.
 
 ## Mandatory JAR-to-GitHub handoff (every new build, including hotfixes)
 
@@ -84,10 +85,11 @@ See `docs/ELLIE_RELEASE_HANDOFF.md` for the current detailed workflow.
    in-game success. Keep the hotfix PR in draft until CI passes; keep live
    gameplay claims separate.
 
-Read `docs/ELLIE_V18_3_LIFECYCLE_STORAGE_SYNC.md` for earlier hotfixes;
-read `docs/ELLIE_P0_CRAFTING_DEPOT_20261108.md` for the current PR #26
-P0 diagnosis, production patch boundaries, tests, and live-world limitations.
-Do not silently replace either tested P0 patcher with old native classes.
+Read `docs/ELLIE_V18_3_LIFECYCLE_STORAGE_SYNC.md` and
+`docs/ELLIE_P0_CRAFTING_DEPOT_20261108.md` for existing hotfixes;
+read `docs/ELLIE_WHITE_CARPET_WOOL_FIRST_20261108.md` for current PR #27,
+its exact release overlay scope and verified-vs-unverified boundaries.
+Do not silently replace any tested P0 patcher with old native classes.
 
 For any code change to task shutdown, inventory, native transfers,
 schematics, or the release pipeline, run the complete Ellie build and verify
