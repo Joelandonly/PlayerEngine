@@ -32,16 +32,27 @@ experiments and emergency hotfixes.
   (https://github.com/Joelandonly/PlayerEngine/actions/runs/42525515617).
   **Draft/unmerged.** Confirm final-head CI and live Minecraft before
   declaring the game fix validated.
+- PR #27, `fix/ellie-v18-3-white-carpet-wool-first-20261108`,
+  is the current DRAFT development head based on PR #26. The latest live
+  run of `620c200` acquired and staged many cobblestone batches, then
+  dynamically expanded 48 `white_carpet` into 128 `string`, repeatedly
+  approached spiders without verified loot and timed out after 2,400 ticks.
+  PR #27 adds a narrowly pinned white-carpet native route:
+  shears -> white wool -> actual 2-wool/3-carpet crafting, with no extra
+  scheduler or general combat overhaul. See
+  `docs/ELLIE_WHITE_CARPET_WOOL_FIRST_20261108.md`.
+  General mob-farming reliability remains a separate P1 investigation;
+  Minecraft navigation and survival behavior are not validated by CI.
 - **Live-world evidence still outstanding:** the 64 oak trapdoors must
   actually craft past the 92-plank loop, and a manual `agentic deposit`
   replacement must not destroy the staged project chests. The prior
   full-chest failure and the general command-replacement/resume behavior
   have not been declared solved by isolated tests.
 
-**Current development starting point:** inspect PR #26 and latest CI first.
-Preserve all merged PR #25 fixes and all reviewed P0 patches; do not start from old
-`main`. The active branch is
-`fix/ellie-v18-3-p0-crafting-protected-storage-20261108`.
+**Current development starting point:** inspect PR #27 and latest CI first.
+Preserve all merged PR #25 fixes and unmerged PR #26 patches; do not start
+from old `main`. Active branch:
+`fix/ellie-v18-3-white-carpet-wool-first-20261108`.
 Future commits and releases must update their exact SHA and artifact link.
 
 ## How to create a release
