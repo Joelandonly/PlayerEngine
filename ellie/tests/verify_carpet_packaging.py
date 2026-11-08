@@ -23,8 +23,14 @@ with ZipFile(JAR) as archive:
  assert archive.testzip() is None,"corrupt final carpet JAR"
  assert len(set(names))==len(names),"duplicate class file in output"
  additions=[n for n in names if n.startswith(CARPET) and n.endswith(".class")]
- assert len(additions) in (2,3) and CARPET+".class" in additions,additions
- assert len(names)==1940+len(additions),"carpet patch added out-of-scope entries"
+ assert set(additions)=={
+  CARPET+".class",
+  CARPET+"$Stage.class",
+ },additions
+ assert len(names)==1942,"carpet patch added out-of-scope entries"
+ assert sha256(archive.read(WORLD)).hexdigest()==(
+  "3886e7780cf90bc563fbcb96feed0391e3218b29317ae39b991d19f4f28c6ced"
+ ),"Unknown post-package schematic world class SHA"
  for name,expected in PREVIOUS.items():
   assert sha256(archive.read(name)).hexdigest()==expected,"prior P0 bytecode changed "+name
  assert b"20261105-basic-batched-home-v9" in archive.read(
