@@ -4,9 +4,8 @@ import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.tree.*;
 
 /**
- * Restrict the wool-first override to SchematicWorld.acquire("white_carpet").
- * The live log shows the dynamic macro selecting 128 spider string instead of
- * shearing sheep for 32 white wool. All other material routes are unchanged.
+ * Restrict white-carpet override to one pinned method in SchematicWorld.
+ * This does not modify other recipe routes, the native executor, or combat.
  */
 public final class PatchSchematicCarpetRoute implements Opcodes {
     private static final String WORLD="com/player2/playerengine/schematic/SchematicWorld";
@@ -22,11 +21,9 @@ public final class PatchSchematicCarpetRoute implements Opcodes {
             if(m.name.equals("acquire") &&
                m.desc.equals("(Ljava/lang/String;I)L"+TASK+";"))acquire=m;
         if(acquire==null)throw new IllegalStateException("No pinned native SchematicWorld.acquire");
-
         for(AbstractInsnNode node:acquire.instructions.toArray())
             if(node instanceof TypeInsnNode t && ROUTE.equals(t.desc))
                 throw new IllegalStateException("White carpet route already patched");
-
         LabelNode fallthrough=new LabelNode();
         InsnList head=new InsnList();
         head.add(new LdcInsnNode("minecraft:white_carpet"));
@@ -46,7 +43,6 @@ public final class PatchSchematicCarpetRoute implements Opcodes {
         cn.accept(writer);
         return writer.toByteArray();
     }
-
     public static void main(String[]args)throws Exception{
         if(args.length!=2)throw new IllegalArgumentException("input output");
         Files.write(Path.of(args[1]),patch(Files.readAllBytes(Path.of(args[0]))));
