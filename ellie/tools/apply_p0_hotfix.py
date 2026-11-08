@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Produce the scoped P0 runtime overlay after the verified v18.3 hotfix.
 
-Only three existing classes may change:
+Only four existing classes may change:
 - CraftWithMatchingMaterialsTask: missing -> absolute plank target.
+- CraftWithMatchingPlanksTask: one additional plank -> live absolute target.
 - SchematicWorld: register persistent world-scoped depot protection.
 - SchematicProjectTask: keep reserved-source protection after cancellation.
 
@@ -23,6 +24,8 @@ JAR=ROOT/"dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.ja
 CLASSES={
  "com/player2/playerengine/tasks/resources/CraftWithMatchingMaterialsTask.class":
  "73da8c1d78e3df47a3be0f31a5fa70e6876f72a6915174408234412aee8a3880",
+ "com/player2/playerengine/tasks/resources/CraftWithMatchingPlanksTask.class":
+ "5efde83e7aec2f97e969096e56a4b90586680e81c2d1f133d1a59a390e945454",
  "com/player2/playerengine/schematic/SchematicWorld.class":
  "1898a8ee739974b552e1c4dca6d482a893b4b253bd5ceb8e0462d1955fe02f95",
  "com/player2/playerengine/schematic/SchematicProjectTask.class":
@@ -50,7 +53,7 @@ def main():
    if actual!=h:raise RuntimeError(f"Unknown pinned v18.3 class {n}: {actual}")
  with TemporaryDirectory(prefix="ellie-p0-") as scratch:
   temp=Path(scratch);tools=temp/"tools";tools.mkdir();newclasses=temp/"new";newclasses.mkdir()
-  run("javac",*EXPORTS,"-d",tools,ROOT/"tools/PatchMatchingPlankTarget.java",ROOT/"tools/PatchSchematicDepotGuard.java")
+  run("javac",*EXPORTS,"-d",tools,ROOT/"tools/PatchMatchingPlankTarget.java",ROOT/"tools/PatchSpecificPlankTarget.java",ROOT/"tools/PatchSchematicDepotGuard.java")
   sources=list((ROOT/"tools/p0-src").rglob("*.java"))
   if len(sources)!=2:raise RuntimeError(f"Unexpected P0 source count: {sources}")
   run("javac","--release","21","-cp",JAR,"-d",newclasses,*sources)
@@ -61,12 +64,14 @@ def main():
    for name in CLASSES:
     path=temp/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(z.read(name))
    native=next(n for n in CLASSES if n.endswith("CraftWithMatchingMaterialsTask.class"))
+   specific=next(n for n in CLASSES if n.endswith("CraftWithMatchingPlanksTask.class"))
    world=next(n for n in CLASSES if n.endswith("SchematicWorld.class"))
    project=next(n for n in CLASSES if n.endswith("SchematicProjectTask.class"))
-   craft=temp/"patched-craft.class";outworld=temp/"patched-world.class";outproject=temp/"patched-project.class"
+   craft=temp/"patched-craft.class";outspecific=temp/"patched-specific.class";outworld=temp/"patched-world.class";outproject=temp/"patched-project.class"
    run("java",*EXPORTS,"-cp",tools,"PatchMatchingPlankTarget",temp/native,craft)
+   run("java",*EXPORTS,"-cp",tools,"PatchSpecificPlankTarget",temp/specific,outspecific)
    run("java",*EXPORTS,"-cp",tools,"PatchSchematicDepotGuard",temp/world,outworld,temp/project,outproject)
-   existing={native:craft.read_bytes(),world:outworld.read_bytes(),project:outproject.read_bytes()}
+   existing={native:craft.read_bytes(),specific:outspecific.read_bytes(),world:outworld.read_bytes(),project:outproject.read_bytes()}
   tempjar=JAR.with_suffix(".p0-temporary.jar")
   try:
    with ZipFile(JAR) as original,ZipFile(tempjar,"w") as output:
@@ -82,7 +87,7 @@ def main():
     assert len(final.namelist())==1940
    tempjar.replace(JAR)
   finally:tempjar.unlink(missing_ok=True)
- print("PASS: P0 exact three-class patch; original 1,934 other entries preserved")
+ print("PASS: P0 exact four-class patch; original 1,933 other entries preserved")
  for name in existing:print("P0 CLASS SHA256 "+name+" "+sha(existing[name]))
  print("P0 FINAL JAR SHA256 "+sha(JAR.read_bytes()))
 
