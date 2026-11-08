@@ -22,8 +22,16 @@ experiments and emergency hotfixes.
   production-class hashes, and test cases are in GitHub. The first
   code-changing candidate passed automated tests at `76facf3`
   (https://github.com/Joelandonly/PlayerEngine/actions/runs/42506916254).
-  **Draft/unmerged.** It must pass current-head CI and live Minecraft
-  acceptance before being declared a validated game fix.
+  A live run of the later `b3531a45` candidate exposed a second precise
+  native plank-target defect: 188 held oak planks + one log, yet a repeated
+  `Crafting 1 planks` child; blocked after 2,400 ticks. The updated PR #26
+  also patches `CraftWithMatchingPlanksTask.getSpecificSameResourceTask()`,
+  whose absolute count=1 is already satisfied while 188 planks are held.
+  Regression includes 188 + one log -> target 189 -> four produced -> 192.
+  A test build with BOTH native handoffs corrected passed
+  (https://github.com/Joelandonly/PlayerEngine/actions/runs/42525515617).
+  **Draft/unmerged.** Confirm final-head CI and live Minecraft before
+  declaring the game fix validated.
 - **Live-world evidence still outstanding:** the 64 oak trapdoors must
   actually craft past the 92-plank loop, and a manual `agentic deposit`
   replacement must not destroy the staged project chests. The prior
@@ -31,7 +39,7 @@ experiments and emergency hotfixes.
   have not been declared solved by isolated tests.
 
 **Current development starting point:** inspect PR #26 and latest CI first.
-Preserve all merged PR #25 fixes and both P0 patches; do not start from old
+Preserve all merged PR #25 fixes and all reviewed P0 patches; do not start from old
 `main`. The active branch is
 `fix/ellie-v18-3-p0-crafting-protected-storage-20261108`.
 Future commits and releases must update their exact SHA and artifact link.
