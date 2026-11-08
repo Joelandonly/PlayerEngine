@@ -14,20 +14,27 @@ experiments and emergency hotfixes.
   schematic acquisition (head `04f96a1`).
 - PR #25, `fix/ellie-v18-3-storage-lifecycle-sync-20261108`,
   adds stop-loop and storage reconciliation fixes on top of PR #24.
-  The last behavior-changing build before this policy passed CI at commit
-  `588d363`, run
-  https://github.com/Joelandonly/PlayerEngine/actions/runs/42489371512 .
-  These PRs were still draft/unmerged when this document was first added.
-- **Important live P0 issues:** native 64-oak-trapdoor acquisition stalls
-  inside the 92-plank crafting child despite planks in inventory; manual
-  storage-assistance replacement interrupts the schematic, after which
-  project chest protections are removed and three chest locations become
-  unavailable. These live findings are *not resolved* by a green CI result.
-  Avoid describing v18.3 as gameplay-validated.
+  **Merged** into the v18.3 schematic branch as commit
+  `56af538c12b58f2a90ea3087a8fae837743952e4`.
+- PR #26, `fix/ellie-v18-3-p0-crafting-protected-storage-20261108`,
+  contains the reviewed P0 repair of the native plank-shortfall loop and a
+  persistent per-world schematic depot break guard. The source, exact
+  production-class hashes, and test cases are in GitHub. The first
+  code-changing candidate passed automated tests at `76facf3`
+  (https://github.com/Joelandonly/PlayerEngine/actions/runs/42506916254).
+  **Draft/unmerged.** It must pass current-head CI and live Minecraft
+  acceptance before being declared a validated game fix.
+- **Live-world evidence still outstanding:** the 64 oak trapdoors must
+  actually craft past the 92-plank loop, and a manual `agentic deposit`
+  replacement must not destroy the staged project chests. The prior
+  full-chest failure and the general command-replacement/resume behavior
+  have not been declared solved by isolated tests.
 
-**Starting point for the next P0 patch:** inspect the current PR heads first,
-then branch from the newest validated active 1.21.1 integration head.
-Do not blindly copy the literal SHA above once newer commits exist.
+**Current development starting point:** inspect PR #26 and latest CI first.
+Preserve all merged PR #25 fixes and both P0 patches; do not start from old
+`main`. The active branch is
+`fix/ellie-v18-3-p0-crafting-protected-storage-20261108`.
+Future commits and releases must update their exact SHA and artifact link.
 
 ## How to create a release
 
