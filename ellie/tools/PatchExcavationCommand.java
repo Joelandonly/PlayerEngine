@@ -24,7 +24,10 @@ public final class PatchExcavationCommand implements Opcodes {
         ClassNode c=new ClassNode();new ClassReader(data).accept(c,0);
         if(!COMMANDS.equals(c.name))throw new IllegalStateException("Unknown commands class "+c.name);
         MethodNode init=null;
-        for(MethodNode m:c.methods)if(m.name.equals("init")&&m.desc.equals("()V"))init=m;
+        for(MethodNode m:c.methods)if(m.name.equals("init")){
+            if(init!=null)throw new IllegalStateException("Multiple native init overloads; need explicit review");
+            init=m;
+        }
         if(init==null)throw new IllegalStateException("Pinned PlayerEngineCommands.init missing");
         int sites=0;
         for(AbstractInsnNode node:init.instructions.toArray()){
