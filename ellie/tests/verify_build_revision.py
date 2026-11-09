@@ -32,7 +32,7 @@ with ZipFile(jar) as z:
         'com/player2/playerengine/tasks/base/Task.class':
             '164d10015b94591bd5cf4ecd833bc1212e5761f58ea628ba531c1e591c2a5637',
         'com/player2/playerengine/schematic/SchematicProjectTask.class':
-            'f605c5275c746f93e6c5fdaefd632c17f36b13fa2d0832426c5f366b71cf7c5f',
+            '1418b5fd28ef64fffeaeabadb0058e992b63ea47b05db7587f1e96694111969f',
         'com/player2/playerengine/schematic/SchematicWorld.class':
             'ae14bf7a89033bdfdc202f1b19db12e42b536b3e34fab1a1f93d74d66e6080fc',
         'com/player2/playerengine/tasks/resources/CraftWithMatchingMaterialsTask.class':

@@ -32,16 +32,31 @@ experiments and emergency hotfixes.
   (https://github.com/Joelandonly/PlayerEngine/actions/runs/42525515617).
   **Draft/unmerged.** Confirm final-head CI and live Minecraft before
   declaring the game fix validated.
+- PR #27 (sheep/wool-first workaround) is CLOSED WITHOUT MERGE.
+  The user requested a fix for the native combat/resource-gathering
+  interruption conflict, not speculative sheep availability. Never promote
+  that withdrawn build as the canonical Ellie release.
+- PR #28, `fix/ellie-v18-3-combat-acquire-resume-20261109`, is the
+  ACTIVE DRAFT based on PR #26. A higher-priority Mob Defense chain had
+  interrupted spider-string acquisition, and
+  `SchematicProjectTask.afterChildrenStopped()` erased its active ACQUIRE
+  action. PR #28 preserves the same parent Action, its absolute material
+  target, inventory high-water and retry/timeout counters, then creates a
+  fresh stopped native acquisition child on resume. This deliberately
+  changes no combat strategy, loot table, navigation or safety chain.
+  Its first CI run passed 52 fake-world regression checks; exact final
+  released class SHA and full CI must pass before claiming build validity.
+  See `docs/ELLIE_COMBAT_ACQUIRE_RESUME_20261109.md`.
 - **Live-world evidence still outstanding:** the 64 oak trapdoors must
   actually craft past the 92-plank loop, and a manual `agentic deposit`
   replacement must not destroy the staged project chests. The prior
   full-chest failure and the general command-replacement/resume behavior
   have not been declared solved by isolated tests.
 
-**Current development starting point:** inspect PR #26 and latest CI first.
-Preserve all merged PR #25 fixes and all reviewed P0 patches; do not start from old
-`main`. The active branch is
-`fix/ellie-v18-3-p0-crafting-protected-storage-20261108`.
+**Current development starting point:** inspect PR #28 and latest CI first.
+Preserve merged PR #25 and unmerged PR #26 fixes. Do not start from old
+`main` and do not merge withdrawn PR #27. The active branch is
+`fix/ellie-v18-3-combat-acquire-resume-20261109`.
 Future commits and releases must update their exact SHA and artifact link.
 
 ## How to create a release

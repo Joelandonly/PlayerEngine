@@ -8,12 +8,15 @@ This repository contains **two distinct code lines**:
 
 Do NOT use old `main` as the latest active Ellie 1.21.1 implementation.
 Before editing, inspect the active series of PRs and their target branches.
-As of 2026-11-08: PR #24 owns the v18.3 schematic acquisition branch; PR #25
-(lifecycle and storage reconciliation) is MERGED into that branch. PR #26
-(P0 crafting shortfall and retained schematic depot protection) is the current
-development head on branch `fix/ellie-v18-3-p0-crafting-protected-storage-20261108`.
-New Ellie work must preserve this combined lineage, not branch from old `main`
-or omit any unmerged P0 work. Check live PR/branch state for newer changes.
+As of 2026-11-09: PR #24 owns v18.3 schematic acquisition; PR #25 is
+MERGED into that branch. PR #26 (plank deficit and chest protections) remains
+DRAFT / unmerged. PR #27 (sheep route) was CLOSED WITHOUT MERGE and must not
+be carried into a release. PR #28 is the current active, draft branch
+`fix/ellie-v18-3-combat-acquire-resume-20261109`, based on PR #26.
+It corrects interruption/resume of an in-flight native `ACQUIRE` child,
+not mob combat or recipe choice. New work must preserve the PR #26 and #28
+lineage; check live GitHub status for later releases. Do not branch from
+old `main` or reintroduce the closed wool-first workaround.
 
 ## Mandatory JAR-to-GitHub handoff (every new build, including hotfixes)
 
@@ -84,10 +87,12 @@ See `docs/ELLIE_RELEASE_HANDOFF.md` for the current detailed workflow.
    in-game success. Keep the hotfix PR in draft until CI passes; keep live
    gameplay claims separate.
 
-Read `docs/ELLIE_V18_3_LIFECYCLE_STORAGE_SYNC.md` for earlier hotfixes;
-read `docs/ELLIE_P0_CRAFTING_DEPOT_20261108.md` for the current PR #26
-P0 diagnosis, production patch boundaries, tests, and live-world limitations.
-Do not silently replace either tested P0 patcher with old native classes.
+Read `docs/ELLIE_V18_3_LIFECYCLE_STORAGE_SYNC.md` and
+`docs/ELLIE_P0_CRAFTING_DEPOT_20261108.md` for earlier fixes;
+read `docs/ELLIE_COMBAT_ACQUIRE_RESUME_20261109.md` for PR #28's
+verified ACQUIRE suspension patch, exact runtime ownership contract,
+regressions and live-world limits. Do not silently replace native
+combat, either plank patcher, or the depot guard.
 
 For any code change to task shutdown, inventory, native transfers,
 schematics, or the release pipeline, run the complete Ellie build and verify

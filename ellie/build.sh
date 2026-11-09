@@ -278,3 +278,16 @@ mkdir -p build/p0-testclasses
 javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/p0-testclasses tests/P0ReliabilityRegression.java
 java -Xverify:all -cp build/p0-testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar P0ReliabilityRegression
 python3 tests/verify_p0_packaging.py
+
+# FIX: temporary Mob Defense suspension must retain parent schematic ACQUIRE.
+# Runs after PR26 was checked, modifies only packaged SchematicProjectTask.
+# Confirm using the exact patcher against source-compiled coordinator under
+# the existing SchematicProjectTest fake-world environment.
+python3 tools/apply_combat_acquire_resume.py
+mkdir -p build/combat-resume-testclasses/com/player2/playerengine/schematic build/combat-resume-tools
+javac --release 21 -cp build/classes:baseline/playerengine-acquisition-safety.jar -d build/combat-resume-testclasses tools/combat-resume-src/com/player2/playerengine/schematic/SchematicAcquireResume.java
+javac --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -d build/combat-resume-tools tools/PatchCombatAcquireResume.java
+java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-exports java.base/jdk.internal.org.objectweb.asm.tree=ALL-UNNAMED -cp build/combat-resume-tools PatchCombatAcquireResume build/classes/com/player2/playerengine/schematic/SchematicProjectTask.class build/combat-resume-testclasses/com/player2/playerengine/schematic/SchematicProjectTask.class
+javac --release 21 -cp build/combat-resume-testclasses:build/schematic-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/combat-resume-testclasses tests/CombatAcquireResumeRegression.java
+java -Xverify:all -cp build/combat-resume-testclasses:build/schematic-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar CombatAcquireResumeRegression
+python3 tests/verify_combat_acquire_resume_packaging.py
