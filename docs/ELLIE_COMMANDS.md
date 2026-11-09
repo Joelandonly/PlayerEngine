@@ -1,10 +1,11 @@
 # Native command inventory and validation
 
-The current build is based on the maintainer's Player2 crafting-recovery revision,
-with compact three-station setup retained. It registers **46 NPC commands**.
-All exact owner requests for these IDs now bypass model selection. Supported
-local build/farm phrases also have a deterministic route. Ordinary conversation
-can still use optional Player2 chat; the gameplay commands do not require a model.
+**Reviewed target:** Minecraft 1.21.1 Fabric, draft PR #29, source
+`4626bf2e724f0b4f05ae5234968680132dc293a8`.
+**49 registered NPC commands** are present: 46 in the original audit plus
+`schematic_prepare`, `schematic_build` and `excavate` in later stacked PRs.
+The development JAR is not the older `main` baseline. Exact owner requests
+use the authenticated local route; general conversation may use Player2.
 
 `build_structure` selects only shipped local templates. `agentic` now uses existing
 local drop/storage plans, including template chest labels. GPS description polish
@@ -16,15 +17,28 @@ from the shipped JAR. Eight other command classes remain unregistered. Substanti
 but unverified code, such as the speedrun, is not called impossible or enabled
 without acceptance evidence.
 
-Validation covers all 46 dispatcher lookups, eight unavailable IDs, all 46 exact
-command parser entries, owner authorization, local planning, food-selection errors,
-and the patched builder's orchestration/outcome handling. Physical game boundaries
-are substituted. This does **not** certify all 46 gameplay handlers in Minecraft.
+**Evidence:** the original 46 IDs were dispatcher/parser-tested; the three
+new IDs have separate 1.21.1 registration/ABI checks. The PR #29 JAR passed
+the final class-scope/source identity gates on 2026-11-09. No such checks
+certify all 49 handlers in Minecraft. Setup v9 was owner-tested in four fresh
+worlds and its 32 protected classes remain byte-identical; schematic material
+acquisition and excavation have live partial observations, but complete
+acceptance after interruption has not been established.
+See [reconciled backlog](ELLIE_BACKLOG_CURRENT_20261109.md).
 Run `cd ellie && bash build.sh` to regenerate the packaged command report.
+
+## Reconciliation note, 2026-11-09
+
+The historical [TSV inventory](ELLIE_COMMANDS.tsv) listed 46 IDs and the
+obsolete iron-kit/shelter description for `setup`. Both files now describe
+the current **49-ID PR #29 candidate**, using the 14-stage `BasicSetupTask`.
+The old survival task remains in source/test fixtures but does not own the
+active `setup` dispatch. This is an inventory and CI-verified API snapshot,
+not a declaration that the draft PR stack is merged or live validated.
 
 ## NPC commands: full registered list
 
-These are internal bot command IDs, not 46 independent Minecraft slash commands.
+These are internal bot command IDs, not 49 independent Minecraft slash commands.
 Use your existing NPC command entry point and configured prefix (the examples in original
 help use `@`). Natural-language aliases such as “Ellie, build a huge cobblestone ...” are handled by the local owner route for supported templates; they are not canonical IDs in this registry.
 `<...>` means required; `[...]` means optional. Constructor literals and full original
@@ -33,52 +47,55 @@ concise guide, not proof that each game operation succeeds.
 
 | Command / syntax | Purpose | Evidence |
 | --- | --- | --- |
-| `agentic <goal text>` | Local bounded drop-pickup/storage planning | Registered; lookup passed; gameplay untested |
-| `attack <player-or-mob> [count]` | Attack a named player or mob | Registered; lookup passed; gameplay untested |
-| `audit_waypoint <x> <y> <z>` | Refresh a stored waypoint observation | Registered; lookup passed; gameplay untested |
-| `bodylang <greeting / nod_head / shake_head / victory>` | Perform a gesture | Registered; lookup passed; gameplay untested |
-| `build_structure <x> <y> <z> "search query" "description"` | Select a supported local blueprint; gather materials and physically construct it | Registered; lookup passed; gameplay untested |
-| `chatclef <on / off>` | User-controlled AI bridge switch | Registered; lookup passed; gameplay untested |
-| `compare_waypoint <x> <y> <z>` | Compare stored and observed waypoint contents | Registered; lookup passed; gameplay untested |
-| `create_waypoint <x> <y> <z>` | Record a storage waypoint | Registered; lookup passed; gameplay untested |
-| `delete_waypoint <x> <y> <z>` | Delete a waypoint record | Registered; lookup passed; gameplay untested |
-| `deposit [items...]` | Deposit selected items or all nonessential items nearby | Registered; lookup passed; gameplay untested |
-| `deposit_storage_slot <x> <y> <z> <botSlot> <count> [containerSlot]` | Transfer an exact NPC inventory slot into storage | Registered; lookup passed; gameplay untested |
-| `deposit_to_storage <x> <y> <z> <items...>` | Deposit selected items at exact storage coordinates | Registered; lookup passed; gameplay untested |
-| `eat_food [item]` | Eat carried suitable food; optional exact item | Registered; lookup passed; gameplay untested |
-| `equip <items...>` | Equip armor/weapons | Registered; lookup passed; gameplay untested |
-| `fish` | Fish; requires a fishing rod | Registered; lookup passed; gameplay untested |
-| `follow [username]` | Follow owner or named player | Registered; lookup passed; gameplay untested |
-| `food <food-units>` | Gather food by food value | Registered; lookup passed; gameplay untested |
-| `get <items...>` | Gather/craft requested items | Registered; lookup passed; gameplay untested |
-| `give [username] <item> [count]` | Give/drop items to a player; drop is an alias | Registered; lookup passed; gameplay untested |
-| `goto <coordinates/target> [dimension]` | Travel to coordinates/dimension | Registered; lookup passed; gameplay untested |
-| `harvest_farm [x y z]` | One finite pass harvesting fully grown crops on a recorded farm | Registered; lookup passed; gameplay untested |
-| `hero` | Attack hostile mobs | Registered; lookup passed; gameplay untested |
-| `idle` | Stand still | Registered; lookup passed; gameplay untested |
-| `leaveboat` | Dismount | Registered; lookup passed; gameplay untested |
-| `locate_storage` | Report nearby storage coordinates | Registered; lookup passed; gameplay untested |
-| `locate_structure <stronghold / desert_temple>` | Locate stronghold/desert temple | Registered; lookup passed; gameplay untested |
-| `locate_waypoints <query...>` | Query stored inventory/farm waypoints | Registered; lookup passed; gameplay untested |
-| `meat <food-units>` | Gather meat by food value | Registered; lookup passed; gameplay untested |
-| `mine <block> [count]` | Mine and collect a named block | Registered; lookup passed; gameplay untested |
-| `pickup_drops` | Collect nearby dropped items | Registered; lookup passed; gameplay untested |
-| `place_sign <x> <y> <z> <face> [item_id] [line instructions...]` | Place a sign on an anchor and write front/back lines | Registered; lookup passed; gameplay untested |
-| `plant_farm <item=count[,item=count]> [x y z [policy]]` | Plant ordered crop groups on a recorded farm | Registered; lookup passed; gameplay untested |
-| `read_signs [radius]` | Read nearby sign text and positions | Registered; lookup passed; gameplay untested |
-| `reload_settings` | Reload bot settings | Registered; lookup passed; gameplay untested |
-| `resetmemory` | User-only memory reset | Registered; lookup passed; gameplay untested |
-| `scan [block]` | Locate nearest matching block | Registered; lookup passed; gameplay untested |
-| `scan_storage <x> <y> <z> <light / deep / targeted> [items...]` | Inspect live storage at exact coordinates | Registered; lookup passed; gameplay untested |
-| `set_attack_hostiles <on / off>` | Toggle automatic hostile attacks | Registered; lookup passed; gameplay untested |
-| `set_follow_mode <mode>` | Change companion follow behavior | Registered; lookup passed; gameplay untested |
-| `setup` | Full kit plus placed table, furnace and one chest | Registered; lookup passed; gameplay untested |
-| `setup_farm [bot / here / owner / player] OR setup_farm <x> <y> <z>` | Prepare and record a 9x9 irrigated plot; does not plant it | Registered; lookup passed; gameplay untested |
-| `smelt <item> [count]` | Deferred furnace/blast-furnace/smoker processing; configurable | Registered; lookup passed; gameplay untested |
-| `smith <item> [count]` | Recipe-driven smithing upgrade; configurable | Registered; lookup passed; gameplay untested |
-| `stop` | Stop automation | Registered; lookup passed; gameplay untested |
-| `withdraw_from_storage <x> <y> <z> <items...>` | Withdraw selected items at exact coordinates | Registered; lookup passed; gameplay untested |
-| `withdraw_storage_slot <x> <y> <z> <containerSlot> <count> [botSlot]` | Withdraw an exact container slot | Registered; lookup passed; gameplay untested |
+| `agentic <goal text>` | Local bounded drop-pickup/storage planning | Registered/lookup checked; individual live status not certified |
+| `attack <player-or-mob> [count]` | Attack a named player or mob | Registered/lookup checked; individual live status not certified |
+| `audit_waypoint <x> <y> <z>` | Refresh a stored waypoint observation | Registered/lookup checked; individual live status not certified |
+| `bodylang <greeting / nod_head / shake_head / victory>` | Perform a gesture | Registered/lookup checked; individual live status not certified |
+| `build_structure <x> <y> <z> "search query" "description"` | Select a supported local blueprint; gather materials and physically construct it | Registered/lookup checked; individual live status not certified |
+| `chatclef <on / off>` | User-controlled AI bridge switch | Registered/lookup checked; individual live status not certified |
+| `compare_waypoint <x> <y> <z>` | Compare stored and observed waypoint contents | Registered/lookup checked; individual live status not certified |
+| `create_waypoint <x> <y> <z>` | Record a storage waypoint | Registered/lookup checked; individual live status not certified |
+| `delete_waypoint <x> <y> <z>` | Delete a waypoint record | Registered/lookup checked; individual live status not certified |
+| `deposit [items...]` | Deposit selected items or all nonessential items nearby | Registered/lookup checked; individual live status not certified |
+| `deposit_storage_slot <x> <y> <z> <botSlot> <count> [containerSlot]` | Transfer an exact NPC inventory slot into storage | Registered/lookup checked; individual live status not certified |
+| `deposit_to_storage <x> <y> <z> <items...>` | Deposit selected items at exact storage coordinates | Registered/lookup checked; individual live status not certified |
+| `eat_food [item]` | Eat carried suitable food; optional exact item | Registered/lookup checked; individual live status not certified |
+| `equip <items...>` | Equip armor/weapons | Registered/lookup checked; individual live status not certified |
+| `excavate <x1> <y1> <z1> <x2> <y2> <z2>` | Native bounded cuboid clearArea (≤32,768 blocks); refuse unsafe/unloaded selections | Partial live digging; suspension hotfix tested in CI, live resume pending |
+| `fish` | Fish; requires a fishing rod | Registered/lookup checked; individual live status not certified |
+| `follow [username]` | Follow owner or named player | Registered/lookup checked; individual live status not certified |
+| `food <food-units>` | Gather food by food value | Registered/lookup checked; individual live status not certified |
+| `get <items...>` | Gather/craft requested items | Registered/lookup checked; individual live status not certified |
+| `give [username] <item> [count]` | Give/drop items to a player; drop is an alias | Registered/lookup checked; individual live status not certified |
+| `goto <coordinates/target> [dimension]` | Travel to coordinates/dimension | Registered/lookup checked; individual live status not certified |
+| `harvest_farm [x y z]` | One finite pass harvesting fully grown crops on a recorded farm | Registered/lookup checked; individual live status not certified |
+| `hero` | Attack hostile mobs | Registered/lookup checked; individual live status not certified |
+| `idle` | Stand still | Registered/lookup checked; individual live status not certified |
+| `leaveboat` | Dismount | Registered/lookup checked; individual live status not certified |
+| `locate_storage` | Report nearby storage coordinates | Registered/lookup checked; individual live status not certified |
+| `locate_structure <stronghold / desert_temple>` | Locate stronghold/desert temple | Registered/lookup checked; individual live status not certified |
+| `locate_waypoints <query...>` | Query stored inventory/farm waypoints | Registered/lookup checked; individual live status not certified |
+| `meat <food-units>` | Gather meat by food value | Registered/lookup checked; individual live status not certified |
+| `mine <block> [count]` | Mine and collect a named block | Registered/lookup checked; individual live status not certified |
+| `pickup_drops` | Collect nearby dropped items | Registered/lookup checked; individual live status not certified |
+| `place_sign <x> <y> <z> <face> [item_id] [line instructions...]` | Place a sign on an anchor and write front/back lines | Registered/lookup checked; individual live status not certified |
+| `plant_farm <item=count[,item=count]> [x y z [policy]]` | Plant ordered crop groups on a recorded farm | Registered/lookup checked; individual live status not certified |
+| `read_signs [radius]` | Read nearby sign text and positions | Registered/lookup checked; individual live status not certified |
+| `reload_settings` | Reload bot settings | Registered/lookup checked; individual live status not certified |
+| `resetmemory` | User-only memory reset | Registered/lookup checked; individual live status not certified |
+| `scan [block]` | Locate nearest matching block | Registered/lookup checked; individual live status not certified |
+| `scan_storage <x> <y> <z> <light / deep / targeted> [items...]` | Inspect live storage at exact coordinates | Registered/lookup checked; individual live status not certified |
+| `set_attack_hostiles <on / off>` | Toggle automatic hostile attacks | Registered/lookup checked; individual live status not certified |
+| `set_follow_mode <mode>` | Change companion follow behavior | Registered/lookup checked; individual live status not certified |
+| `setup` | **14-stage basic HOME**: wood/stone tools, 64 torches, HOME bench, chest/furnace; no iron kit, shield, bed or house | Owner-tested v9 in four worlds; protected classes and tests preserved |
+| `setup_farm [bot / here / owner / player] OR setup_farm <x> <y> <z>` | Prepare and record a 9x9 irrigated plot; does not plant it | Registered/lookup checked; individual live status not certified |
+| `schematic_build <file> <x> <y> <z>` | Build exact schematic at minimum corner in verified layers | Packaged routing tests; complete live build pending |
+| `schematic_prepare <file> <x> <y> <z>` | Stage required materials into protected depot for a schematic project | Live partial acquisition; complete live acceptance pending |
+| `smelt <item> [count]` | Deferred furnace/blast-furnace/smoker processing; configurable | Registered/lookup checked; individual live status not certified |
+| `smith <item> [count]` | Recipe-driven smithing upgrade; configurable | Registered/lookup checked; individual live status not certified |
+| `stop` | Stop automation | Registered/lookup checked; individual live status not certified |
+| `withdraw_from_storage <x> <y> <z> <items...>` | Withdraw selected items at exact coordinates | Registered/lookup checked; individual live status not certified |
+| `withdraw_storage_slot <x> <y> <z> <containerSlot> <count> [botSlot]` | Withdraw an exact container slot | Registered/lookup checked; individual live status not certified |
 
 ## Present but unavailable through default NPC registration
 
@@ -105,7 +122,7 @@ similarly named low-level Automatone controls or the server's chain-status diagn
 
 ## Building and farm examples to validate in Minecraft
 
-- `setup`: full starter gear/supplies plus three placed stations; no farm or house.
+- `setup`: 14-stage batched wood/stone HOME setup, 64 torches and three verified stations. It does not create an iron kit, shield, bed, house or farm.
 - `setup_farm`: choose a nearby safe plot or resume an eligible unfinished farm.
 - `setup_farm bot`: exact block beneath the NPC; `owner` uses the owner, not gaze.
 - `plant_farm wheat_seeds=32,carrot=16`: plant a recorded farm; setup alone does not plant.
@@ -113,6 +130,9 @@ similarly named low-level Automatone controls or the server's chain-status diagn
 - `get cobblestone 64`: acquire cobblestone, not build a cobblestone structure.
 - `build_structure 100 64 100 "cobblestone shelter" "5 by 5 shelter with walls and roof"`:
   selects a matching local blueprint when supported, otherwise reports an unsupported local template without AI fallback. Use disposable coordinates.
+
+- `schematic_prepare 123.litematic 100 104 286`: acquire/stage blueprint material requirements.
+- `excavate 91 80 277 120 80 296`: excavate a user-selected 600-block region. Explicit owner goal, not an automatic subtask.
 
 There is no canonical `build a huge cobblestone` command in this NPC registry. The local exact-owner route recognizes supported build phrases and starts the
 corresponding local blueprint through `build_structure`. Very large builds, material availability, placement verification, interruption and
@@ -188,7 +208,7 @@ Record the exact JAR hash, Player2NPC version, entered text/prefix, accepted/rej
 `CORE_GOAL_SUBMIT` receipt where applicable, task tree/progress, actual inventory or block
 changes, and final result. Check stop/replacement while running. For farms, verify irrigated
 plot, planted crop counts and mature-only harvest separately. For builds, verify every final
-block and interruption/reload behavior. No command in this report is marked LIVE / PASS.
+block and interruption/reload behavior. This inventory does not certify every command LIVE / PASS. The four-world v9 setup record and observed partial excavation/schematic runs supersede the older blanket "gameplay untested" phrasing for those commands.
 
 ## Local fortified-village template
 
