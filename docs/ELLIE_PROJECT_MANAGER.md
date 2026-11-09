@@ -1,5 +1,8 @@
 # In-game project supervisor
 
+> **Historical supervisor recovery pass.** The linked `ELLIE_SETUP.md` is now marked historical; for the current PR #29 command contracts, see [commands](ELLIE_COMMANDS.md) and [consolidated backlog](ELLIE_BACKLOG_CURRENT_20261109.md). Earlier routing figures below are specific to that pass and are not asserted as a fresh registry audit.
+
+
 This records the supervisor reliability pass. The subsequent starter-base preview
 adds explicit setup and crafting changes, documented in [ELLIE_SETUP.md](ELLIE_SETUP.md);
 its allowed task changes are separately verified during packaging.
