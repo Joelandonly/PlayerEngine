@@ -1,5 +1,9 @@
 # Ellie setup: compact workstations, conditional local platform
 
+> **Historical setup design, not the current `setup` command (2026-11-09).**
+> This page describes the former compact-platform / 20-milestone survival implementation. The current PR #29 candidate dispatches the owner-facing `setup` to the verified 14-stage `BasicSetupTask`: 12 logs, HOME bench, wooden and stone tools, 20 cobblestone, 16 coal, 64 torches, one chest and one furnace. It does **not** demand iron armor, shield, buckets, bed or a house. See [current command inventory](ELLIE_COMMANDS.md) and [current backlog](ELLIE_BACKLOG_CURRENT_20261109.md). This historical implementation is retained for provenance only.
+
+
 `Ellie, setup` follows the existing 20-milestone survival equipment plan and now acquires **one chest**, **one furnace**, and **one crafting table**, then verifies their real placement.
 
 ## Layout
