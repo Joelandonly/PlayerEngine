@@ -21,7 +21,7 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
     private static final int MAX_VOLUME=32768, SCAN_PER_TICK=128;
     private final int x1,y1,z1,x2,y2,z2,volume;
     private Object world,builder,ownedSchematic;
-    private int scan,verifyScan,remaining,airCount,noWorkTicks,buildTicks;
+    private int scan,verifyScan,remaining,airCount,verifiedAirLast=-1,noWorkTicks,buildTicks;
     private boolean building,complete,success,terminal;
     private String reason="Preflight pending";
 
@@ -128,7 +128,6 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
             }
             if(++buildTicks>240_000)return block("WORK_BUDGET","Total excavation work budget exceeded");
             // Scan conservatively over time: no fake progress from builder status.
-            int prior=airCount;
             for(int n=0;n<SCAN_PER_TICK;n++){
                 Pos p=cell(verifyScan);
                 boolean isAir=air(p);
@@ -138,8 +137,9 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
             }
             if(verifyScan>=volume){
                 remaining=volume-airCount;
-                if(airCount>prior)noWorkTicks=0;
+                if(airCount>verifiedAirLast)noWorkTicks=0;
                 else noWorkTicks+=volume/SCAN_PER_TICK+1;
+                verifiedAirLast=airCount;
                 if(remaining==0){
                     terminal=success=complete=true;reason="Verified "+volume+" air blocks";
                     stopOwnedBuilder();report("EXCAVATE_COMPLETED",reason);return null;
