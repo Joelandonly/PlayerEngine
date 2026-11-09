@@ -62,9 +62,9 @@ def audit_commands() -> None:
     }.items():
         src = read(ELLIE / relative)
         require(f'super("{name}"' in src, f"Missing actual constructor ID for {name}")
-        require(registered[name]["class"].endswith(
-            name.replace("_", "") + "Command") is False or bool(src),
-            "Invalid command source identity")  # exact IDs checked above
+        require(registered[name]["class"].split("/")[-1] + ".java" ==
+                Path(relative).name,
+                f"TSV class does not match the implemented command for {name}")
     require("ExcavationCommandRoute.exact" in read(
         ELLIE / "tools/PatchExcavationCommand.java") or
         'PARSER,"exact"' in read(ELLIE / "tools/PatchExcavationCommand.java"),
