@@ -1,0 +1,50 @@
+name: Ellie Phase 3 Pinned Source Snapshot
+
+on:
+  push:
+    branches:
+      - source/ellie-1211-phase3-bootstrap
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-authoritative-sources:
+    name: Export exact pinned Ellie Java overrides
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify source parent and package a reproducible snapshot
+        shell: bash
+        env:
+          PINNED_REVISION: '3176e5635d924850014c86b97b68ed359e172b1b'
+        run: |
+          set -euo pipefail
+          git cat-file -e "$PINNED_REVISION^{commit}"
+          git show "$PINNED_REVISION:ellie/src/com/player2/playerengine/tasks/setup/BasicSetupTask.java" >/dev/null
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, subprocess, zipfile
+          commit = os.environ['PINNED_REVISION']
+          paths = subprocess.check_output(['git','ls-tree','-r','--name-only',commit,'--','ellie/src/'],text=True).splitlines()
+          paths = [s for s in paths if s.endswith('.java')]
+          assert len(paths) == 53, f'Expected 53 Java files in pinned revision, found {len(paths)}'
+          result = pathlib.Path('ellie-canonical-source-3176e563.zip')
+          manifest = {'source_repo':'Joelandonly/PlayerEngine','source_commit':commit,'files':[]}
+          with zipfile.ZipFile(result,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=9) as z:
+              for path in sorted(paths):
+                  binary = subprocess.check_output(['git','show',f'{commit}:{path}'])
+                  manifest['files'].append({'path':path,'sha256':hashlib.sha256(binary).hexdigest()})
+                  z.writestr(path,binary)
+              z.writestr('CANONICAL_MANIFEST.json',json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+          print('SOURCE_SNAPSHOT_PASS: pinned revision, 53 Java overrides, SHA256 manifest')
+          print(f'Archive: {result}, bytes: {result.stat().st_size}')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ellie-1211-canonical-source-3176e563
+          path: ellie-canonical-source-3176e563.zip
+          if-no-files-found: error
+          retention-days: 7
