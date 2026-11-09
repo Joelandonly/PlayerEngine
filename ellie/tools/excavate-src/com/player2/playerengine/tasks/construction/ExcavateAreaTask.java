@@ -17,7 +17,7 @@ import static com.player2.playerengine.nativecommands.NativeAccess.*;
  * through the normal ProjectTaskGateway, but it cannot silently run inside
  * an active schematic as an independent planner.
  */
-public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomeProvider {
+public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomeProvider, TransientlyResumableTask {
     private static final int MAX_VOLUME=32768, SCAN_PER_TICK=128, MAX_TRANSIENT_INTERRUPTS=128;
     private final int x1,y1,z1,x2,y2,z2,volume;
     private Object world,builder,ownedSchematic;
