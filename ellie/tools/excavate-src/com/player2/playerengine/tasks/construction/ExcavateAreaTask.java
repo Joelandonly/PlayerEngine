@@ -118,30 +118,14 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
         try{
             worldCheck();
             if(transientSuspended){
-                transientSuspended=false;
-                // Native BuilderProcess is NOT a Task child. An intervening
-                // chain can reset it even though the excavation Task resumes.
-                // Re-run the full safety preflight against current blocks.
-                if(building){
-                    if(builder!=null&&ownedSchematic!=null&&
-                       (get(builder,"schematic")==ownedSchematic||
-                        get(builder,"realSchematic")==ownedSchematic)&&
-                        Boolean.TRUE.equals(call(builder,"isActive"))){
-                        report("EXCAVATE_RESUMED","project="+id()+" mode=native_builder_retained"+
-                            " remaining="+remaining+" interrupts="+acceptedInterrupts);
-                    }else{
-                        building=false;
-                        ownedSchematic=null;
-                        scan=0;
-                        airAtStart=0;
-                        verifyScan=0;
-                        airCount=0;
-                        report("EXCAVATE_RESUMED","project="+id()+" mode=preflight_then_rebuild"+
-                            " remaining="+remaining+" interrupts="+acceptedInterrupts+
-                            " budgetTicks="+buildTicks+" noWorkTicks="+noWorkTicks);
-                    }
-                }else report("EXCAVATE_RESUMED","project="+id()+" mode=preflight_continues"+
-                    " scanned="+scan+"/"+volume+" interrupts="+acceptedInterrupts);
+                // Native BuilderProcess is NOT a Task child. If equipment
+                // management or defense stole its control, a new native
+                // clearArea plan must follow fresh safety verification.
+                boolean stillOurs=building&&builder!=null&&ownedSchematic!=null&&
+                    (get(builder,"schematic")==ownedSchematic||
+                     get(builder,"realSchematic")==ownedSchematic)&&
+                    Boolean.TRUE.equals(call(builder,"isActive"));
+                reconcileTransientResume(stillOurs);
             }
             if(!building){
                 for(int limit=0;scan<volume&&limit<SCAN_PER_TICK;scan++,limit++)if(safe(cell(scan)))airAtStart++;
@@ -154,7 +138,7 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
                 ownedSchematic=get(builder,"schematic");
                 if(ownedSchematic==null)throw new IllegalStateException("Native clearArea did not create a builder plan");
                 building=true;
-                remaining=volume;reason="Excavating";
+                remaining=volume-airAtStart;reason="Excavating";
                 report("EXCAVATE_STARTED","volume="+volume+" builder=native_clearArea");
                 return null;
             }
@@ -187,6 +171,29 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
             }
             return null;
         }catch(Exception | LinkageError error){return block("BOUNDARY",error);}
+    }
+    /**
+     * Pure state transition separated from the live world read so regression
+     * tests can exercise repeated interruptions without a fake Minecraft NPC.
+     * In-game onTick MUST worldCheck() and verify builder identity first.
+     */
+    private void reconcileTransientResume(boolean stillOurs){
+        if(!transientSuspended)return;
+        transientSuspended=false;
+        if(building){
+            if(stillOurs){
+                report("EXCAVATE_RESUMED","project="+id()+" mode=native_builder_retained"+
+                    " remaining="+remaining+" interrupts="+acceptedInterrupts);
+            }else{
+                building=false;
+                ownedSchematic=null;
+                scan=0;airAtStart=0;verifyScan=0;airCount=0;
+                report("EXCAVATE_RESUMED","project="+id()+" mode=preflight_then_rebuild"+
+                    " remaining="+remaining+" interrupts="+acceptedInterrupts+
+                    " budgetTicks="+buildTicks+" noWorkTicks="+noWorkTicks);
+            }
+        }else report("EXCAVATE_RESUMED","project="+id()+" mode=preflight_continues"+
+            " scanned="+scan+"/"+volume+" interrupts="+acceptedInterrupts);
     }
     @Override public boolean isFinished(){return terminal;}
     @Override public boolean isTerminal(){return terminal;}
