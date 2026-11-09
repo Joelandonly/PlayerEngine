@@ -1,5 +1,8 @@
 # Schematic acquisition hotfix v18.3
 
+> **Current command and development status (2026-11-09).** This README contains dated version notes, not a single latest-release specification. The active development stack is draft PR #29 based on PR #28 and PR #26; the `setup` command is 14-stage basic HOME v9, **not** the superseded iron/shelter survival setup. It preserves the earlier 32 setup classes; partial live excavation and schematic acquisition are observed, full interruption recovery still awaits in-game validation. See [49-command inventory](../docs/ELLIE_COMMANDS.md), [consolidated backlog](../docs/ELLIE_BACKLOG_CURRENT_20261109.md), and [release handoff](../docs/ELLIE_RELEASE_HANDOFF.md). No new gameplay code is introduced by this documentation reconciliation.
+
+
 Schematic preparation now shares the working native acquisition lookup with
 `agentic get`. The dynamic macro remains a fallback for catalogue misses, with a
 bounded repair for its collection-to-crafting convergence handoff. Material
