@@ -83,6 +83,8 @@ Future commits and releases must update their exact SHA and artifact link.
 
 ## Command/documentation reconciliation (2026-11-09)
 
+The [documentation authority audit](ELLIE_DOCUMENTATION_AUDIT_20261109.md) explicitly distinguishes current PR #29 contracts from former preview/setup/source histories.
+
 The current development branch still carries all 32 proven v9 basic HOME
 setup classes. The owner-facing `setup` command starts
 `BasicSetupTask` with **14 stages**, not the historical iron kit,
