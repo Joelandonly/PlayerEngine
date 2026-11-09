@@ -1,0 +1,55 @@
+name: Ellie Phase 3 Mapping Inputs
+
+on:
+  push:
+    branches:
+      - source/ellie-1211-phase3-bootstrap
+    paths:
+      - .github/workflows/ellie-mapping-inputs.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mappings:
+    name: Snapshot version-matched 1.21.1 mappings
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch and integrity-check 1.21.1 official/intermediary mappings
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib,urllib.request,zipfile
+          ua={'User-Agent':'Ellie-source-parity/1'}
+          def get(url):
+              with urllib.request.urlopen(urllib.request.Request(url,headers=ua), timeout=100) as r:return r.read()
+          manifest=json.loads(get('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'))
+          version=next(x for x in manifest['versions'] if x['id']=='1.21.1')
+          detail=get(version['url'])
+          assert hashlib.sha1(detail).hexdigest()==version['sha1']
+          v=json.loads(detail)
+          sources={}
+          for which in ('client_mappings','server_mappings'):
+              obj=v['downloads'][which]
+              data=get(obj['url'])
+              assert hashlib.sha1(data).hexdigest()==obj['sha1'], which
+              sources[f'mojang-1.21.1-{which}.txt']=data
+          url='https://maven.fabricmc.net/net/fabricmc/intermediary/1.21.1/intermediary-1.21.1-v2.jar'
+          blob=get(url)
+          checksum=get(url+'.sha256').decode().strip().split()[0]
+          assert hashlib.sha256(blob).hexdigest()==checksum
+          sources['fabric-intermediary-1.21.1-v2.jar']=blob
+          receipt={'version':'1.21.1','source_urls':{x:v['downloads'][x]['url'] for x in ('client_mappings','server_mappings')},'intermediary_url':url,'sha256':{k:hashlib.sha256(data).hexdigest() for k,data in sources.items()}}
+          with zipfile.ZipFile('ellie-mappings-1.21.1.zip','w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
+              for k,data in sources.items():z.writestr(k,data)
+              z.writestr('MAPPING_INPUTS_RECEIPT.json',json.dumps(receipt,indent=2,sort_keys=True)+'\n')
+          print('PINNED_1.21.1_MAPPINGS_PASS')
+          print(json.dumps(receipt,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ellie-phase3-1211-mapping-inputs
+          path: ellie-mappings-1.21.1.zip
+          retention-days: 7
+          if-no-files-found: error
