@@ -18,11 +18,12 @@ import static com.player2.playerengine.nativecommands.NativeAccess.*;
  * an active schematic as an independent planner.
  */
 public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomeProvider {
-    private static final int MAX_VOLUME=32768, SCAN_PER_TICK=128;
+    private static final int MAX_VOLUME=32768, SCAN_PER_TICK=128, MAX_TRANSIENT_INTERRUPTS=128;
     private final int x1,y1,z1,x2,y2,z2,volume;
     private Object world,builder,ownedSchematic;
     private int scan,airAtStart,verifyScan,remaining,airCount,verifiedAirLast=-1,noWorkTicks,buildTicks;
-    private boolean building,complete,success,terminal;
+    private boolean building,complete,success,terminal,transientSuspended;
+    private int acceptedInterrupts;
     private String reason="Preflight pending";
 
     public ExcavateAreaTask(int ax,int ay,int az,int bx,int by,int bz){
@@ -53,6 +54,9 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
     }
     @Override protected void onStart(){
         try{
+            // The native task runner may re-enter a suspended root. Never
+            // reinitialize its bounds, builder ownership or progress budget.
+            if(world!=null){worldCheck();return;}
             world=call(controller,"getWorld");
             if(world==null||call(controller,"getEntity")==null)
                 throw new IllegalStateException("NPC/world unavailable");
@@ -113,6 +117,32 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
         if(terminal)return null;
         try{
             worldCheck();
+            if(transientSuspended){
+                transientSuspended=false;
+                // Native BuilderProcess is NOT a Task child. An intervening
+                // chain can reset it even though the excavation Task resumes.
+                // Re-run the full safety preflight against current blocks.
+                if(building){
+                    if(builder!=null&&ownedSchematic!=null&&
+                       (get(builder,"schematic")==ownedSchematic||
+                        get(builder,"realSchematic")==ownedSchematic)&&
+                        Boolean.TRUE.equals(call(builder,"isActive"))){
+                        report("EXCAVATE_RESUMED","project="+id()+" mode=native_builder_retained"+
+                            " remaining="+remaining+" interrupts="+acceptedInterrupts);
+                    }else{
+                        building=false;
+                        ownedSchematic=null;
+                        scan=0;
+                        airAtStart=0;
+                        verifyScan=0;
+                        airCount=0;
+                        report("EXCAVATE_RESUMED","project="+id()+" mode=preflight_then_rebuild"+
+                            " remaining="+remaining+" interrupts="+acceptedInterrupts+
+                            " budgetTicks="+buildTicks+" noWorkTicks="+noWorkTicks);
+                    }
+                }else report("EXCAVATE_RESUMED","project="+id()+" mode=preflight_continues"+
+                    " scanned="+scan+"/"+volume+" interrupts="+acceptedInterrupts);
+            }
             if(!building){
                 for(int limit=0;scan<volume&&limit<SCAN_PER_TICK;scan++,limit++)if(safe(cell(scan)))airAtStart++;
                 if(scan<volume)return null;
@@ -162,10 +192,36 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
     @Override public boolean isTerminal(){return terminal;}
     @Override public boolean isSuccessful(){return terminal&&success;}
     @Override public String controlledReason(){return reason;}
+    /** Higher-priority gear/defense chains may pause; they do not cancel. */
+    @Override public boolean prepareForTransientResume(TaskSuspensionCause cause){
+        return !terminal&&(cause==TaskSuspensionCause.HIGHER_PRIORITY_CHAIN||
+                           cause==TaskSuspensionCause.GESTURE_OVERLAY);
+    }
+    @Override public void afterChildrenStopped(){
+        if(terminal)return;
+        // Only invoked after native runner accepts transient suspension.
+        // The owner task stays alive; the physical builder must relinquish
+        // control so emergency chains can actually execute.
+        if(!transientSuspended){
+            transientSuspended=true;
+            acceptedInterrupts++;
+            report("EXCAVATE_SUSPENDED","project="+id()+" stage="+(building?"BUILD":"PREFLIGHT")+
+                " remaining="+remaining+" interrupts="+acceptedInterrupts+
+                " budgetTicks="+buildTicks+" noWorkTicks="+noWorkTicks);
+        }
+        stopOwnedBuilder();
+        if(acceptedInterrupts>MAX_TRANSIENT_INTERRUPTS)
+            block("PREEMPTION_BUDGET","Too many higher-priority interruptions: "+acceptedInterrupts);
+    }
+    @Override public void onTransientResumeAbandoned(){
+        block("RESUME_ABANDONED","Native coordinator abandoned transient excavation resume");
+    }
+    private String id(){return Integer.toHexString(System.identityHashCode(this));}
     @Override protected void onStop(Task next){
         stopOwnedBuilder();
-        if(!terminal){terminal=true;success=false;reason="BLOCKED_EXCAVATE_CANCELLED: owner stop/replacement";
-            report("EXCAVATE_CANCELLED",reason);}
+        transientSuspended=false;
+        if(!terminal){terminal=true;success=false;reason="BLOCKED_EXCAVATE_CANCELLED: explicit owner stop/replacement";
+            report("EXCAVATE_CANCELLED","project="+id()+" "+reason);}
     }
     @Override protected boolean isEqual(Task other){
         return other instanceof ExcavateAreaTask e &&
