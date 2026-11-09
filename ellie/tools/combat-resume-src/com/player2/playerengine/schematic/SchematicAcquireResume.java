@@ -3,7 +3,7 @@ package com.player2.playerengine.schematic;
 import com.player2.playerengine.tasks.base.Task;
 import java.util.Collections;
 import java.util.Map;
-import java.util.WeakHashMap;
+import java.util.IdentityHashMap;
 import static com.player2.playerengine.nativecommands.NativeAccess.get;
 import static com.player2.playerengine.nativecommands.NativeAccess.set;
 
@@ -16,8 +16,13 @@ import static com.player2.playerengine.nativecommands.NativeAccess.set;
  * NEW native child on resume. No parallel scheduler or combat override.
  */
 public final class SchematicAcquireResume {
-    private static final Map<SchematicProjectTask, Boolean> PENDING =
-        Collections.synchronizedMap(new WeakHashMap<>());
+    private record Lease(Object action,String item,int target,int held) {}
+    // Task.equals may collapse structurally similar projects. Here the owner
+    // identity is critical: restarting the same schematic is a NEW owner.
+    private static final Map<SchematicProjectTask, Lease> PENDING =
+        Collections.synchronizedMap(new IdentityHashMap<>());
+
+    private static String id(Object value){return Integer.toHexString(System.identityHashCode(value));}
 
     private SchematicAcquireResume() {}
 
@@ -39,12 +44,15 @@ public final class SchematicAcquireResume {
             int target=((Number)get(action,"target")).intValue();
             if (item == null || target < 1) return false;
 
-            world.pauseBuilder();
-            PENDING.put(owner,Boolean.TRUE);
+            if(world.builderActive())world.pauseBuilder();
+            int held=world.inventory().getOrDefault(item,0);
+            PENDING.put(owner,new Lease(action,item,target,held));
             world.report("SCHEMATIC_ACQUIRE_SUSPENDED",
-                "item="+item+" absoluteTarget="+target+
-                " child_stopped_by_higher_priority_chain=true"+
-                " watchdog_preserved=true");
+                "project="+id(owner)+" action="+id(action)+" item="+item+
+                " absoluteTarget="+target+" carriedBefore="+held+
+                " remaining="+Math.max(0,target-held)+
+                " actionTicks="+get(action,"ticks")+" idle="+get(action,"idle")+
+                " reason=transient_native_child_stop watchdog_preserved=true");
             return true;
         } catch (Exception | LinkageError failure) {
             try {
@@ -62,17 +70,19 @@ public final class SchematicAcquireResume {
      * travel, and critically NO resetting of Action.idle/ticks/highWater.
      */
     public static void beforePoll(SchematicProjectTask owner) throws Exception {
-        if (!Boolean.TRUE.equals(PENDING.get(owner)))return;
+        Lease lease=PENDING.get(owner);
+        if (lease==null)return;
         Object action=get(owner,"action");
-        if (action==null || !"ACQUIRE".equals(String.valueOf(get(action,"kind")))) {
+        if (action!=lease.action() ||
+            !"ACQUIRE".equals(String.valueOf(get(action,"kind")))) {
             PENDING.remove(owner);
             return;
         }
 
         String item=(String)get(action,"item");
         int target=((Number)get(action,"target")).intValue();
-        if(item==null||target<1)
-            throw new IllegalStateException("Transient resource acquisition has no verified target");
+        if(item==null||target<1||target!=lease.target()||!item.equals(lease.item()))
+            throw new IllegalStateException("Transient resource acquisition identity/target changed");
 
         SchematicProjectTask.Environment world=
             (SchematicProjectTask.Environment)get(owner,"environment");
@@ -82,7 +92,9 @@ public final class SchematicAcquireResume {
         if(held>=target){
             PENDING.remove(owner);
             world.report("SCHEMATIC_ACQUIRE_RESUMED",
-                "item="+item+" target="+target+" carried="+held+
+                "project="+id(owner)+" action="+id(action)+" item="+item+
+                " absoluteTarget="+target+" carriedBefore="+lease.held()+
+                " carriedAfter="+held+" remaining=0 next=VERIFY"+
                 " already_satisfied=true no_native_restart_needed=true");
             return; // pollAction verifies the actual inventory postcondition
         }
@@ -93,8 +105,11 @@ public final class SchematicAcquireResume {
         set(action,"task",fresh); // no replacement Action or altered progress counters
         PENDING.remove(owner);
         world.report("SCHEMATIC_ACQUIRE_RESUMED",
-            "item="+item+" absoluteTarget="+target+" carried="+held+
-            " native_child_recreated=true no_depot_roundtrip=true"+
+            "project="+id(owner)+" action="+id(action)+" item="+item+
+            " absoluteTarget="+target+" carriedBefore="+lease.held()+
+            " carriedAfter="+held+" remaining="+Math.max(0,target-held)+
+            " next=ACQUIRE native_child_recreated=true no_depot_roundtrip=true"+
+            " actionTicks="+get(action,"ticks")+" idle="+get(action,"idle")+
             " watchdog_preserved=true");
     }
 
@@ -103,6 +118,6 @@ public final class SchematicAcquireResume {
 
     /** Read-only test/diagnostic hook, does not drive task execution. */
     public static boolean pending(SchematicProjectTask owner){
-        return Boolean.TRUE.equals(PENDING.get(owner));
+        return PENDING.containsKey(owner);
     }
 }
