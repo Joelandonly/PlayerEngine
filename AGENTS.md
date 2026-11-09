@@ -23,7 +23,9 @@ GitHub PRs before modifying newer code. Never branch from stale `main`.
 
 ## Command documentation and backlog source of truth (2026-11-09)
 
-See the full current-vs-historical [documentation audit](docs/ELLIE_DOCUMENTATION_AUDIT_20261109.md) before interpreting older setup or release notes.\n\nFor **current draft PR #29** code/command planning, use
+See the full current-vs-historical [documentation audit](docs/ELLIE_DOCUMENTATION_AUDIT_20261109.md) before interpreting older setup or release notes.
+
+For **current draft PR #29** code/command planning, use
 `docs/ELLIE_COMMANDS.md` and `docs/ELLIE_COMMANDS.tsv` (49 registered,
 8 unregistered), plus `docs/ELLIE_BACKLOG_CURRENT_20261109.md`
 (ELLIE-001 through ELLIE-037). These are the reconciled current
