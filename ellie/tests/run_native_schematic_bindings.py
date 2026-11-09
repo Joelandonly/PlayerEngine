@@ -97,6 +97,13 @@ def main():
     print(f"Testing packaged native actions with Minecraft 1.21.1 and {len(libraries)} pinned Java libraries", flush=True)
     run("java", "-cp", os.pathsep.join(map(str, [classes, packaged, remapped, *libraries])),
         "NativeSchematicBindingsTest")
+    # New command must link to actual 1.21.1 intermediary Baritone/world
+    # signatures, not just a stub. No NPC/world execution is simulated.
+    run("javac", "--release", "21", "-cp", packaged, "-d", classes,
+        ROOT / "tests/NativeExcavateBindingsTest.java")
+    run("java", "-Xverify:all", "-cp",
+        os.pathsep.join(map(str, [classes, packaged, remapped, *libraries])),
+        "NativeExcavateBindingsTest")
 
 
 if __name__ == "__main__":
