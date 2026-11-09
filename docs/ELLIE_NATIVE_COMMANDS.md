@@ -1,5 +1,9 @@
 # Native commands on the crafting-recovery revision
 
+> **Historical 46-command native routing revision (not the latest inventory).**
+> The draft PR #29 stack has 49 registered NPC IDs, including two schematic commands and `excavate`; the current owner-facing `setup` is 14-stage basic HOME v9, not the older survival setup described by this historical baseline. See [current command inventory](ELLIE_COMMANDS.md) and [current backlog](ELLIE_BACKLOG_CURRENT_20261109.md). Retain the details below as revision-specific history.
+
+
 This revision starts from the uploaded `ELLIE-PLAYER2-CRAFT-RECOVERY.jar`, whose
 source rebuilt to exactly SHA-256
 `f36e4210a31024c113f7be6d2afa97385c878a15b1ab1d9f590a4ea745980b9f`.
