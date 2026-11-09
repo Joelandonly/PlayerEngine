@@ -53,10 +53,16 @@ experiments and emergency hotfixes.
   **gameplay-unverified**.
 - PR #29, `feat/ellie-excavate-region-20261109`, is the ACTIVE DRAFT
   based on PR #28, introducing native bounded `ellie excavate` using the
-  existing Baritone builder with full preflight checks. Its exact source
-  and CI artifact must be paired in the release receipt. The current
-  runtime user's active spider hunt is not altered merely by updating GitHub.
-  See `docs/ELLIE_EXCAVATE_20261109.md`.
+  existing Baritone builder with full preflight checks. Live build `240dc31`
+  successfully excavated until temporary high-priority chains interrupted:
+  Mob Defense at 03:34:08 (444 blocks remaining), and ForceEquipGearChain
+  at 03:36:28 (261 remaining). Both were incorrectly treated as terminal.
+  The PR now implements the packaged `TransientlyResumableTask` contract,
+  preserving work and resuming/revalidating the native builder after chain
+  yields. The 34-test regression and final Minecraft 1.21.1 API checks passed
+  in https://github.com/Joelandonly/PlayerEngine/actions/runs/42552708414.
+  **This specific correction still needs live gameplay validation.**
+  Keep PR #29 draft. See `docs/ELLIE_EXCAVATE_20261109.md`.
 - Automatic overflow storage for the current spider-loot inventory pressure
   is **future work, not yet implemented**. Its reversible same-goal policy
   and safety acceptance are at
