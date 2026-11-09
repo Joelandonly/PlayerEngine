@@ -9,14 +9,17 @@ This repository contains **two distinct code lines**:
 Do NOT use old `main` as the latest active Ellie 1.21.1 implementation.
 Before editing, inspect the active series of PRs and their target branches.
 As of 2026-11-09: PR #24 owns v18.3 schematic acquisition; PR #25 is
-MERGED into that branch. PR #26 (plank deficit and chest protections) remains
-DRAFT / unmerged. PR #27 (sheep route) was CLOSED WITHOUT MERGE and must not
-be carried into a release. PR #28 is the current active, draft branch
-`fix/ellie-v18-3-combat-acquire-resume-20261109`, based on PR #26.
-It corrects interruption/resume of an in-flight native `ACQUIRE` child,
-not mob combat or recipe choice. New work must preserve the PR #26 and #28
-lineage; check live GitHub status for later releases. Do not branch from
-old `main` or reintroduce the closed wool-first workaround.
+MERGED into that branch. PR #26 (plank deficits/depot guard) and PR #28
+(Mob Defense ACQUIRE-resume) remain DRAFT / unmerged. PR #27 (sheep
+workaround) was CLOSED WITHOUT MERGE; never reintroduce it.
+PR #29 is the active, DRAFT native excavation feature on branch
+`feat/ellie-excavate-region-20261109`, based on PR #28.
+It adds ONLY explicit bounded `excavate x1 y1 z1 x2 y2 z2`, no mob,
+schematic, or inventory change. A separate reversible storage backlog for
+spider-hunt overflow is documented at
+`docs/ELLIE_INVENTORY_OVERFLOW_BACKLOG_20261109.md` and NOT IMPLEMENTED.
+Preserve the entire PR #26 -> PR #28 -> PR #29 lineage; check current
+GitHub PRs before modifying newer code. Never branch from stale `main`.
 
 ## Mandatory JAR-to-GitHub handoff (every new build, including hotfixes)
 
@@ -90,8 +93,10 @@ See `docs/ELLIE_RELEASE_HANDOFF.md` for the current detailed workflow.
 Read `docs/ELLIE_V18_3_LIFECYCLE_STORAGE_SYNC.md` and
 `docs/ELLIE_P0_CRAFTING_DEPOT_20261108.md` for earlier fixes;
 read `docs/ELLIE_COMBAT_ACQUIRE_RESUME_20261109.md` for PR #28's
-verified ACQUIRE suspension patch, exact runtime ownership contract,
-regressions and live-world limits. Do not silently replace native
+ACQUIRE suspension patch and native task contract. PR #29's explicit
+excavation and safety limits are documented in
+`docs/ELLIE_EXCAVATE_20261109.md`; overflow storage is separately
+documented at `docs/ELLIE_INVENTORY_OVERFLOW_BACKLOG_20261109.md`. Do not silently replace native
 combat, either plank patcher, or the depot guard.
 
 For any code change to task shutdown, inventory, native transfers,
