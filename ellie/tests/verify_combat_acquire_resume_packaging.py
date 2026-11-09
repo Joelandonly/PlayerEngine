@@ -27,9 +27,9 @@ with ZipFile(JAR) as z:
   assert sha256(z.read(name)).hexdigest()==digest, "Older P0/safety bytecode unexpectedly changed: "+name
  assert b"20261105-basic-batched-home-v9" in z.read(
   "com/player2/playerengine/tasks/setup/EllieSetupTask.class"),"14-stage setup changed"
- assert sha256(z.read(PROJECT)).hexdigest()!=(
-  "f605c5275c746f93e6c5fdaefd632c17f36b13fa2d0832426c5f366b71cf7c5f"
- ),"Coordinator did not change"
+ assert sha256(z.read(PROJECT)).hexdigest()==(
+  "1418b5fd28ef64fffeaeabadb0058e992b63ea47b05db7587f1e96694111969f"
+ ),"Unknown coordinator release bytecode"
 for name,functions in [
  ("com.player2.playerengine.schematic.SchematicProjectTask",
   ["SchematicAcquireResume.hold","SchematicAcquireResume.beforePoll","SchematicAcquireResume.forget"]),
