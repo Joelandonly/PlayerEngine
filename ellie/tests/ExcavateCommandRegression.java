@@ -79,6 +79,15 @@ public final class ExcavateCommandRegression {
         t.afterChildrenStopped();resume(t,true);
         check((Boolean)get(t,"building"),"retained native builder was needlessly restarted");
 
+        // An interruption while still scanning must revalidate the entire
+        // selected volume; a chest could have appeared in scanned cells.
+        ExcavateAreaTask preflight=new ExcavateAreaTask(1,80,1,5,80,5);
+        set(preflight,"scan",18);set(preflight,"airAtStart",10);
+        preflight.afterChildrenStopped();
+        resume(preflight,false);
+        check((Integer)get(preflight,"scan")==0&&(Integer)get(preflight,"airAtStart")==0,
+              "resumed safety preflight trusted stale blocks");
+
         // Explicit owner cancellation and abandoned resume are terminal.
         ExcavateAreaTask canceled=new ExcavateAreaTask(1,80,1,2,80,2);
         set(canceled,"building",true);set(canceled,"builder",new FakeBuilder());
