@@ -2,6 +2,31 @@
 
 Current runtime target: Minecraft 1.21.1, Fabric, PlayerEngine 1.4.0 and the existing Player2NPC companion/teleport extension. The current interpreter bundle is preserved in [`ellie/`](../ellie/README.md), with a pinned binary baseline and bridge source. The root Gradle source is legacy 1.20.1; the complete 1.21.1 mod source remains unavailable. Results below distinguish **documented user sessions** from tests yet to run.
 
+## Current PR #29 validation addendum (2026-11-09)
+
+The legacy T-01–T-37 scenarios below remain valid historic test
+requirements, but their 2026-11-02 statements are not automatically
+up-to-date for the draft PR #29 stack. The current command inventory
+has **49 registered IDs**, and the owner-facing `setup` is
+**14-stage basic HOME v9 (64 torches, no iron survival kit)**.
+The [current backlog](ELLIE_BACKLOG_CURRENT_20261109.md) and
+[command manifest](ELLIE_COMMANDS.md) distinguish implemented and
+untested work. Full **S4/S5** success is not claimed.
+
+| ID | Scope | Expected live result | Evidence on 2026-11-09 |
+| --- | --- | --- | --- |
+| T-38 | New `setup` contract from fresh world | Verified 14 stages, HOME bench, wooden/stone tools, 64 torches, chest and furnace | Owner reports four fresh-world successes with preserved v9 baseline; 16 setup-contract checks, no need for obsolete iron-kit expectations |
+| T-39 | `schematic_prepare` interrupted during spider string collection | Same ACQUIRE action resumes, partial loot counted, no preemption-only depot round-trip | PR #28 52 automated tests passed; full live resume still unverified (ELLIE-035) |
+| T-40 | `excavate` transient Mob Defense interruption | Same area/task survives and resumes native builder after safety recheck | User observed excavation then cancellation; PR #29 34 automated tests passed after patch, live resume unverified (ELLIE-034) |
+| T-41 | `excavate` ForceEquipGearChain interruption | Preserve work and bounded retries; no terminal cancel for benign gear change | User observed cancellation after reaching 261 blocks remaining; follow-up CI passes, live resume unverified |
+| T-42 | Long-running hunting inventory pressure | Safe vetted surplus to verified storage, retain target items, resume same goal | Not implemented; detailed design at ELLIE-032 |
+| T-43 | End-to-end planned excavation | Survey actual drops and tools, prepare only necessary chests, unload/continue, verify final air state | AGENTIC job logistics not implemented (ELLIE-031/033) |
+| T-44 | Documentation parity against current JAR/source branch | 49 IDs, 8 disabled IDs, 14-stage HOME setup, all 37 stable issue IDs; separate live and CI evidence | Docs-only parser/source parity gate added in this reconciliation; no Minecraft execution |
+
+**Do not reinterpret existing T-12/T-13 and other old `setup` references as current
+iron-equipment setup requirements**. Those scenarios were written against
+historical versions and need explicit target-build labels before promotion.
+
 ## Interpreter bundle import verification (2026-11-04)
 
 **New live regression required — ELLIE-023:** Reproduce waiting at block edges while the body visually overlaps the next block. Log exact/fractional coordinates, feet block, supporting block/collision bounds, path node/target, on-ground and reach/arrival checks. Exercise ordinary movement, setup workstation approach and build placement from centers, edges and corners, including negative coordinates. No root cause or fix is verified yet.
