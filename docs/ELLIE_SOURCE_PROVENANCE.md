@@ -1,6 +1,10 @@
 # Ellie source and artifact provenance
 
-## Current preserved version
+> **Versioned provenance note (2026-11-04), not the latest release receipt.**
+> The imported interpreter bundle and hashes below are historical baselines. The latest reviewed Ellie 1.21.1 development artifact is the draft PR #29 pinned-binary overlay at `4626bf2`, with source/CI receipt in [release handoff](ELLIE_RELEASE_HANDOFF.md). The complete custom 1.21.1 source tree still has not been proven reproducible as a clean native-source build; selected binary overlay classes are reproducible from tracked patchers. See [current backlog](ELLIE_BACKLOG_CURRENT_20261109.md), ELLIE-015.
+
+
+## Preserved interpreter bundle, historical snapshot
 
 The maintainer supplied `PlayerEngine-Ellie-ChatGPT-Interpreter-STREAM-HOTFIX-FLAT.zip`.
 Its interpreter source, sidecar, tests and binary build inputs are preserved in

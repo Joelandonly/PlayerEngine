@@ -1,6 +1,10 @@
 # Setup11 integration and shared reliability
 
-Historical v3 contract. The current expanded setup is documented in
+> **Historical Setup11 revision, not current `setup` (2026-11-09).**
+> Its previous link to the "current expanded setup" is obsolete. The current PR #29 candidate dispatches to 14-stage `BasicSetupTask`; see [command inventory](ELLIE_COMMANDS.md) and [reconciled backlog](ELLIE_BACKLOG_CURRENT_20261109.md).
+
+
+Historical v3 contract. The subsequently superseded survival setup is documented in
 [ELLIE_SURVIVAL_SETUP.md](ELLIE_SURVIVAL_SETUP.md).
 
 Baseline: `codex/shared-recovery-crash`, `ae24a84cc9fde89dda55a23a4ecb53b4c25e9056`.

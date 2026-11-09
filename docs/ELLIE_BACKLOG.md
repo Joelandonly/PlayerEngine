@@ -1,6 +1,6 @@
 # Ellie / PlayerEngine development backlog
 
-_Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [Development Log](../DEVELOPMENT_LOG.md) and [Validation Matrix](ELLIE_VALIDATION.md)._
+_Historical register reviewed 2026-11-02; preserved for dated evidence and stable IDs. **Current triage is [ELLIE_BACKLOG_CURRENT_20261109.md](ELLIE_BACKLOG_CURRENT_20261109.md)**, reconciled against the PR #29 1.21.1 development branch and the separate 2026-11-06 `main` additions. Do not treat older statuses below as current release declarations._
 
 > **Current organization:** The interpreter bundle is now preserved in [`ellie/`](../ellie/README.md), with bridge source, tests and a pinned 1.21.1 binary baseline. The root Gradle source remains 1.20.1. The complete 1.21.1 mod source is still unavailable; importing the bundle does not close any gameplay bug or establish live validation.
 
@@ -43,6 +43,31 @@ _Last reviewed: 2026-11-02. Tracking IDs are stable within this document. See [D
 | ELLIE-021 | P1 | Feature / crafting | PREVIEW / MOCK | Remember verified crafting tables in EllieGPS and avoid deep detours |
 | ELLIE-022 | P1 | Bug / bridge | PREVIEW / MOCK | Bridge reflection-access repair; live crossing still unverified |
 | ELLIE-023 | P1 | Bug / navigation | OBSERVED | Stops at a block edge while body visually overlaps the next block |
+| ELLIE-024 | P1 | Reliability / task hooks | INVESTIGATE | Guarantee SharedTargetRecovery task-context cleanup on exceptional exits |
+| ELLIE-025 | P1 | Reliability / watchdog | INVESTIGATE | Classify genuine no-progress versus temporary unavailable before terminal BLOCKED |
+| ELLIE-026 | P1 | Build / release | PROPOSED | Atomic staging and publication: never replace last known-good JAR on failure |
+| ELLIE-027 | P2 | Supervisor / callbacks | PROPOSED | Move external completion callbacks outside REGISTRY monitor without changing goal ordering |
+| ELLIE-028 | P2 | Compatibility / mappings | PROPOSED | Centralize 1.21.1 waypoint BlockPos reflection in a version adapter |
+| ELLIE-029 | P2 | Tests / API parity | PROPOSED | Verify test-controller stub contracts against the real packaged controller API |
+
+### 2026-11-06 source audit follow-up — future work only (ELLIE-024 through ELLIE-029)
+
+**Baseline:** `main` at `6290ef647051bc4f1be1898b795c031d80295252` is the owner-confirmed working v9 setup build (four successful fresh Minecraft survival worlds). These are reviewed **risks/proposals**, not fixes or observed gameplay failures. Do not change `BasicSetupTask` or the baseline in a broad reliability refactor. Implement one item per isolated branch, preserve all existing functions, and require CI, packaged-bytecode checks and focused live regression before promotion. Experimental PR #15 contains command-input and remote-owner work; it is not evidence that these audit items are fixed.
+
+**ELLIE-024 — Exception-safe task context (P1; INVESTIGATE).** `SharedTargetRecovery.enter()` writes a static `ThreadLocal`; `after()` and `stopped()` remove it in normal paths. `PatchReliability.java` injects enter/after around `Task.tick` but does not visibly guarantee cleanup with `finally` if `onTick` throws. Review *all* early/exceptional exits and nested calls; make the hook exception-safe without changing native task execution or stealing other threads' state. **Acceptance:** injected exceptions and nested/concurrent task tests leave no stale look/input owner; packaged Task bytecode audit and existing recovery regression pass.
+
+**ELLIE-025 — Evidence-based watchdog terminal classification (P1; INVESTIGATE).** `SharedTargetRecovery.beforeTask` can mark a resource root `TASK_BLOCKED` after 2,400 ticks without recognized inventory/world output, even if the world is temporarily unavailable or progress tracking misses an active native operation. Existing replan, reject, safety-yield and target-attempt protections already exist, so do **not** characterize every time-based block as a defect or just increase timers. The stable v9 job-wide watchdog explicitly checks legacy `EllieSetupTask`, not `BasicSetupTask`; any compatibility change needs a dedicated gameplay test, especially because the later recovery patch was not accepted as the known-good build. **Acceptance:** separate no-progress, temporary suspension, verified-unreachable and actual resource gain; a bounded retry/terminal policy with specific reason codes; stress tests for unloading, workshop crafting, navigation, changed targets and safety interruptions; no silent false completion or infinite retries.
+
+**ELLIE-026 — Atomic build publication (P1; PROPOSED).** `ellie/build.sh` validates the pinned baseline and performs ASM, regression and JAR/source-revision checks, but it builds into shared `build/` and `dist/` locations and temporarily moves `PlayerEngineController.class` for fixtures. Partial files can remain after interruption and `tools/package.py` emits `dist/` before the full suite completes. **Acceptance:** isolate candidate/staging outputs; verify all outputs and packaged hook contracts before publishing; atomically publish/rename the final JAR; on failure keep the last passing build untouched and emit a clear phase/artifact summary. Do not remove existing build gates.
+
+**ELLIE-027 — Supervisor callback outside registry lock (P2; PROPOSED).** `CoreGoalSupervisor.submit` invokes external `onComplete.run()` under `synchronized(REGISTRY)`. Java intrinsic monitors are reentrant: same-thread nested submit does **not** deadlock merely by reacquiring the lock, and `SupervisorTest` already covers successful callback chaining. Still, slow callbacks or callbacks waiting on another thread can hold this global lock and cause lock-order deadlocks. **Acceptance:** preserve synchronous-adapter receipt behavior, exactly-once completion, stale-generation checks, and Minecraft-thread safety while deferring external work outside the monitor; test concurrent and nested callbacks. Avoid introducing a new executor unless thread ownership requires it.
+
+**ELLIE-028 — Mapping compatibility boundary (P2; PROPOSED).** `BasicSetupTask.NativeEnvironment.homeVerified` reflectively invokes `method_10263`, `method_10264`, `method_10260` to inspect waypoint positions. These mappings are *expected* for the pinned 1.21.1 binary; this is a portability risk, not an observed 1.21.1 bug. **Acceptance:** narrow version-specific `BlockPos`/waypoint adapter, explicit mapping failure diagnostics, preserved HOME location, stable behavior on current build, and test before any Minecraft upgrade.
+
+**ELLIE-029 — Test fixture / runtime API parity (P2; PROPOSED).** `ellie/tests/fixtures/.../PlayerEngineController.java` deliberately implements only the contracts needed by the local harness and throws for game-only persisted data. This does not prove production API compatibility. **Acceptance:** inspect the real packaged controller signatures/reflective calls and run explicit parity tests alongside fixture tests, then verify actual game acquisition, movement, waypoint persistence, and station placement. Do not claim a mock-only pass is gameplay validation.
+
+**Low-risk follow-up:** name unexplained numeric timeouts and standardize `RETRY`, `YIELD`, `BLOCKED`, `FAILED` receipts when touching their owning components. Renaming a threshold alone is not a reliability fix.
+
 
 ### ELLIE-023 — Block-edge waiting / apparent arrival mismatch
 
@@ -200,3 +225,19 @@ For ELLIE-022, Baritone 1.21.1 exposes supported typed `IPathingBehavior.getCurr
 4. Before closing, record source commit, test seed/world, actual result, regressions checked and user observation.
 5. Prefer minimal patches; do not remove unrelated features. Never publish raw logs, authentication information, UUIDs or local paths in this public repo.
 6. If GitHub Issues are enabled, migrate by stable `ELLIE-###` ID and cross-link back here. Do not create duplicate entries.
+
+## Reconciliation boundary: 2026-11-09
+
+This document remains a **historical issue-evidence archive**. The register was
+missing `ELLIE-024` through `ELLIE-029` from the 2026-11-06 main-branch
+audit; those original six rows and their original detailed statements are
+now incorporated above, without changing their numbering or suggesting
+they were fixed. Later observations and priorities belong to
+[the current canonical backlog](ELLIE_BACKLOG_CURRENT_20261109.md).
+
+The active 1.21.1 candidate is draft PR #29 (`4626bf2`), stacked on
+PR #28 and PR #26, **not merged to `main`**. Current `setup` is
+14-stage basic HOME v9 with 64 torches, not the earlier iron-kit /
+shelter survival command. See [current 49-command inventory](ELLIE_COMMANDS.md).
+The dated binary-only preview comments earlier in this archive are historical;
+do not assert their fixes are in PR #29 without packaged-class evidence.

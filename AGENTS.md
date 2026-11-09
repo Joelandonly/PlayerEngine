@@ -21,6 +21,37 @@ spider-hunt overflow is documented at
 Preserve the entire PR #26 -> PR #28 -> PR #29 lineage; check current
 GitHub PRs before modifying newer code. Never branch from stale `main`.
 
+## Command documentation and backlog source of truth (2026-11-09)
+
+See the full current-vs-historical [documentation audit](docs/ELLIE_DOCUMENTATION_AUDIT_20261109.md) before interpreting older setup or release notes.
+
+For **current draft PR #29** code/command planning, use
+`docs/ELLIE_COMMANDS.md` and `docs/ELLIE_COMMANDS.tsv` (49 registered,
+8 unregistered), plus `docs/ELLIE_BACKLOG_CURRENT_20261109.md`
+(ELLIE-001 through ELLIE-037). These are the reconciled current
+readme/triage references. `docs/ELLIE_BACKLOG.md` is the **historical
+evidence archive**, now including main-only ELLIE-024–029, not the
+authoritative current status table. Previous setup/survival/native-command
+documents remain as explicitly labeled historical versions.
+
+**Current owner `setup` is v9 14-stage basic HOME**, with wood/stone
+tools and 64 torches, one crafting bench HOME, chest and furnace; it is
+NOT the earlier iron/shield/bucket/bed/shelter setup. Do not rename the
+old survival setup as the currently dispatched command. The current
+1.21.1 JAR preserves 32 protected setup classes; source/CI tests and
+owner's four-world test evidence are separate facts.
+
+When adding/removing commands or changing their contract, update BOTH
+the source/native routing and the 49-ID TSV/Markdown inventory.
+When an issue's status changes, update the current backlog with evidence
+and preserve historical ELLIE-### IDs. The `docs/verify_ellie_consistency.py`
+CI gate checks command registry, setup bills, 29 historical IDs and 37
+current IDs at this source revision. Update the gate alongside real
+future registry/issue changes, not by weakening its checks.
+
+This documentation-only review is based on PR #29's head. It does not
+add AGENTIC functionality or validate the latest suspension fix in-game.
+
 ## Mandatory JAR-to-GitHub handoff (every new build, including hotfixes)
 
 The **GitHub commit + CI artifact is the source of truth** for every new Ellie

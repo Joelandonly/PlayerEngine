@@ -1,6 +1,6 @@
-# Planned: safe inventory overflow during autonomous resource gathering
+# ELLIE-032: planned safe inventory overflow during autonomous resource gathering
 
-**Status: NOT implemented, NOT in the current JAR.** GitHub Issues are disabled in this repository, so this file is the tracked backlog entry.
+**Status: PROPOSED / not implemented in PR #29.** This is the detailed specification for ELLIE-032 in the [current reconciled backlog](ELLIE_BACKLOG_CURRENT_20261109.md). GitHub Issues remain disabled for this repository; preserve the stable ID. The user requested safe autonomous storage during long-running resource gathering, **not** automatic item deletion.
 
 ## User's live problem (2026-11-09)
 

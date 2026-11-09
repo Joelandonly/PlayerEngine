@@ -1,5 +1,9 @@
 # Chest-anchored survival setup
 
+> **Historical survival setup variant, superseded for the owner-facing `setup` command (2026-11-09).**
+> Iron gear, shield, food/fuel reserves, shelter and 32-torch plans on this page belong to a previous workflow. The active PR #29 1.21.1 release retains the 14-stage **basic HOME v9** command instead. Do not use these older requirements as current `setup` acceptance criteria. See [current commands](ELLIE_COMMANDS.md) and [current backlog](ELLIE_BACKLOG_CURRENT_20261109.md). The historical tests remain relevant to their former revision but are not evidence that the current command runs this path.
+
+
 Build ID: `20261105-setup-output-handoff-v7`.
 Development baseline: `b8c3dbb`, the tools-first/no-torch-placement Ellie revision,
 which includes the owner's Setup11 overlay on `codex/shared-recovery-crash`.
