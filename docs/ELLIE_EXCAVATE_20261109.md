@@ -1,5 +1,57 @@
 # Explicit native excavation: `ellie excavate x1 y1 z1 x2 y2 z2`
 
+## Live test and verified interruption fix (2026-11-09)
+
+User-tested build: `240dc3101ac5b9f9ee64841f56aa6b2c77c8f498`,
+from PR #29. Uploaded files:
+`latest(20261109-023728).log`,
+`ellie-observatory-events(20261109-023728).jsonl`, and status snapshot.
+
+The user started excavation of `91 80 277` through `120 80 296`
+(600 total blocks). Actual air-cell progress was continuous; the native
+builder was visibly digging and 15 inventory slots were still free at
+the final interruption. The failure was NOT the no-work watchdog and
+NOT full inventory.
+
+- **03:34:08 local:** 444 blocks remaining; the first excavation task
+  reported `BLOCKED_EXCAVATE_CANCELLED`, immediately as
+  `User Tasks -> Mob Defense -> User Tasks`.
+- **03:36:28 local:** restarted excavation progressed to 261 blocks
+  remaining; it reported the same cancellation as
+  `User Tasks -> ForceEquipGearChain -> User Tasks`.
+- These events establish an erroneous **transient task lifecycle**.
+  A skeleton nearby does not demonstrate a combat or targeting failure.
+
+**Correction:** `ExcavateAreaTask` now implements the existing
+`TransientlyResumableTask` contract. On the native runner's accepted
+`HIGHER_PRIORITY_CHAIN` or `GESTURE_OVERLAY` suspension it retains the
+same owner/task, area, last verified remaining count, cumulative build-work
+and no-work history. It releases ONLY its own native builder so that safety
+or gear work can run. At resume it checks the same world, determines
+whether the old native plan is still owned/active, and either continues or
+revalidates the full selected region and creates another `clearArea` plan.
+A preflight interrupted before digging is rechecked from the beginning.
+The 128-interruption ceiling and total-work watchdog remain bounded.
+
+Explicit user stop/replacement, abandoned resume, world mismatch,
+actual builder ownership theft, and unsafe changed blocks are still terminal.
+No changes to Mob Defense, ForceEquipGearChain, stored schematics,
+combat hunting or automatic inventory disposal.
+
+**Automated evidence:** after the fix, full GitHub run
+https://github.com/Joelandonly/PlayerEngine/actions/runs/42552708414
+passed 34 excavation geometry/lifecycle tests, 11 real Minecraft
+1.21.1 method binding checks, existing P0/PR28 regressions and exact
+release identity. These tests substitute native NPC/world execution and
+are **not** a successful survival-game excavation.
+
+**Next live acceptance:** install the exact new PR #29 JAR; on a backed-up
+world, repeat `ellie excavate 91 80 277 120 80 296`. Capture
+`EXCAVATE_SUSPENDED` and `EXCAVATE_RESUMED` with the same
+`project` id when combat/equipment takes priority, and verify the block
+count continues downward without `BLOCKED_EXCAVATE_CANCELLED`.
+Do not issue an explicit stop or another owner command during that test.
+
 ## Scope (separate from automatic inventory storage)
 
 Finite inclusive cuboid selection of up to **32,768 blocks**. The six supplied
