@@ -81,6 +81,25 @@ start from old `main` or merge withdrawn PR #27. The active branch is
 unimplemented backlog item, not a feature of the excavation JAR.
 Future commits and releases must update their exact SHA and artifact link.
 
+## Command/documentation reconciliation (2026-11-09)
+
+The current development branch still carries all 32 proven v9 basic HOME
+setup classes. The owner-facing `setup` command starts
+`BasicSetupTask` with **14 stages**, not the historical iron kit,
+shield, bucket and shelter flow. Older `docs/ELLIE_COMMANDS.tsv`
+and `ELLIE_COMMANDS.md` descriptions were stale, and the older
+PR #29 backlog missed the six main-only audit IDs ELLIE-024–029.
+
+The **documentation-only** reconciliation is based on this PR #29
+source lineage. Refer to [49-command manifest](ELLIE_COMMANDS.md),
+[current 37-ID backlog](ELLIE_BACKLOG_CURRENT_20261109.md),
+[original preserved 29-ID history](ELLIE_BACKLOG.md), and
+[documentation parity gate](verify_ellie_consistency.py).
+It changes no gameplay class or claimed live feature status.
+On future command additions regenerate/update the inventory from the
+actual exact source/packaged JAR and update its provenance; do not
+silently treat historical 46-command inventories as current.
+
 ## How to create a release
 
 1. Inspect open Ellie PRs and previous release receipt; choose the correct
