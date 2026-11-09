@@ -63,6 +63,8 @@ public final class PatchCombatAcquireResume implements Opcodes {
         // abandoned session capable of resurrecting the old objective.
         forget(method(type,"onStop","(L"+TASK+";)V"));
         forget(method(type,"onTransientResumeAbandoned","()V"));
+        forget(method(type,"block","(Ljava/lang/String;Ljava/lang/String;)L"+TASK+";"));
+        forget(method(type,"success","(Ljava/lang/String;)L"+TASK+";"));
 
         ClassWriter writer=new ClassWriter(ClassWriter.COMPUTE_MAXS);
         type.accept(writer);
