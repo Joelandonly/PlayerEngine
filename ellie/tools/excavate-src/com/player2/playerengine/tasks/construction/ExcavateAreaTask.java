@@ -21,7 +21,7 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
     private static final int MAX_VOLUME=32768, SCAN_PER_TICK=128;
     private final int x1,y1,z1,x2,y2,z2,volume;
     private Object world,builder,ownedSchematic;
-    private int scan,verifyScan,remaining,airCount,verifiedAirLast=-1,noWorkTicks,buildTicks;
+    private int scan,airAtStart,verifyScan,remaining,airCount,verifiedAirLast=-1,noWorkTicks,buildTicks;
     private boolean building,complete,success,terminal;
     private String reason="Preflight pending";
 
@@ -114,8 +114,10 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
         try{
             worldCheck();
             if(!building){
-                for(int limit=0;scan<volume&&limit<SCAN_PER_TICK;scan++,limit++)safe(cell(scan));
+                for(int limit=0;scan<volume&&limit<SCAN_PER_TICK;scan++,limit++)if(safe(cell(scan)))airAtStart++;
                 if(scan<volume)return null;
+                if(airAtStart==volume){terminal=success=complete=true;reason="Already clear: verified "+volume+" air blocks";
+                    report("EXCAVATE_COMPLETED",reason);return null;}
                 if(Boolean.TRUE.equals(call(builder,"isActive")))
                     return block("BUILDER_OCCUPIED","Other construction started during excavation preflight");
                 call(builder,"clearArea",pos(new Pos(x1,y1,z1)),pos(new Pos(x2,y2,z2)));
@@ -127,6 +129,8 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
                 return null;
             }
             if(++buildTicks>240_000)return block("WORK_BUDGET","Total excavation work budget exceeded");
+            if(get(builder,"schematic")!=ownedSchematic && get(builder,"realSchematic")!=ownedSchematic)
+                return block("OWNERSHIP","Another task replaced the native excavation builder");
             // Scan conservatively over time: no fake progress from builder status.
             for(int n=0;n<SCAN_PER_TICK;n++){
                 Pos p=cell(verifyScan);
