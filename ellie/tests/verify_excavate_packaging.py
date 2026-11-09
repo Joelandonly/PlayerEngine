@@ -31,6 +31,12 @@ with ZipFile(JAR) as z:
  assert z.testzip() is None
  assert len(names)==1945 and len(set(names))==len(names),"unexpected excavation JAR entry set"
  assert NEW <= set(names)
+ assert sha256(z.read(CMD)).hexdigest()==(
+  "53d73ad8d59c315928f8af5f5b20f6406738d074a26d0c65c606474cdb425b82"
+ ),"Unknown registered command class"
+ assert sha256(z.read(ROUTE)).hexdigest()==(
+  "ff1557c2698978babd2dcf763b549a66c9e615e7bd381f47cd19035bf4f893e4"
+ ),"Unknown exact command parser"
  assert not any(n.startswith("com/player2/playerengine/schematic/SchematicWhiteCarpetAcquisition")
                 for n in names),"withdrawn sheep workaround leaked into release"
  for name,want in FROZEN.items():
