@@ -47,16 +47,32 @@ experiments and emergency hotfixes.
   Its first CI run passed 52 fake-world regression checks; exact final
   released class SHA and full CI must pass before claiming build validity.
   See `docs/ELLIE_COMBAT_ACQUIRE_RESUME_20261109.md`.
+- PR #28's final source `4db5eb5b0b2f4dfd88b5c0c12df4356efd0efdbf`
+  passed full CI (https://github.com/Joelandonly/PlayerEngine/actions/runs/42540492088).
+  Its executable Mob Defense/schematic ownership handoff remains
+  **gameplay-unverified**.
+- PR #29, `feat/ellie-excavate-region-20261109`, is the ACTIVE DRAFT
+  based on PR #28, introducing native bounded `ellie excavate` using the
+  existing Baritone builder with full preflight checks. Its exact source
+  and CI artifact must be paired in the release receipt. The current
+  runtime user's active spider hunt is not altered merely by updating GitHub.
+  See `docs/ELLIE_EXCAVATE_20261109.md`.
+- Automatic overflow storage for the current spider-loot inventory pressure
+  is **future work, not yet implemented**. Its reversible same-goal policy
+  and safety acceptance are at
+  `docs/ELLIE_INVENTORY_OVERFLOW_BACKLOG_20261109.md`. GitHub Issues are
+  disabled in this repository; this tracked file is the persistent backlog.
 - **Live-world evidence still outstanding:** the 64 oak trapdoors must
   actually craft past the 92-plank loop, and a manual `agentic deposit`
   replacement must not destroy the staged project chests. The prior
   full-chest failure and the general command-replacement/resume behavior
   have not been declared solved by isolated tests.
 
-**Current development starting point:** inspect PR #28 and latest CI first.
-Preserve merged PR #25 and unmerged PR #26 fixes. Do not start from old
-`main` and do not merge withdrawn PR #27. The active branch is
-`fix/ellie-v18-3-combat-acquire-resume-20261109`.
+**Current development starting point:** inspect PR #29's current CI and
+PR head, preserving PR #28 and PR #26 as its dependent base. Do not
+start from old `main` or merge withdrawn PR #27. The active branch is
+`feat/ellie-excavate-region-20261109`. Inventory overflow is a separate
+unimplemented backlog item, not a feature of the excavation JAR.
 Future commits and releases must update their exact SHA and artifact link.
 
 ## How to create a release
