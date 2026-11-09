@@ -291,3 +291,12 @@ java --add-exports java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED --add-ex
 javac --release 21 -cp build/combat-resume-testclasses:build/schematic-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar -d build/combat-resume-testclasses tests/CombatAcquireResumeRegression.java
 java -Xverify:all -cp build/combat-resume-testclasses:build/schematic-testclasses:build/classes:baseline/playerengine-acquisition-safety.jar CombatAcquireResumeRegression
 python3 tests/verify_combat_acquire_resume_packaging.py
+
+# NEW EXPLICIT OWNER EXCAVATION: run only AFTER all approved PR28 P0 checks.
+# This overlay changes PlayerEngineCommands + NativeCommandText only; it
+# leaves the game builder, existing NPC tasks and survival chains untouched.
+python3 tools/apply_excavate_hotfix.py
+mkdir -p build/excavate-regression-testclasses
+javac --release 21 -cp dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar -d build/excavate-regression-testclasses tests/ExcavateCommandRegression.java
+java -Xverify:all -cp build/excavate-regression-testclasses:dist/PlayerEngine-Fabric-1.21.1-1.4.0-ELLIE-PLAYER2-SHARED-RECOVERY.jar ExcavateCommandRegression
+python3 tests/verify_excavate_packaging.py

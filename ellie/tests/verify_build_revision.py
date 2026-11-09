@@ -31,6 +31,10 @@ with ZipFile(jar) as z:
     reviewed_hotfixes={
         'com/player2/playerengine/tasks/base/Task.class':
             '164d10015b94591bd5cf4ecd833bc1212e5761f58ea628ba531c1e591c2a5637',
+        'com/player2/playerengine/PlayerEngineCommands.class':
+            '53d73ad8d59c315928f8af5f5b20f6406738d074a26d0c65c606474cdb425b82',
+        'com/player2/playerengine/nativecommands/NativeCommandText.class':
+            'ff1557c2698978babd2dcf763b549a66c9e615e7bd381f47cd19035bf4f893e4',
         'com/player2/playerengine/schematic/SchematicProjectTask.class':
             '1418b5fd28ef64fffeaeabadb0058e992b63ea47b05db7587f1e96694111969f',
         'com/player2/playerengine/schematic/SchematicWorld.class':
