@@ -192,8 +192,13 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
                     " remaining="+remaining+" interrupts="+acceptedInterrupts+
                     " budgetTicks="+buildTicks+" noWorkTicks="+noWorkTicks);
             }
-        }else report("EXCAVATE_RESUMED","project="+id()+" mode=preflight_continues"+
-            " scanned="+scan+"/"+volume+" interrupts="+acceptedInterrupts);
+        }else{
+            // Even a partly scanned preflight can become stale while defense
+            // or equipment work is in control. Recheck every selected cell.
+            scan=0;airAtStart=0;
+            report("EXCAVATE_RESUMED","project="+id()+" mode=preflight_recheck"+
+                " scanned=0/"+volume+" interrupts="+acceptedInterrupts);
+        }
     }
     @Override public boolean isFinished(){return terminal;}
     @Override public boolean isTerminal(){return terminal;}
