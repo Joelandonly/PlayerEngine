@@ -1,0 +1,121 @@
+package com.player2.playerengine.modintelligence.enrich;
+
+import com.player2.playerengine.PlayerEngine;
+import com.player2.playerengine.player2api.BudgetThresholdsResolver;
+import com.player2.playerengine.player2api.Player2PayerResolution;
+import com.player2.playerengine.player2api.config.BudgetThresholds;
+import com.player2.playerengine.player2api.config.Player2ServerConfigHolder;
+import com.player2.playerengine.player2api.config.Player2ServerRuntimeConfig;
+import java.util.List;
+import java.util.Optional;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.MinecraftServer;
+import org.apache.logging.log4j.Logger;
+
+public final class ModIntelligenceSpendSafety {
+   private static final Logger LOGGER = PlayerEngine.LOGGER;
+
+   private ModIntelligenceSpendSafety() {
+   }
+
+   public static boolean bypassFlagsApply(MinecraftServer server) {
+      return BudgetThresholdsResolver.useServerConfigForBudget(server);
+   }
+
+   public static boolean isModelBlacklistBypassed(MinecraftServer server) {
+      return bypassFlagsApply(server) && Player2ServerConfigHolder.get().isModIntelligenceBypassModelBlacklist();
+   }
+
+   public static boolean isLargeQueueBudgetGateBypassed(MinecraftServer server) {
+      return bypassFlagsApply(server) && Player2ServerConfigHolder.get().isModIntelligenceBypassLargeQueueBudgetGate();
+   }
+
+   public static Optional<ModIntelligenceSpendSafety.DeferReason> preflight(
+      MinecraftServer server, int queueSize, ModelBlacklist.ModelBlacklistSnapshot blacklist
+   ) {
+      return preflight(server, queueSize, blacklist, false);
+   }
+
+   public static Optional<ModIntelligenceSpendSafety.DeferReason> preflight(
+      MinecraftServer server, int queueSize, ModelBlacklist.ModelBlacklistSnapshot blacklist, boolean explicitLimitOverride
+   ) {
+      if (!blacklist.valid() && !isModelBlacklistBypassed(server)) {
+         LOGGER.warn("ModIntelligence enrichment: stopping batch (model_blacklist_invalid) — {}", blacklist.error());
+         return Optional.of(ModIntelligenceSpendSafety.DeferReason.BLACKLIST_INVALID);
+      }
+
+      if (queueSize > 20 && !isLargeQueueBudgetGateBypassed(server)) {
+         BudgetThresholds thresholds = ModIntelligenceEnrichmentClient.getBudgetThresholds(server);
+         if (thresholds == null || ModIntelligenceEnrichmentClient.noBudgetLimitsConfigured(thresholds)) {
+            if (!explicitLimitOverride) {
+               LOGGER.warn("ModIntelligence enrichment: deferred - queue size is {} (> 20) and no budget limit has been set on spending", queueSize);
+               return Optional.of(ModIntelligenceSpendSafety.DeferReason.LARGE_QUEUE_NO_BUDGET);
+            }
+
+            LOGGER.info("ModIntelligence enrichment: large-queue budget gate skipped — explicit command limit given (queue={})", queueSize);
+         }
+      }
+
+      return Optional.empty();
+   }
+
+   public static Component messageFor(ModIntelligenceSpendSafety.DeferReason reason, int queueSize, ModelBlacklist.ModelBlacklistSnapshot blacklist) {
+      return switch (reason) {
+         case BLACKLIST_INVALID -> Component.translatable(
+            "message.playerengine.mod_intelligence.preflight_blacklist_invalid", new Object[]{blacklist.error() != null ? blacklist.error() : "unknown error"}
+         );
+         case LARGE_QUEUE_NO_BUDGET -> Component.translatable("message.playerengine.mod_intelligence.preflight_no_budget", new Object[]{queueSize});
+      };
+   }
+
+   public static void notifyPlayer(MinecraftServer server, Component message) {
+      ServerPlayer player = resolveNotifyTarget(server);
+      if (player != null) {
+         player.sendSystemMessage(message.copy().withStyle(ChatFormatting.RED));
+      }
+   }
+
+   public static void notifyBatchAbort(MinecraftServer server, String abortCode, String detail) {
+      Component msg = switch (abortCode) {
+         case "model_blacklisted" -> Component.translatable(
+            "message.playerengine.mod_intelligence.batch_abort.model_blacklisted", new Object[]{detail != null && !detail.isBlank() ? " (" + detail + ")" : ""}
+         );
+         case "model_missing" -> Component.translatable("message.playerengine.mod_intelligence.batch_abort.model_missing");
+         case "model_blacklist_invalid" -> Component.translatable(
+            "message.playerengine.mod_intelligence.batch_abort.model_blacklist_invalid",
+            new Object[]{detail != null && !detail.isBlank() ? " (" + detail + ")" : ""}
+         );
+         default -> Component.translatable("message.playerengine.mod_intelligence.batch_abort.unknown", new Object[]{abortCode});
+      };
+      LOGGER.warn("ModIntelligence enrichment: stopping batch ({})", abortCode);
+      notifyPlayer(server, msg);
+   }
+
+   private static ServerPlayer resolveNotifyTarget(MinecraftServer server) {
+      if (server == null) {
+         return null;
+      }
+
+      Player2ServerRuntimeConfig cfg = Player2ServerConfigHolder.get();
+      Player2PayerResolution.ApiBillingContext billing = Player2PayerResolution.resolveForServer(server, cfg.getHeartbeatClientId());
+      if (billing != null && billing.onlinePayer() != null) {
+         return billing.onlinePayer();
+      }
+
+      if (BudgetThresholdsResolver.useServerConfigForBudget(server)) {
+         List<ServerPlayer> players = server.getPlayerList().getPlayers();
+         if (!players.isEmpty()) {
+            return players.get(0);
+         }
+      }
+
+      return null;
+   }
+
+   public enum DeferReason {
+      BLACKLIST_INVALID,
+      LARGE_QUEUE_NO_BUDGET;
+   }
+}

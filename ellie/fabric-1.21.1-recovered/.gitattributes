@@ -1,0 +1,2 @@
+# Preserve exact recovered bytes to keep the independent SHA-256 manifest stable.
+* -text

@@ -1,0 +1,61 @@
+package com.player2.playerengine.tasks.misc;
+
+import com.player2.playerengine.automaton.Baritone;
+import com.player2.playerengine.automaton.process.FishingProcess;
+import com.player2.playerengine.tasks.base.Task;
+import java.util.function.Consumer;
+import net.minecraft.world.item.Items;
+
+public class FishTask extends Task {
+   private final Consumer<String> onCannotStart;
+
+   public FishTask(Consumer<String> onCannotStart) {
+      this.onCannotStart = onCannotStart != null ? onCannotStart : reason -> {};
+   }
+
+   @Override
+   protected void onStart() {
+      ((Baritone)this.controller.getBaritone()).getFishingProcess().fish();
+   }
+
+   @Override
+   protected Task onTick() {
+      FishingProcess fishingProcess = ((Baritone)this.controller.getBaritone()).getFishingProcess();
+      if (!this.controller.getSlotHandler().forceEquipItem(Items.FISHING_ROD)) {
+         this.setDebugState("Can't fish without a fishing rod");
+         this.onCannotStart.accept("No fishing rod in inventory");
+         this.stop();
+         return null;
+      }
+
+      if (!fishingProcess.isActive()) {
+         this.onStart();
+      }
+
+      this.setDebugState("Fishing with Automatone...");
+      return null;
+   }
+
+   @Override
+   protected void onStop(Task interruptTask) {
+      FishingProcess fishingProcess = ((Baritone)this.controller.getBaritone()).getFishingProcess();
+      if (fishingProcess.isActive()) {
+         fishingProcess.onLostControl();
+      }
+   }
+
+   @Override
+   public boolean isFinished() {
+      return false;
+   }
+
+   @Override
+   protected boolean isEqual(Task other) {
+      return other instanceof FishTask;
+   }
+
+   @Override
+   protected String toDebugString() {
+      return "Fishing";
+   }
+}

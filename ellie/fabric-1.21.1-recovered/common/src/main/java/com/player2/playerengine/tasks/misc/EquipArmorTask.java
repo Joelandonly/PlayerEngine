@@ -1,0 +1,75 @@
+package com.player2.playerengine.tasks.misc;
+
+import com.player2.playerengine.tasks.base.Task;
+import com.player2.playerengine.tasks.squashed.CataloguedResourceTask;
+import com.player2.playerengine.util.ItemTarget;
+import com.player2.playerengine.util.helpers.StorageHelper;
+import java.util.Arrays;
+import net.minecraft.world.item.Item;
+
+public class EquipArmorTask extends Task {
+   private final ItemTarget[] toEquip;
+   private final boolean pinExplicitSlots;
+
+   public EquipArmorTask(ItemTarget... toEquip) {
+      this(false, toEquip);
+   }
+
+   public EquipArmorTask(boolean pinExplicitSlots, ItemTarget... toEquip) {
+      this.pinExplicitSlots = pinExplicitSlots;
+      this.toEquip = toEquip;
+   }
+
+   public EquipArmorTask(Item... toEquip) {
+      this(false, Arrays.stream(toEquip).map(ItemTarget::new).toArray(ItemTarget[]::new));
+   }
+
+   @Override
+   protected void onStart() {
+      if (this.pinExplicitSlots) {
+         this.controller.getExplicitEquipPolicy().pin(this.toEquip);
+      }
+   }
+
+   @Override
+   protected Task onTick() {
+      ItemTarget[] armorNotPresent = Arrays.stream(this.toEquip)
+         .filter(
+            targetx -> !this.controller.getItemStorage().hasItem(targetx.getMatches()) && !StorageHelper.isArmorEquipped(this.controller, targetx.getMatches())
+         )
+         .toArray(ItemTarget[]::new);
+      if (armorNotPresent.length > 0) {
+         this.setDebugState("Obtaining armor to equip.");
+         return new CataloguedResourceTask(armorNotPresent);
+      }
+
+      this.setDebugState("Equipping armor.");
+
+      for (ItemTarget target : this.toEquip) {
+         if (!StorageHelper.isArmorEquipped(this.controller, target.getMatches())) {
+            this.controller.getSlotHandler().forceEquipArmor(this.controller, target);
+         }
+      }
+
+      return null;
+   }
+
+   @Override
+   protected void onStop(Task interruptTask) {
+   }
+
+   @Override
+   public boolean isFinished() {
+      return Arrays.stream(this.toEquip).allMatch(target -> StorageHelper.isArmorEquipped(this.controller, target.getMatches()));
+   }
+
+   @Override
+   protected boolean isEqual(Task other) {
+      return other instanceof EquipArmorTask task ? Arrays.equals(task.toEquip, this.toEquip) : false;
+   }
+
+   @Override
+   protected String toDebugString() {
+      return "Equipping armor: " + Arrays.toString(this.toEquip);
+   }
+}

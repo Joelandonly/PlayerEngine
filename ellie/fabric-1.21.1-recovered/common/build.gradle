@@ -1,0 +1,6 @@
+architectury { common 'fabric' }
+dependencies {
+    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
+    modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
+    implementation 'net.sandrohc:schematic4j:1.1.0'
+}
