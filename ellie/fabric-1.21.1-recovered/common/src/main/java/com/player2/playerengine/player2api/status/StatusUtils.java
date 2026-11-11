@@ -1,0 +1,275 @@
+package com.player2.playerengine.player2api.status;
+
+import com.player2.playerengine.PlayerEngineController;
+import com.player2.playerengine.agentic.AgenticRunRegistry;
+import com.player2.playerengine.agentic.AgenticRunSnapshot;
+import com.player2.playerengine.automaton.api.entity.IAutomatone;
+import com.player2.playerengine.executor.StepExecution;
+import com.player2.playerengine.executor.StepState;
+import com.player2.playerengine.tasks.base.Task;
+import com.player2.playerengine.tasks.crafting.CraftMacroResourceTask;
+import com.player2.playerengine.tasks.crafting.DescribesProgress;
+import com.player2.playerengine.util.helpers.ItemHelper;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.Map.Entry;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ShieldItem;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.Direction.Axis;
+
+public class StatusUtils {
+   public static String getInventoryString(PlayerEngineController mod) {
+      Map<String, Integer> counts = new HashMap<>();
+
+      for (int i = 0; i < mod.getBaritone().getEntityContext().inventory().getContainerSize(); i++) {
+         ItemStack stack = mod.getBaritone().getEntityContext().inventory().getItem(i);
+         if (!stack.isEmpty()) {
+            String name = ItemHelper.stripItemName(stack.getItem());
+            counts.put(name, counts.getOrDefault(name, 0) + stack.getCount());
+         }
+      }
+
+      ObjectStatus status = new ObjectStatus();
+
+      for (Entry<String, Integer> entry : counts.entrySet()) {
+         status.add(entry.getKey(), entry.getValue().toString());
+      }
+
+      return status.toString();
+   }
+
+   public static String getDimensionString(PlayerEngineController mod) {
+      return mod.getWorld().dimension().location().toString().replace("minecraft:", "");
+   }
+
+   public static String getWeatherString(PlayerEngineController mod) {
+      boolean isRaining = mod.getWorld().isRaining();
+      boolean isThundering = mod.getWorld().isThundering();
+      ObjectStatus status = new ObjectStatus().add("isRaining", String.valueOf(isRaining)).add("isThundering", String.valueOf(isThundering));
+      return status.toString();
+   }
+
+   public static String getSpawnPosString(PlayerEngineController mod) {
+      BlockPos spawnPos = mod.getWorld().getSharedSpawnPos();
+      return String.format("(%d, %d, %d)", spawnPos.getX(), spawnPos.getY(), spawnPos.getZ());
+   }
+
+   public static String getTaskStatusString(PlayerEngineController mod) {
+      String noTask = "No tasks currently running.";
+      Optional<AgenticRunSnapshot> agentic = AgenticRunRegistry.snapshot(mod.getEntity().getUUID());
+      if (agentic.isPresent()) {
+         AgenticRunSnapshot run = agentic.get();
+         if (!"succeeded".equals(run.state()) && !"failed".equals(run.state())) {
+            String storage = run.storageTargetSummary() != null && !run.storageTargetSummary().isBlank() ? " target=" + run.storageTargetSummary() : "";
+            return "AGENTIC["
+               + run.runId()
+               + "] "
+               + run.goalSummary()
+               + " step="
+               + run.activeStepKind()
+               + " ("
+               + run.state()
+               + ") "
+               + run.lastMessage()
+               + storage;
+         }
+      }
+
+      Optional<StepExecution> tracked = mod.getActiveTrackedStep();
+      if (tracked.isPresent() && tracked.get().getState() == StepState.RUNNING) {
+         StepExecution exec = tracked.get();
+         long secs = exec.getElapsedMs() / 1000L;
+         StringBuilder sb = new StringBuilder();
+         sb.append("<").append(exec.getStepKind()).append(" [RUNNING] ").append(secs).append("s>");
+         Task root = mod.getUserTaskChain().getCurrentTask();
+         if (root != null && !root.toString().contains("LookAtOwner")) {
+            sb.append(" ").append(root.toString());
+            if (root instanceof DescribesProgress progress) {
+               sb.append(" {").append(progress.describeProgress()).append("}");
+            } else if (root instanceof CraftMacroResourceTask macro) {
+               sb.append(" {").append(macro.describeProgress()).append("}");
+            }
+         }
+
+         return sb.toString();
+      } else {
+         List<Task> tasks = mod.getUserTaskChain().getTasks();
+         return tasks.isEmpty() ? noTask : (tasks.get(0).toString().contains("LookAtOwner") ? noTask : tasks.get(0).toString());
+      }
+   }
+
+   public static String getNearbyBlocksString(PlayerEngineController mod) {
+      int radius = 12;
+      BlockPos center = mod.getPlayer().blockPosition();
+      Map<String, Integer> blockCounts = new HashMap<>();
+
+      for (int dx = -radius; dx <= radius; dx++) {
+         for (int dy = -radius; dy <= radius; dy++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+               BlockPos pos = center.offset(dx, dy, dz);
+               Block block = mod.getWorld().getBlockState(pos).getBlock();
+               ResourceLocation blockKey = BuiltInRegistries.BLOCK.getKey(block);
+               String blockName = blockKey != null
+                  ? ("minecraft".equals(blockKey.getNamespace()) ? blockKey.getPath() : blockKey.toString())
+                  : block.getDescriptionId().replace("block.minecraft.", "");
+               if (!blockName.equals("air")) {
+                  blockCounts.put(blockName, blockCounts.getOrDefault(blockName, 0) + 1);
+               }
+            }
+         }
+      }
+
+      ObjectStatus status = new ObjectStatus();
+
+      for (Entry<String, Integer> entry : blockCounts.entrySet()) {
+         status.add(entry.getKey(), entry.getValue().toString());
+      }
+
+      return status.toString();
+   }
+
+   public static String getOxygenString(PlayerEngineController mod) {
+      return String.format("%s/300", mod.getPlayer().getAirSupply());
+   }
+
+   public static String getNearbyHostileMobs(PlayerEngineController mod) {
+      int radius = 32;
+      List<String> descriptions = new ArrayList<>();
+
+      for (Entity entity : mod.getWorld().getAllEntities()) {
+         if (entity instanceof Monster && entity.distanceTo(mod.getPlayer()) < radius) {
+            String type = entity.getType().getDescriptionId();
+            String niceName = type.replace("entity.minecraft.", "");
+            String position = entity.position().align(EnumSet.allOf(Axis.class)).toString();
+            descriptions.add(niceName + " at " + position);
+         }
+      }
+
+      return descriptions.isEmpty()
+         ? String.format("no nearby hostile mobs within %d", radius)
+         : "[" + String.join(",", descriptions.stream().map(s -> "\"" + s + "\"").toArray(String[]::new)) + "]";
+   }
+
+   public static String getEquippedArmorStatusString(PlayerEngineController mod) {
+      LivingEntity player = mod.getPlayer();
+      ObjectStatus status = new ObjectStatus();
+      ItemStack head = player.getItemBySlot(EquipmentSlot.HEAD);
+      ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
+      ItemStack legs = player.getItemBySlot(EquipmentSlot.LEGS);
+      ItemStack feet = player.getItemBySlot(EquipmentSlot.FEET);
+      ItemStack offhand = player.getItemBySlot(EquipmentSlot.OFFHAND);
+      status.add("helmet", !head.isEmpty() && head.getItem() instanceof ArmorItem ? ItemHelper.stripItemName(head.getItem()) : "none");
+      status.add("chestplate", !chest.isEmpty() && chest.getItem() instanceof ArmorItem ? ItemHelper.stripItemName(chest.getItem()) : "none");
+      status.add("leggings", !legs.isEmpty() && legs.getItem() instanceof ArmorItem ? ItemHelper.stripItemName(legs.getItem()) : "none");
+      status.add("boots", !feet.isEmpty() && feet.getItem() instanceof ArmorItem ? ItemHelper.stripItemName(feet.getItem()) : "none");
+      status.add(
+         "offhand_shield", !offhand.isEmpty() && offhand.getItem() instanceof ShieldItem ? ItemHelper.stripItemName(offhand.getItem()) : "none"
+      );
+      return status.toString();
+   }
+
+   public static String getNearbyPlayers(PlayerEngineController mod) {
+      List<String> descriptions = new ArrayList<>();
+
+      for (Entity entity : mod.getEntityTracker().getCloseEntities()) {
+         if (entity instanceof Player player && entity.distanceTo(mod.getPlayer()) < 64.0F) {
+            String username = player.getName().getString();
+            String position = entity.position().align(EnumSet.allOf(Axis.class)).toString();
+            descriptions.add(username + " at " + position);
+         }
+      }
+
+      return descriptions.isEmpty()
+         ? String.format("no nearby users within %.2f", 64.0F)
+         : "[" + String.join(",", descriptions.stream().map(s -> "\"" + s + "\"").toArray(String[]::new)) + "]";
+   }
+
+   public static String getNearbyNPCs(PlayerEngineController mod) {
+      List<String> descriptions = new ArrayList<>();
+
+      for (Entity entity : mod.getEntityTracker().getCloseEntities()) {
+         if (entity instanceof IAutomatone && entity.distanceTo(mod.getPlayer()) < 32.0F) {
+            String username = entity.getDisplayName().getString();
+            if (!Objects.equals(username, mod.getPlayer().getDisplayName().getString())) {
+               String position = entity.position().align(EnumSet.allOf(Axis.class)).toString();
+               descriptions.add(username + " at " + position);
+            }
+         }
+      }
+
+      return descriptions.isEmpty()
+         ? String.format("no nearby npcs within %d", 32)
+         : "[" + String.join(",", descriptions.stream().map(s -> "\"" + s + "\"").toArray(String[]::new)) + "]";
+   }
+
+   public static float getUserNameDistance(PlayerEngineController mod, String targetUsername) {
+      for (Player player : mod.getWorld().players()) {
+         String username = player.getName().getString();
+         if (username.equals(targetUsername)) {
+            return player.distanceTo(mod.getPlayer());
+         }
+      }
+
+      return Float.MAX_VALUE;
+   }
+
+   public static String getDifficulty(PlayerEngineController mod) {
+      return mod.getWorld().getDifficulty().toString();
+   }
+
+   public static String getTimeString(PlayerEngineController mod) {
+      ObjectStatus status = new ObjectStatus();
+      status.add("isDay", Boolean.toString(mod.getWorld().isDay()));
+      status.add("timeOfDay", String.format("%d/24,000", mod.getWorld().getDayTime() % 24000L));
+      return status.toString();
+   }
+
+   public static String getGamemodeString(PlayerEngineController mod) {
+      return mod.getInteractionManager().getGameType().isCreative() ? "creative" : "survival";
+   }
+
+   public static String getCurrentPosition(PlayerEngineController mod) {
+      return mod.getEntity().getEyePosition().toString();
+   }
+
+   public static String getTaskTree(PlayerEngineController mod) {
+      Task task = mod.getUserTaskChain().getCurrentTask();
+      return task == null ? "Task tree is empty" : task.getTaskTree();
+   }
+
+   public static float getDistanceToUUID(PlayerEngineController mod, UUID target) {
+      for (Entity entity : mod.getWorld().getAllEntities()) {
+         if (entity.getUUID().equals(target)) {
+            return entity.distanceTo(mod.getPlayer());
+         }
+      }
+
+      return Float.MAX_VALUE;
+   }
+
+   public static float getDistanceToUsername(PlayerEngineController mod, String username) {
+      return mod.getWorld()
+         .players()
+         .stream()
+         .filter(p -> p.getName().getString().equals(username))
+         .findFirst()
+         .map(p -> p.distanceTo(mod.getPlayer()))
+         .orElse(Float.MAX_VALUE);
+   }
+}

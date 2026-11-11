@@ -1,0 +1,36 @@
+package com.player2.playerengine.automaton.api.utils;
+
+import com.player2.playerengine.automaton.api.pathing.calc.IPath;
+import java.util.Objects;
+import java.util.Optional;
+
+public class PathCalculationResult {
+   private final IPath path;
+   private final PathCalculationResult.Type type;
+
+   public PathCalculationResult(PathCalculationResult.Type type) {
+      this(type, null);
+   }
+
+   public PathCalculationResult(PathCalculationResult.Type type, IPath path) {
+      Objects.requireNonNull(type);
+      this.path = path;
+      this.type = type;
+   }
+
+   public final Optional<IPath> getPath() {
+      return Optional.ofNullable(this.path);
+   }
+
+   public final PathCalculationResult.Type getType() {
+      return this.type;
+   }
+
+   public enum Type {
+      SUCCESS_TO_GOAL,
+      SUCCESS_SEGMENT,
+      FAILURE,
+      CANCELLATION,
+      EXCEPTION;
+   }
+}

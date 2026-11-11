@@ -1,0 +1,32 @@
+package com.player2.playerengine.retrieval.learning;
+
+import com.player2.playerengine.retrieval.RetrievalConfidence;
+import com.player2.playerengine.retrieval.RetrievalHit;
+import com.player2.playerengine.retrieval.ToolDocument;
+import com.player2.playerengine.retrieval.ToolMetadataRegistry;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public final class DeepCheckPrompt {
+   public static final int SCHEMA_VERSION = 1;
+
+   private DeepCheckPrompt() {
+   }
+
+   public static String buildUserPrompt(String ownerUtterance, List<RetrievalHit> firstPassHits, ToolMetadataRegistry registry, RetrievalConfidence confidence) {
+      String toolSummary = firstPassHits.stream().limit(8L).map(h -> {
+         ToolDocument doc = registry.getDocument(h.toolId());
+         String name = doc != null ? doc.name() : h.toolId();
+         return h.toolId() + " (" + name + ")";
+      }).collect(Collectors.joining(", "));
+      return "You help repair weak Minecraft NPC command retrieval. Reply with JSON only, no markdown.\nSchema:\n{\n  \"schemaVersion\": 1,\n  \"retryQueries\": [\"up to 5 short alternative search phrases\"],\n  \"learn\": {\n    \"toolId\": \"registered_command_id\",\n    \"addKeywords\": [\"optional keywords\"],\n    \"addExamples\": [\"optional example phrases\"],\n    \"confidence\": 0.0,\n    \"rationale\": \"brief audit note\"\n  }\n}\nRules:\n- retryQueries is required (1-5 strings, 3-80 chars each, single line).\n- learn is optional; toolId must be a real command id from first pass if unsure.\n- confidence must be 0.0 to 0.7. Never invent new commands.\n- Do not include command prefixes like @ in examples.\n\nOwner utterance: %s\nRetrieval confidence: %s (top=%.4f gap=%.4f coverage=%.2f)\nFirst-pass tools: %s\n"
+         .formatted(
+            ownerUtterance,
+            confidence.reason(),
+            confidence.topScore(),
+            confidence.scoreGapRatio(),
+            confidence.queryTokenCoverage(),
+            toolSummary.isEmpty() ? "(none)" : toolSummary
+         );
+   }
+}

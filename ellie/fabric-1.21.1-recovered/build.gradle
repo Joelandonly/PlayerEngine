@@ -1,0 +1,38 @@
+// Adapted from Goodbird-git/PlayerEngine 1.21.1-arch at aa4ad2d5ec2a834107c76cdb58af732acb192ecc.
+// Development only; not proof decompiled Ellie has source parity.
+plugins {
+    id 'dev.architectury.loom' version '1.11-SNAPSHOT' apply false
+    id 'architectury-plugin' version '3.4-SNAPSHOT'
+    id 'com.gradleup.shadow' version '8.3.6' apply false
+}
+architectury {
+    minecraft = project.minecraft_version
+}
+allprojects {
+    group = rootProject.maven_group
+    version = rootProject.mod_version
+    repositories {
+        mavenCentral()
+        maven { url = 'https://maven.parchmentmc.org' }
+    }
+}
+subprojects {
+    apply plugin: 'dev.architectury.loom'
+    apply plugin: 'architectury-plugin'
+    apply plugin: 'maven-publish'
+    base { archivesName = "$rootProject.archives_name-$project.name" }
+    loom { silentMojangMappingsLicense() }
+    dependencies {
+        minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
+        mappings loom.officialMojangMappings()
+    }
+    java {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+    tasks.withType(JavaCompile).configureEach {
+        options.release = 21
+        options.encoding = 'UTF-8'
+        options.compilerArgs += ["-Xmaxerrs", "500"]
+    }
+}

@@ -1,0 +1,11 @@
+# Do not upload caches, local state, or binaries
+.gradle/
+**/build/
+run/
+.idea/
+*.log
+*.jar
+*.class
+*.bak
+.env*
+__pycache__/
