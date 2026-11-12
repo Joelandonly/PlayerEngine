@@ -150,7 +150,9 @@ public interface MovementHelper extends ActionCosts {
             }
 
             BlockState up = bsi.get0(x, y + 1, z);
-            return (settings.allowSwimming.get() || up.getFluidState().isEmpty()) && !(up.getBlock() instanceof WaterlilyBlock);
+            // Never treat an exposed water surface as solid ground when swimming is disabled.
+            // The previous OR let Baritone plan impossible dry-land steps across lakes.
+            return settings.allowSwimming.get() && !(up.getBlock() instanceof WaterlilyBlock);
          }
       } else {
          return false;

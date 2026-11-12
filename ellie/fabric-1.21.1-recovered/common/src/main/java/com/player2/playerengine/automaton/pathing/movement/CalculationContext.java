@@ -170,6 +170,8 @@ public class CalculationContext {
    }
 
    public double costOfPlacingAt(int x, int y, int z, BlockState current) {
+      // A protected cell must be impassable for PLACE planning, not merely expensive.
+      if (com.player2.playerengine.safezone.SafeZoneService.protectedAt(this.world, new BlockPos(x, y, z))) return 1000000.0;
       if (!this.hasThrowaway) {
          return 1000000.0;
       } else {
@@ -178,6 +180,8 @@ public class CalculationContext {
    }
 
    public double breakCostMultiplierAt(int x, int y, int z, BlockState current) {
+      // The old soft penalty allowed paths that can never execute in owner Safe Zones.
+      if (com.player2.playerengine.safezone.SafeZoneService.protectedAt(this.world, new BlockPos(x, y, z))) return 1000000.0;
       if (!this.allowBreak) {
          return 1000000.0;
       } else {

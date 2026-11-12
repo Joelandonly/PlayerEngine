@@ -23,6 +23,12 @@ public final class SetupDirectRoute {
     String result=com.player2.playerengine.safezone.SafeZoneNativeCommand.execute(controller,user,line);
     logEvent("SAFEZONE_COMMAND",result);notifyUser(controller,result);return true;
    }
+   // WATERFILL_OWNER_NATIVE: region editing requires the same authenticated owner
+   // as safezone; never dispatch through an untrusted LLM-selected executor.
+   if(id.equals("waterfill")) {
+    String result=com.player2.playerengine.nativecommands.WaterFillNativeCommand.execute(controller,user,line);
+    logEvent("WATERFILL_COMMAND",result);notifyUser(controller,result);return true;
+   }
    CommandExecutor executor=controller.getCommandExecutor();
    if(executor==null||executor.get(id)==null){notifyUser(controller,"Command unavailable: "+id+". Nothing was started. Use setup, setup_farm, get, mine or a supported build_structure template.");logEvent("COMMAND_ROUTE_UNAVAILABLE",id);return true;}
    GoalLifecycle.Snapshot previous=CoreGoalSupervisor.snapshot(controller);
