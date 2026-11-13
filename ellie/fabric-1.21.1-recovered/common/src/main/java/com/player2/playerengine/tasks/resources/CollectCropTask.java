@@ -1,6 +1,7 @@
 package com.player2.playerengine.tasks.resources;
 
 import com.player2.playerengine.PlayerEngineController;
+import com.player2.playerengine.safezone.SafeZoneService;
 import com.player2.playerengine.multiversion.blockpos.BlockPosVer;
 import com.player2.playerengine.tasks.DoToClosestBlockTask;
 import com.player2.playerengine.tasks.InteractWithBlockTask;
@@ -91,7 +92,8 @@ public class CollectCropTask extends ResourceTask {
          );
       }
 
-      Predicate<BlockPos> validCrop = blockPos -> this.canBreak.test(blockPos) && this.isMature(mod, blockPos);
+      Predicate<BlockPos> validCrop = blockPos -> !SafeZoneService.protectedAt(mod.getWorld(), blockPos)
+         && this.canBreak.test(blockPos) && this.isMature(mod, blockPos);
       if (this.isInWrongDimension(mod) && !mod.getBlockScanner().anyFound(validCrop, this.cropBlock)) {
          return this.getToCorrectDimensionTask(mod);
       }
@@ -127,7 +129,9 @@ public class CollectCropTask extends ResourceTask {
    }
 
    private boolean isEmptyCrop(PlayerEngineController mod, BlockPos pos) {
-      return WorldHelper.isAir(mod.getWorld().getBlockState(pos).getBlock());
+      return !SafeZoneService.protectedAt(mod.getWorld(), pos)
+         && !SafeZoneService.protectedAt(mod.getWorld(), pos.below())
+         && WorldHelper.isAir(mod.getWorld().getBlockState(pos).getBlock());
    }
 
    @Override

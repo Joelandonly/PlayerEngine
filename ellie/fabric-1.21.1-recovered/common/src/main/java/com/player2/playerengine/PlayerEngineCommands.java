@@ -29,6 +29,8 @@ import com.player2.playerengine.commands.GiveCommand;
 import com.player2.playerengine.commands.GotoCommand;
 import com.player2.playerengine.commands.HarvestFarmCommand;
 import com.player2.playerengine.commands.HeroCommand;
+import com.player2.playerengine.commands.PatrolCommand;
+import com.player2.playerengine.commands.NetherBridgeCommand;
 import com.player2.playerengine.commands.IdleCommand;
 import com.player2.playerengine.commands.LeaveBoatCommand;
 import com.player2.playerengine.commands.LocateStorageCommand;
@@ -67,9 +69,12 @@ public class PlayerEngineCommands {
             new BodyLanguageCommand(),
             new DepositCommand(),
             new CleanupStorageCommand(),
+            new com.player2.playerengine.commands.EllieStorageCommand(),
             new GotoCommand(),
             new IdleCommand(),
             new HeroCommand(),
+            new PatrolCommand(),
+            new NetherBridgeCommand(),
             new LocateStructureCommand(),
             new StopCommand(),
             new FoodCommand(),

@@ -526,6 +526,10 @@ public class AIPersistantData {
       }
    }
 
+   public UUID progressionOwnerId() {
+      return resolveOwnerUuidOrNull(this.mod);
+   }
+
    private static UUID resolveOwnerUuidOrNull(PlayerEngineController mod) {
       try {
          if (mod.getOwner() != null) {

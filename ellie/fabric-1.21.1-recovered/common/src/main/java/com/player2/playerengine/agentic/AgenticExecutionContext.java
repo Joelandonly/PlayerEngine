@@ -2,12 +2,16 @@ package com.player2.playerengine.agentic;
 
 import com.player2.playerengine.PlayerEngineController;
 import com.player2.playerengine.PlayerEngineSettings;
+import com.player2.playerengine.progression.CompanionProgression;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class AgenticExecutionContext {
    private final PlayerEngineController controller;
    private final PlayerEngineSettings settings;
    private final AgenticRunRegistry.AgenticRunState runState;
    private final AgenticExecutionMemory memory;
+   final List<CompanionProgression.Reward> progressionRewards = new ArrayList<>();
 
    public AgenticExecutionContext(PlayerEngineController controller, AgenticRunRegistry.AgenticRunState runState) {
       this.controller = controller;

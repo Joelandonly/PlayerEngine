@@ -26,19 +26,28 @@ public class FollowPlayerTask extends Task {
    private static final long MIN_REPORT_INTERVAL_MS = 1500L;
    private final String playerName;
    private final double followDistance;
+   private final boolean followOwnerAcrossDimensions;
    private boolean targetGone = false;
    private String lastCowardDecision = null;
    private boolean lastDefenderBrokeOff = false;
    private long lastDegradationReportMs = 0L;
    private String lastDegradationKey = null;
+   private boolean requestedDimensionTransfer;
+   private BlockPos ownerLastSeen;
+   private BlockPos ownerPortal;
 
    public FollowPlayerTask(String playerName, double followDistance) {
+      this(playerName, followDistance, false);
+   }
+
+   private FollowPlayerTask(String playerName, double followDistance, boolean followOwnerAcrossDimensions) {
       this.playerName = playerName;
       this.followDistance = followDistance;
+      this.followOwnerAcrossDimensions = followOwnerAcrossDimensions;
    }
 
    public FollowPlayerTask(String playerName) {
-      this(playerName, 2.0);
+      this(playerName, 2.0, true);
    }
 
    @Override
@@ -48,6 +57,35 @@ public class FollowPlayerTask extends Task {
    @Override
    protected Task onTick() {
       PlayerEngineController mod = this.controller;
+      if (this.followOwnerAcrossDimensions && mod.getOwner() instanceof ServerPlayer owner
+         && owner.getServer() != null && owner.getServer().getPlayerList().getPlayer(owner.getUUID()) == owner
+         && owner.getGameProfile().getName().equalsIgnoreCase(this.playerName)) {
+         if (owner.level() == mod.getWorld()) {
+            this.ownerLastSeen = owner.blockPosition();
+            this.requestedDimensionTransfer = false;
+            if (OwnerFollowTransfer.inPortal(owner.serverLevel(), this.ownerLastSeen)) {
+               this.setDebugState("Waiting for the owner to enter the Nether portal");
+               return null;
+            }
+         } else if (OwnerFollowTransfer.netherCrossing(mod.getWorld().dimension(), owner.level().dimension())) {
+            if (!this.requestedDimensionTransfer) {
+               this.requestedDimensionTransfer = true;
+               this.ownerPortal = this.ownerLastSeen == null ? null : OwnerFollowTransfer.findPortal(mod.getWorld(), this.ownerLastSeen);
+               if (this.ownerPortal == null) {
+                  mod.reportAgenticProgress("Ellie could not find the Nether portal you used.", true);
+               } else {
+                  OwnerFollowTransfer.request(mod, owner, this);
+               }
+            }
+            if (this.ownerPortal == null) return null;
+            if (OwnerFollowTransfer.inPortal(mod.getWorld(), mod.getEntity().blockPosition())) {
+               this.setDebugState("Waiting inside the owner's Nether portal");
+               return null;
+            }
+            this.setDebugState("Walking to the owner's Nether portal");
+            return new GetToBlockTask(this.ownerPortal);
+         }
+      }
       Optional<Vec3> lastPos = mod.getEntityTracker().getPlayerMostRecentPosition(this.playerName);
       if (lastPos.isEmpty()) {
          this.setDebugState("No player found/detected. Doing nothing until player loads into render distance.");
@@ -177,7 +215,8 @@ public class FollowPlayerTask extends Task {
    @Override
    protected boolean isEqual(Task other) {
       return other instanceof FollowPlayerTask task
-         ? task.playerName.equals(this.playerName) && Math.abs(this.followDistance - task.followDistance) < 0.1
+         ? task.playerName.equals(this.playerName) && task.followOwnerAcrossDimensions == this.followOwnerAcrossDimensions
+            && Math.abs(this.followDistance - task.followDistance) < 0.1
          : false;
    }
 

@@ -38,6 +38,8 @@ public final class BoundedContainerTransferTask extends Task implements Describe
    private final List<ScanReportFormatter.EntryOutcome> entryOutcomes = new ArrayList<>();
    private final List<ScanReportFormatter.EntryFailure> zeroMoveFailures = new ArrayList<>();
    private ResolvedContainer resolved;
+   private Object primaryBlockEntity;
+   private Object secondaryBlockEntity;
    private Task navigateChild;
    private long navigateStartMs;
    private int holdTicks;
@@ -47,6 +49,7 @@ public final class BoundedContainerTransferTask extends Task implements Describe
    private boolean containerChanged;
    private boolean transferDone;
    private boolean ellieAutonomyReported;
+   private ItemStack depositTemplate;
 
    public BoundedContainerTransferTask(ScanReportFormatter.TransferDirection direction, BlockPos targetPos, List<StorageItemArgs.ItemQuery> entries) {
       this(direction, targetPos, entries, BoundedContainerTransferTask.WithdrawQuantity.EXACT);
@@ -80,6 +83,14 @@ public final class BoundedContainerTransferTask extends Task implements Describe
       } else {
          throw new IllegalArgumentException("maxCount must be within 1..3456");
       }
+   }
+
+   /** Automatic cleanup moves the inspected stack variant only. */
+   public static BoundedContainerTransferTask depositMatching(BlockPos targetPos, ItemStack exemplar, int count) {
+      var task = new BoundedContainerTransferTask(ScanReportFormatter.TransferDirection.DEPOSIT, targetPos,
+         List.of(new StorageItemArgs.ItemQuery(exemplar.getItem(), StorageItemArgs.displayIdFor(exemplar.getItem()), count)));
+      task.depositTemplate = exemplar.copyWithCount(1);
+      return task;
    }
 
    @Override
@@ -189,6 +200,8 @@ public final class BoundedContainerTransferTask extends Task implements Describe
             return null;
          } else {
             this.resolved = resolution.resolved();
+            this.primaryBlockEntity=this.controller.getWorld().getBlockEntity(this.resolved.canonicalPos());
+            this.secondaryBlockEntity=this.resolved.secondaryPos()==null?null:this.controller.getWorld().getBlockEntity(this.resolved.secondaryPos());
             ContainerAnimationHelper.open(this.controller.getWorld(), this.resolved);
             this.openIssued = true;
             this.holdTicks = 0;
@@ -308,9 +321,11 @@ public final class BoundedContainerTransferTask extends Task implements Describe
       }
 
       ServerLevel level = this.controller.getWorld();
-      return !(level.getBlockEntity(this.resolved.canonicalPos()) instanceof Container)
-         ? false
-         : this.resolved.secondaryPos() == null || level.getBlockEntity(this.resolved.secondaryPos()) instanceof Container;
+      if(primaryBlockEntity==null || level.getBlockEntity(this.resolved.canonicalPos())!=primaryBlockEntity)return false;
+      if(this.resolved.secondaryPos()!=null && level.getBlockEntity(this.resolved.secondaryPos())!=secondaryBlockEntity)return false;
+      ContainerResolver.Resolution live=ContainerResolver.resolve(level,this.targetPos);
+      return live.ok() && live.resolved().canonicalPos().equals(this.resolved.canonicalPos())
+          && Objects.equals(live.resolved().secondaryPos(),this.resolved.secondaryPos());
    }
 
    private void closeAndRefresh() {
@@ -524,95 +539,36 @@ public final class BoundedContainerTransferTask extends Task implements Describe
    }
 
    private void transferDeposit(Container container, LivingEntityInventory inv) {
-      label106:
       for (StorageItemArgs.ItemQuery entry : this.entries) {
          Item item = entry.item();
-         ItemStack probe = item.getDefaultInstance();
-         int botHas = countBotMain(inv, item);
-         boolean all = entry.isAll();
-         if (itemAllowedInContainer(container, probe)) {
-            int want = all ? botHas : entry.countOrAll();
-            int clampedNew = Math.min(container.getMaxStackSize(), maxStackFor(item));
-            int moved = 0;
-
-            for (int i = 0; i < container.getContainerSize() && moved < want; i++) {
-               ItemStack dst = container.getItem(i);
-               if (!dst.isEmpty() && dst.is(item) && container.canPlaceItem(i, probe)) {
-                  int clamped = Math.min(container.getMaxStackSize(), dst.getMaxStackSize());
-                  int room = clamped - dst.getCount();
-                  if (room > 0) {
-                     int got = takeFromBotMainExact(inv, dst, Math.min(room, want - moved));
-                     if (got > 0) {
-                        dst.grow(got);
-                        moved += got;
-                     }
-                  }
-               }
+         ItemStack probe = this.depositTemplate == null ? item.getDefaultInstance() : this.depositTemplate;
+         int before = countBotMain(inv,item);
+         int requested = entry.isAll() ? before : entry.countOrAll();
+         int moved = 0;
+         if (itemAllowedInContainer(container,probe)) {
+            for (int i=0;i<container.getContainerSize() && moved<requested;i++) {
+               ItemStack dst=container.getItem(i);
+               if(dst.isEmpty() || !dst.is(item) || this.depositTemplate!=null&&!exactSameStack(dst,probe) || !container.canPlaceItem(i,dst)) continue;
+               int room=Math.max(0,Math.min(container.getMaxStackSize(),dst.getMaxStackSize())-dst.getCount());
+               int got=takeFromBotMainExact(inv,dst,Math.min(room,requested-moved));
+               dst.grow(got);moved+=got;
             }
-
-            for (int i = 0; i < container.getContainerSize() && moved < want; i++) {
-               if (container.getItem(i).isEmpty() && container.canPlaceItem(i, probe)) {
-                  ItemStack seed = extractSeedFromBot(inv, item, Math.min(clampedNew, want - moved));
-                  if (seed.isEmpty()) {
-                     container.setChanged();
-                     inv.setChanged();
-                     String shortReason = "";
-                     if (all) {
-                        if (botHas == 0) {
-                           shortReason = "none carried";
-                           this.zeroMoveFailures
-                              .add(
-                                 new ScanReportFormatter.EntryFailure(
-                                    StorageAccessCode.INSUFFICIENT_ITEMS, entry.displayId(), "bot inventory has no " + entry.displayId()
-                                 )
-                              );
-                        } else if (moved < botHas) {
-                           shortReason = "container full";
-                           if (moved == 0) {
-                              this.zeroMoveFailures
-                                 .add(
-                                    new ScanReportFormatter.EntryFailure(
-                                       StorageAccessCode.INSUFFICIENT_SPACE,
-                                       entry.displayId(),
-                                       "container cannot fit any " + entry.displayId() + " (bot has " + botHas + ")"
-                                    )
-                                 );
-                           }
-                        }
-                     } else if (moved < want) {
-                        this.containerChanged = true;
-                        shortReason = "container contents changed mid-transaction";
-                     }
-
-                     this.entryOutcomes.add(new ScanReportFormatter.EntryOutcome(entry.displayId(), moved, all ? -1 : want, botHas, shortReason));
-                     continue label106;
-                  }
-
-                  int placed = seed.getCount();
-
-                  while (placed < clampedNew && moved + placed < want) {
-                     int got = takeFromBotMainExact(inv, seed, Math.min(clampedNew - placed, want - moved - placed));
-                     if (got <= 0) {
-                        break;
-                     }
-
-                     seed.grow(got);
-                     placed += got;
-                  }
-
-                  container.setItem(i, seed);
-                  moved += placed;
-               }
+            for(int i=0;i<container.getContainerSize() && moved<requested;i++) {
+               if(!container.getItem(i).isEmpty() || !container.canPlaceItem(i,probe))continue;
+               ItemStack seed=extractSeedFromBot(inv,item,this.depositTemplate,Math.min(Math.min(container.getMaxStackSize(),maxStackFor(item)),requested-moved));
+               if(seed.isEmpty())break;
+               int maximum=Math.min(container.getMaxStackSize(),seed.getMaxStackSize());
+               int extra=takeFromBotMainExact(inv,seed,Math.min(maximum-seed.getCount(),requested-moved-seed.getCount()));
+               seed.grow(extra);moved+=seed.getCount();container.setItem(i,seed);
             }
          }
-
-         this.entryOutcomes.add(new ScanReportFormatter.EntryOutcome(entry.displayId(), 0, -1, botHas, "item not allowed in " + this.resolved.kind().token()));
-         this.zeroMoveFailures
-            .add(
-               new ScanReportFormatter.EntryFailure(
-                  StorageAccessCode.ITEM_NOT_ALLOWED, entry.displayId(), "\"" + entry.displayId() + "\" is not allowed in this " + this.resolved.kind().token()
-               )
-            );
+         container.setChanged();inv.setChanged();
+         int observed=before-countBotMain(inv,item);
+         if(observed!=moved)throw new IllegalStateException("Deposit conservation mismatch");
+         String shortReason=moved<requested?"container capacity or contents changed":"";
+         if(moved==0)zeroMoveFailures.add(new ScanReportFormatter.EntryFailure(StorageAccessCode.INSUFFICIENT_SPACE,entry.displayId(),shortReason));
+         if(moved<requested && !entry.isAll())containerChanged=true;
+         entryOutcomes.add(new ScanReportFormatter.EntryOutcome(entry.displayId(),moved,entry.isAll()?-1:requested,before,shortReason));
       }
    }
 
@@ -703,7 +659,7 @@ public final class BoundedContainerTransferTask extends Task implements Describe
 
       for (int i = 0; i < container.getContainerSize(); i++) {
          ItemStack s = container.getItem(i);
-         if (!s.isEmpty() && s.is(item) && container.canPlaceItem(i, probe)) {
+         if (!s.isEmpty() && ItemStack.isSameItemSameComponents(s, probe) && container.canPlaceItem(i, probe)) {
             int clamped = Math.min(container.getMaxStackSize(), s.getMaxStackSize());
             headroom += Math.max(0, clamped - s.getCount());
          }
@@ -747,10 +703,11 @@ public final class BoundedContainerTransferTask extends Task implements Describe
       return ItemStack.matches(a.copyWithCount(1), b.copyWithCount(1));
    }
 
-   private static ItemStack extractSeedFromBot(LivingEntityInventory inv, Item item, int cap) {
+   private static ItemStack extractSeedFromBot(LivingEntityInventory inv, Item item, ItemStack template, int cap) {
       for (int j = 0; j < inv.main.size(); j++) {
          ItemStack s = (ItemStack)inv.main.get(j);
-         if (!s.isEmpty() && s.is(item)) {
+         if (!s.isEmpty() && s.is(item) && (template==null || exactSameStack(s,template)
+            && (!(item instanceof net.minecraft.world.item.TieredItem) || j!=inv.selectedSlot))) {
             ItemStack seed = s.split(Math.min(s.getCount(), cap));
             if (s.isEmpty()) {
                inv.main.set(j, ItemStack.EMPTY);
@@ -770,6 +727,8 @@ public final class BoundedContainerTransferTask extends Task implements Describe
          : task.direction == this.direction
             && Objects.equals(task.targetPos, this.targetPos)
             && Objects.equals(task.entries, this.entries)
+            && (this.depositTemplate==null?task.depositTemplate==null
+                :task.depositTemplate!=null&&exactSameStack(this.depositTemplate,task.depositTemplate))
             && task.withdrawQuantity == this.withdrawQuantity;
    }
 

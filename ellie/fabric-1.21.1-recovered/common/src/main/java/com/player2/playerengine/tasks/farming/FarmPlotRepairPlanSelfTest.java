@@ -24,6 +24,7 @@ public final class FarmPlotRepairPlanSelfTest {
       cropsArePreservedOnlyOnCanonicalFarmland();
       pairedPitcherHalvesArePreservedExactly();
       hazardsAndRepairBoundsAreRejected();
+      largeDirtFoundationBuildsFromGroundUp();
       clearOrderIsTopDownBeforeSurfaceRepair();
       toolFactsComeFromTheFrozenRepairRead();
       returnStancesStayOnSafeNoncenterSoil();
@@ -61,6 +62,8 @@ public final class FarmPlotRepairPlanSelfTest {
       view.set(replacement, view.cell(FarmSiteWorldView.BlockKind.STONE));
       view.set(farmland, view.cell(FarmSiteWorldView.BlockKind.FARMLAND));
       view.set(protectedReplacement, view.withProtected(view.cell(FarmSiteWorldView.BlockKind.OTHER)));
+      assertUnsafe(view, FarmPlotRepairPlan.UnsafeReason.UNSAFE_OBSTRUCTION, "player-placed surface blocks are protected");
+      view.set(protectedReplacement, view.cell(FarmSiteWorldView.BlockKind.OTHER));
       FarmPlotRepairPlan.ScanResult result = FarmPlotRepairPlan.scan(view, CENTER);
       require(result.ready(), "safe surface repairs produce a manifest");
       FarmPlotRepairPlan plan = result.plan();
@@ -78,7 +81,7 @@ public final class FarmPlotRepairPlanSelfTest {
       );
       require(
          plan.clearActions().stream().anyMatch(action -> action.target().equals(protectedReplacement)),
-         "registered-farm target protection does not make the repair plan unsafe"
+         "unprotected surface obstructions can be replaced"
       );
       require(plan.tillActions().stream().noneMatch(action -> action.target().equals(farmland)), "existing farmland is not re-tilled");
       require(
@@ -244,12 +247,24 @@ public final class FarmPlotRepairPlanSelfTest {
          overLimit.set(cell, overLimit.cell(FarmSiteWorldView.BlockKind.AIR));
       }
 
-      FarmPlotRepairPlan.ScanResult overLimitResult = FarmPlotRepairPlan.scan(overLimit, CENTER);
-      require(
-         overLimitResult.status() == FarmPlotRepairPlan.Status.REPAIR_LIMIT_EXCEEDED
-            && overLimitResult.reason() == FarmPlotRepairPlan.UnsafeReason.REPAIR_LIMIT_EXCEEDED,
-         "seventeenth surface repair column is rejected at the exact bound"
-      );
+      FarmPlotRepairPlan seventeen = ready(overLimit);
+      require(seventeen.repairColumns() == 17 && seventeen.requiredDirt() == 17, "repair continues beyond sixteen columns");
+   }
+
+   private static void largeDirtFoundationBuildsFromGroundUp() {
+      FakeWorldView terrain = FakeWorldView.flat(CENTER.getY());
+      for (BlockPos soil : FarmPlotGeometry.soilCells(CENTER)) {
+         terrain.set(soil, terrain.cell(FarmSiteWorldView.BlockKind.AIR));
+      }
+      BlockPos top = CENTER.offset(1, -1, 1);
+      terrain.set(top, terrain.cell(FarmSiteWorldView.BlockKind.AIR));
+      terrain.set(top.below(2), terrain.cell(FarmSiteWorldView.BlockKind.STONE));
+      FarmPlotRepairPlan plan = ready(terrain);
+      require(plan.requiredDirt() == 82 && plan.fillActions().size() == 80, "the full footprint and foundation contribute to dirt requirements");
+      require(plan.foundation().equals(List.of(top.below(), top)), "dirt supports start on solid ground and build upwards");
+      require(plan.dirtPlacement(0).equals(top.below()) && plan.dirtPlacement(1).equals(top), "supports precede surface soil");
+      terrain.set(top.below(2), terrain.cell(FarmSiteWorldView.BlockKind.STANDALONE_WATER));
+      assertUnsafe(terrain, FarmPlotRepairPlan.UnsafeReason.UNSAFE_SUPPORT, "wet deep foundation cannot be filled");
    }
 
    private static void clearOrderIsTopDownBeforeSurfaceRepair() {
@@ -279,7 +294,8 @@ public final class FarmPlotRepairPlanSelfTest {
       }
 
       require(lastHeadroom >= 0 && firstSurface > lastHeadroom, "every headroom clear precedes every surface clear");
-      require(actions.size() <= 260 && plan.fillActions().size() <= 16 && plan.tillActions().size() <= 80, "repair action lists remain inside fixed bounds");
+      require(actions.size() <= FarmPlotRepairPlan.MAX_CLEAR_ACTIONS && plan.fillActions().size() <= 80 && plan.tillActions().size() <= 80,
+         "repair action lists remain inside the plot");
       require(
          plan.fillActions()
             .stream()
@@ -382,17 +398,7 @@ public final class FarmPlotRepairPlanSelfTest {
       FarmPlotRepairPlanSelfTest.FakeWorldView protectedHeadroomTarget = FarmPlotRepairPlanSelfTest.FakeWorldView.flat(CENTER.getY());
       BlockPos obstruction = CENTER.offset(1, 3, 1);
       protectedHeadroomTarget.set(obstruction, protectedHeadroomTarget.withProtected(protectedHeadroomTarget.cell(FarmSiteWorldView.BlockKind.OTHER)));
-      FarmPlotRepairPlan protectedActionPlan = ready(protectedHeadroomTarget);
-      require(
-         protectedActionPlan.clearActions()
-            .stream()
-            .anyMatch(
-               action -> action.target().equals(obstruction)
-                  && !protectedHeadroomTarget.observe(action.stance()).playerProtected()
-                  && !protectedHeadroomTarget.observe(action.stance().above()).playerProtected()
-            ),
-         "protected repair target uses only unprotected stance cells"
-      );
+      assertUnsafe(protectedHeadroomTarget, FarmPlotRepairPlan.UnsafeReason.UNSAFE_OBSTRUCTION, "player-placed headroom blocks are protected");
       FarmPlotRepairPlanSelfTest.FakeWorldView noStance = FarmPlotRepairPlanSelfTest.FakeWorldView.flat(CENTER.getY());
 
       for (BlockPos soil : FarmPlotGeometry.soilCells(CENTER)) {

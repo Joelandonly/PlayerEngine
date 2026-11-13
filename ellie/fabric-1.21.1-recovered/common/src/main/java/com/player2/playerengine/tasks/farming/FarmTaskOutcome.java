@@ -47,7 +47,7 @@ public record FarmTaskOutcome(
       }
 
       requireRange(cleared, 0, 1040, "cleared");
-      requireRange(filled, 0, 64, "filled");
+      requireRange(filled, 0, FarmPlotPolicy.MAX_FILL_ACTIONS, "filled");
       requireRange(tilled, 0, 320, "tilled");
       if (!successful || terminal && reason == FarmTaskReason.NONE && phase == FarmTaskPhase.DONE) {
          if (!successful || dimension != null && center != null && waypointResult != null) {

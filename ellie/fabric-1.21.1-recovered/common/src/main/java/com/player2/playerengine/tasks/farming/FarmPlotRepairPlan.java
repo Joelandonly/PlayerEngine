@@ -1,5 +1,6 @@
 package com.player2.playerengine.tasks.farming;
 
+import com.player2.playerengine.tasks.construction.GroundedFoundation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -17,7 +18,9 @@ import net.minecraft.server.level.ServerLevel;
 public final class FarmPlotRepairPlan {
    public static final int VERTICAL_LAYER_COUNT = 5;
    public static final int OBSERVATION_COUNT = 405;
-   public static final int MAX_CLEAR_ACTIONS = 260;
+   public static final int MAX_COLUMNS = FarmPlotPolicy.PLOT_CELL_COUNT;
+   public static final int MAX_CLEAR_ACTIONS = MAX_COLUMNS * 4;
+   public static final int MAX_DIRT_ACTIONS = MAX_COLUMNS * GroundedFoundation.MAX_DEPTH + MAX_COLUMNS - 1;
    private static final long MAX_ACTION_HORIZONTAL_DISTANCE_SQUARED = 9L;
    private final BlockPos center;
    private final boolean centerHasWaterSource;
@@ -26,6 +29,7 @@ public final class FarmPlotRepairPlan {
    private final List<FarmPlotRepairPlan.ClearAction> clearActions;
    private final FarmRepairToolPlan toolPlan;
    private final List<FarmPlotRepairPlan.FillAction> fillActions;
+   private final List<BlockPos> foundation;
    private final List<FarmPlotRepairPlan.TillAction> tillActions;
    private final Set<BlockPos> preservedCrops;
 
@@ -36,17 +40,19 @@ public final class FarmPlotRepairPlan {
       List<BlockPos> returnStanceCandidates,
       List<FarmPlotRepairPlan.ClearAction> clearActions,
       List<FarmPlotRepairPlan.FillAction> fillActions,
+      List<BlockPos> foundation,
       List<FarmPlotRepairPlan.TillAction> tillActions,
       Set<BlockPos> preservedCrops
    ) {
       this.center = immutable(center, "center");
       this.centerHasWaterSource = centerHasWaterSource;
-      if (repairColumns >= 0 && repairColumns <= 16) {
+      if (repairColumns >= 0 && repairColumns <= MAX_COLUMNS) {
          this.repairColumns = repairColumns;
          this.returnStanceCandidates = immutablePositions(returnStanceCandidates, "returnStanceCandidates");
          this.clearActions = List.copyOf(Objects.requireNonNull(clearActions, "clearActions"));
          this.toolPlan = FarmRepairToolPlan.fromClearActions(this.clearActions);
          this.fillActions = List.copyOf(Objects.requireNonNull(fillActions, "fillActions"));
+         this.foundation = List.copyOf(foundation);
          this.tillActions = List.copyOf(Objects.requireNonNull(tillActions, "tillActions"));
          Objects.requireNonNull(preservedCrops, "preservedCrops");
          LinkedHashSet<BlockPos> crops = new LinkedHashSet<>();
@@ -56,7 +62,8 @@ public final class FarmPlotRepairPlan {
          }
 
          this.preservedCrops = Collections.unmodifiableSet(crops);
-         if (this.returnStanceCandidates.isEmpty() || this.clearActions.size() > 260 || this.fillActions.size() > 16 || this.tillActions.size() > 80) {
+         if (this.returnStanceCandidates.isEmpty() || this.clearActions.size() > MAX_CLEAR_ACTIONS
+            || this.fillActions.size() >= MAX_COLUMNS || this.requiredDirt() > MAX_DIRT_ACTIONS || this.tillActions.size() >= MAX_COLUMNS) {
             throw new IllegalArgumentException("repair manifest is outside fixed bounds");
          }
       } else {
@@ -78,7 +85,7 @@ public final class FarmPlotRepairPlan {
          observations.put(position, world.observe(position));
       }
 
-      return derive(center, observations);
+      return derive(world, center, observations);
    }
 
    public static List<BlockPos> scanEnvelope(BlockPos requestedCenter) {
@@ -115,13 +122,14 @@ public final class FarmPlotRepairPlan {
       }
    }
 
-   private static FarmPlotRepairPlan.ScanResult derive(BlockPos center, LinkedHashMap<BlockPos, FarmSiteWorldView.CellObservation> observations) {
+   private static FarmPlotRepairPlan.ScanResult derive(FarmSiteWorldView world, BlockPos center, LinkedHashMap<BlockPos, FarmSiteWorldView.CellObservation> observations) {
       List<BlockPos> expected = scanEnvelope(center);
       if (observations.size() == 405 && new ArrayList<>(observations.keySet()).equals(expected)) {
          for (Entry<BlockPos, FarmSiteWorldView.CellObservation> entry : observations.entrySet()) {
             BlockPos position = entry.getKey();
             FarmSiteWorldView.CellObservation facts = entry.getValue();
             if (facts != null && facts.isReadable()) {
+               if (world.isConstructionProtected(position)) return unsafe(Status.UNSAFE, UnsafeReason.UNSAFE_OBSTRUCTION);
                if (!facts.blockEntity() && !facts.unbreakable() && !facts.fallingHazard()) {
                   boolean allowedCenterSource = position.equals(center) && facts.isStandaloneWaterSource();
                   if (facts.hasFluid() && !allowedCenterSource) {
@@ -138,10 +146,14 @@ public final class FarmPlotRepairPlan {
 
          List<BlockPos> cells = FarmPlotGeometry.allCells(center);
 
+         List<BlockPos> foundation = new ArrayList<>();
          for (BlockPos surface : cells) {
-            if (!safeFoundationSupport(observations.get(surface.below()))) {
-               return unsafe(FarmPlotRepairPlan.Status.UNSAFE, FarmPlotRepairPlan.UnsafeReason.UNSAFE_SUPPORT);
-            }
+            BlockPos top = surface.below();
+            var column = GroundedFoundation.plan(top, position ->
+               foundationCell(world, position, position.equals(top) ? observations.get(top) : world.observe(position)));
+            if (!column.ready()) return unsafe(Status.UNSAFE, column.failure() == GroundedFoundation.Cell.UNREADABLE
+               ? UnsafeReason.UNREADABLE : UnsafeReason.UNSAFE_SUPPORT);
+            foundation.addAll(column.placements());
          }
 
          ArrayList<FarmPlotRepairPlan.ClearDraft> headroomClears = new ArrayList<>();
@@ -168,6 +180,7 @@ public final class FarmPlotRepairPlan {
 
                   preservedCrops.add(target);
                } else if (facts.blockKind() != FarmSiteWorldView.BlockKind.AIR) {
+                  if (facts.playerProtected()) return unsafe(Status.UNSAFE, UnsafeReason.UNSAFE_OBSTRUCTION);
                   headroomClears.add(
                      new FarmPlotRepairPlan.ClearDraft(target, facts.stateFingerprint(), FarmPlotRepairPlan.ClearPurpose.HEADROOM, facts.breakToolRequirement())
                   );
@@ -186,6 +199,7 @@ public final class FarmPlotRepairPlan {
                if (kind == FarmSiteWorldView.BlockKind.STANDALONE_WATER) {
                   centerHasWater = true;
                } else if (kind != FarmSiteWorldView.BlockKind.AIR) {
+                  if (facts.playerProtected()) return unsafe(Status.UNSAFE, UnsafeReason.UNSAFE_OBSTRUCTION);
                   surfaceClears.add(
                      new FarmPlotRepairPlan.ClearDraft(
                         surface, facts.stateFingerprint(), FarmPlotRepairPlan.ClearPurpose.OPEN_CENTER, facts.breakToolRequirement()
@@ -216,6 +230,7 @@ public final class FarmPlotRepairPlan {
                   case CROP:
                      return unsafe(FarmPlotRepairPlan.Status.UNSAFE, FarmPlotRepairPlan.UnsafeReason.CROP_CONFLICT);
                   default:
+                     if (facts.playerProtected()) return unsafe(Status.UNSAFE, UnsafeReason.UNSAFE_OBSTRUCTION);
                      surfaceClears.add(
                         new FarmPlotRepairPlan.ClearDraft(
                            surface, facts.stateFingerprint(), FarmPlotRepairPlan.ClearPurpose.REPLACE_SURFACE, facts.breakToolRequirement()
@@ -228,27 +243,27 @@ public final class FarmPlotRepairPlan {
             }
          }
 
-         if (repairColumns > 16) {
-            return unsafe(FarmPlotRepairPlan.Status.REPAIR_LIMIT_EXCEEDED, FarmPlotRepairPlan.UnsafeReason.REPAIR_LIMIT_EXCEEDED);
-         }
-
          List<BlockPos> returnStances = liveReturnStances(center, observations);
-         if (returnStances.isEmpty()) {
+         boolean needsConstruction = !foundation.isEmpty() || !fillTargets.isEmpty() || !headroomClears.isEmpty() || !surfaceClears.isEmpty();
+         List<BlockPos> actionStances = returnStances;
+         if (returnStances.isEmpty() && needsConstruction) {
+            actionStances = farmLevelReturnStanceCandidates(center).stream()
+               .filter(feet -> !observations.get(feet.below()).playerProtected() && !observations.get(feet).playerProtected()
+                  && !observations.get(feet.above()).playerProtected()).toList();
+         }
+         if (actionStances.isEmpty()) {
             return unsafe(FarmPlotRepairPlan.Status.UNSAFE, FarmPlotRepairPlan.UnsafeReason.NO_RETURN_STANCE);
          }
 
          ArrayList<FarmPlotRepairPlan.ClearAction> clearActions = new ArrayList<>(headroomClears.size() + surfaceClears.size());
 
          for (FarmPlotRepairPlan.ClearDraft draft : concat(headroomClears, surfaceClears)) {
-            BlockPos stance = chooseActionStance(center, draft.target(), returnStances);
-            if (stance == null) {
-               return unsafe(FarmPlotRepairPlan.Status.UNSAFE, FarmPlotRepairPlan.UnsafeReason.NO_ACTION_STANCE);
-            }
+            BlockPos stance = constructionStance(center, draft.target(), actionStances);
 
             clearActions.add(new FarmPlotRepairPlan.ClearAction(draft.target(), stance, draft.fingerprint(), draft.purpose(), draft.breakToolRequirement()));
          }
 
-         if (clearActions.size() > 260) {
+         if (clearActions.size() > MAX_CLEAR_ACTIONS) {
             return unsafe(FarmPlotRepairPlan.Status.UNSAFE, FarmPlotRepairPlan.UnsafeReason.UNSAFE_OBSTRUCTION);
          }
 
@@ -257,10 +272,7 @@ public final class FarmPlotRepairPlan {
          ArrayList<FarmPlotRepairPlan.FillAction> fillActions = new ArrayList<>(fillTargets.size());
 
          for (BlockPos target : fillTargets) {
-            BlockPos stance = chooseActionStance(center, target, returnStances);
-            if (stance == null) {
-               return unsafe(FarmPlotRepairPlan.Status.UNSAFE, FarmPlotRepairPlan.UnsafeReason.NO_ACTION_STANCE);
-            }
+            BlockPos stance = constructionStance(center, target, actionStances);
 
             boolean brokenFirst = surfaceClears.stream().anyMatch(clear -> clear.target().equals(target));
             fillActions.add(new FarmPlotRepairPlan.FillAction(target, stance, brokenFirst ? airFingerprint : observations.get(target).stateFingerprint()));
@@ -269,7 +281,7 @@ public final class FarmPlotRepairPlan {
          ArrayList<FarmPlotRepairPlan.TillAction> tillActions = new ArrayList<>(tillTargets.size());
 
          for (BlockPos target : tillTargets) {
-            BlockPos stance = chooseActionStance(center, target, returnStances);
+            BlockPos stance = needsConstruction ? constructionStance(center, target, actionStances) : chooseActionStance(center, target, actionStances);
             if (stance == null) {
                return unsafe(FarmPlotRepairPlan.Status.UNSAFE, FarmPlotRepairPlan.UnsafeReason.NO_ACTION_STANCE);
             }
@@ -283,7 +295,7 @@ public final class FarmPlotRepairPlan {
             FarmPlotRepairPlan.Status.READY,
             FarmPlotRepairPlan.UnsafeReason.NONE,
             405,
-            new FarmPlotRepairPlan(center, centerHasWater, repairColumns, returnStances, clearActions, fillActions, tillActions, preservedCrops)
+            new FarmPlotRepairPlan(center, centerHasWater, repairColumns, actionStances, clearActions, fillActions, foundation, tillActions, preservedCrops)
          );
       } else {
          throw new IllegalArgumentException("repair observations do not match the exact envelope");
@@ -311,6 +323,19 @@ public final class FarmPlotRepairPlan {
          && !facts.blockEntity()
          && !facts.unbreakable()
          && !facts.fallingHazard();
+   }
+
+   private static GroundedFoundation.Cell foundationCell(FarmSiteWorldView world, BlockPos position, FarmSiteWorldView.CellObservation facts) {
+      if (facts == null || !facts.isReadable()) return GroundedFoundation.Cell.UNREADABLE;
+      if (world.isConstructionProtected(position) || facts.playerProtected()) return GroundedFoundation.Cell.BLOCKED;
+      if (safeFoundationSupport(facts)) return GroundedFoundation.Cell.SOLID;
+      return facts.blockKind() == FarmSiteWorldView.BlockKind.AIR && !facts.hasFluid()
+         ? GroundedFoundation.Cell.DRY_AIR : GroundedFoundation.Cell.BLOCKED;
+   }
+
+   private static BlockPos constructionStance(BlockPos center, BlockPos target, List<BlockPos> stances) {
+      BlockPos stance = chooseActionStance(center, target, stances);
+      return stance == null ? stances.getFirst() : stance;
    }
 
    private static List<BlockPos> liveReturnStances(BlockPos center, Map<BlockPos, FarmSiteWorldView.CellObservation> observations) {
@@ -425,7 +450,15 @@ public final class FarmPlotRepairPlan {
    }
 
    public int requiredDirt() {
-      return this.fillActions.size();
+      return this.foundation.size() + this.fillActions.size();
+   }
+
+   public List<BlockPos> foundation() {
+      return this.foundation;
+   }
+
+   public BlockPos dirtPlacement(int index) {
+      return index < this.foundation.size() ? this.foundation.get(index) : this.fillActions.get(index - this.foundation.size()).target();
    }
 
    public List<BlockPos> returnStanceCandidates() {

@@ -1,8 +1,12 @@
 package com.player2.playerengine.tasks.farming;
 
 import com.player2.playerengine.automaton.api.entity.LivingEntityInventory;
+import com.player2.playerengine.automaton.api.schematic.AbstractSchematic;
 import com.player2.playerengine.automaton.api.utils.Rotation;
 import com.player2.playerengine.automaton.api.utils.input.Input;
+import com.player2.playerengine.automaton.process.BuilderProcess;
+import com.player2.playerengine.observatory.ObservatoryTelemetry;
+import com.player2.playerengine.safezone.SafeZoneService;
 import com.player2.playerengine.structureprotection.PlayerPlacedBlockStore;
 import com.player2.playerengine.tasks.base.Task;
 import com.player2.playerengine.tasks.movement.GetToBlockTask;
@@ -11,6 +15,7 @@ import com.player2.playerengine.util.helpers.StorageHelper;
 import com.player2.playerengine.util.slots.PlayerSlot;
 import com.player2.playerengine.util.slots.Slot;
 import java.util.Objects;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 import net.minecraft.world.entity.player.Player;
@@ -20,6 +25,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShearsItem;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockBehaviour.BlockStateBase;
 
@@ -49,6 +55,8 @@ public final class VerifiedBreakBlockTask extends Task implements FarmMutationRe
    private ItemStack selectedRepairStack;
    private boolean preAttemptTargetDrift;
    private boolean transientReceiptDetached;
+   private RepairClearWithBuilder repairBuilder;
+   private boolean startWithBuilder;
 
    public VerifiedBreakBlockTask(BlockPos target, BlockPos stance) {
       this(target, stance, BlockStateBase::isAir);
@@ -131,7 +139,7 @@ public final class VerifiedBreakBlockTask extends Task implements FarmMutationRe
             state -> fingerprint.equals(FarmSiteWorldView.stateFingerprint(state))
                && state.is(expectedState.getBlock())
                && HarvestBehaviorRegistry.DEFAULT.resolve(state).isEmpty(),
-            true,
+            false,
             true,
             true,
             false,
@@ -141,6 +149,11 @@ public final class VerifiedBreakBlockTask extends Task implements FarmMutationRe
             null
          );
       }
+   }
+
+   VerifiedBreakBlockTask useBuilderFromStart() {
+      this.startWithBuilder = true;
+      return this;
    }
 
    @Override
@@ -157,6 +170,7 @@ public final class VerifiedBreakBlockTask extends Task implements FarmMutationRe
       this.selectedRepairStack = null;
       this.preAttemptTargetDrift = false;
       this.transientReceiptDetached = false;
+      this.repairBuilder = null;
       if (PlayerPlacedBlockStore.get() == null) {
          this.fail(FarmTaskReason.STORE_UNAVAILABLE);
       } else if (this.loaded(this.target) && this.loaded(this.stance) && this.loaded(this.stance.below()) && this.loaded(this.stance.above())) {
@@ -165,7 +179,7 @@ public final class VerifiedBreakBlockTask extends Task implements FarmMutationRe
          if (requiredBeforeSatisfied && !this.allowedAfter.test(this.expectedBefore)) {
             if (targetProtectionDenied(this.isProtected(this.target), this.allowProtectedTarget, requiredBeforeSatisfied)
                || this.protectTargetSupport && this.isProtected(this.target.below())
-               || this.liveStanceUnsafe()
+               || !this.startWithBuilder && this.liveStanceUnsafe()
                || !this.sourceGuardPermits()) {
                this.fail(FarmTaskReason.MANIFEST_DRIFT);
             }
@@ -204,7 +218,9 @@ public final class VerifiedBreakBlockTask extends Task implements FarmMutationRe
          } else {
             if (targetProtectionDenied(this.isProtected(this.target), this.allowProtectedTarget, this.requiredBefore.test(this.expectedBefore))
                || this.protectTargetSupport && this.isProtected(this.target.below())
-               || this.liveStanceUnsafe()) {
+               || !this.startWithBuilder && this.repairBuilder == null && this.liveStanceUnsafe()
+               || this.repairBuilder != null && this.isProtected(this.target)
+               || SafeZoneService.protectedAt(this.controller.getWorld(), this.target)) {
                this.fail(FarmTaskReason.INTERACTION_DENIED);
                return null;
             }
@@ -220,8 +236,16 @@ public final class VerifiedBreakBlockTask extends Task implements FarmMutationRe
                return null;
             }
 
+            if (this.repairBuilder != null) return this.repairBuilder;
+            if (this.startWithBuilder) {
+               if (this.canUseRepairBuilder(observed)) return this.useRepairBuilder();
+               this.fail(FarmTaskReason.INTERACTION_DENIED);
+               return null;
+            }
+
             if (!FarmStanceNavigation.isAtFrozenStance(this.controller, this.stance)) {
                this.stopClick();
+               if (this.noProgressTicks >= 60 && this.canUseRepairBuilder(observed)) return this.useRepairBuilder();
                this.setDebugState("Moving to fixed break stance");
                return new GetToBlockTask(this.stance);
             }
@@ -229,6 +253,7 @@ public final class VerifiedBreakBlockTask extends Task implements FarmMutationRe
             Optional<Rotation> reach = LookHelper.getReach(this.controller, this.target);
             if (reach.isEmpty()) {
                this.stopClick();
+               if (this.canUseRepairBuilder(observed)) return this.useRepairBuilder();
                this.fail(FarmTaskReason.INTERACTION_DENIED);
                return null;
             }
@@ -449,6 +474,70 @@ public final class VerifiedBreakBlockTask extends Task implements FarmMutationRe
 
    private boolean sourceGuardPermits() {
       return this.sourceGuard == null || this.sourceGuard.permits(this.controller.getWorld(), this.target);
+   }
+
+   private boolean canUseRepairBuilder(BlockState observed) {
+      return this.repairToolRequirement != null && this.requiredBefore.test(observed) && !this.isProtected(this.target);
+   }
+
+   private Task useRepairBuilder() {
+      this.repairBuilder = new RepairClearWithBuilder();
+      this.setDebugState("Finding a reachable approach for farm terrain repair");
+      ObservatoryTelemetry.event("FARM_REPAIR_BUILDER", "target=" + this.target.toShortString() + " fixedStance=" + this.stance.toShortString());
+      return this.repairBuilder;
+   }
+
+   private final class RepairClearWithBuilder extends Task {
+      private final AbstractSchematic cell = new AbstractSchematic(1, 1, 1) {
+         @Override
+         public BlockState desiredState(int x, int y, int z, BlockState current, List<BlockState> available) {
+            return requiredBefore.test(current) ? Blocks.AIR.defaultBlockState() : current;
+         }
+      };
+      private boolean submitted;
+      private boolean policy;
+
+      @Override
+      protected void onStart() {
+         this.controller.getBehaviour().push();
+         this.policy = true;
+         this.controller.getBehaviour().avoidBlockBreaking(pos -> !pos.equals(target));
+         this.controller.getBehaviour().avoidBlockPlacing(pos -> true);
+      }
+
+      @Override
+      protected Task onTick() {
+         if (!this.submitted && this.controller.getBaritone().getBuilderProcess() instanceof BuilderProcess builder
+            && !builder.isActive() && loaded(target)
+            && !SafeZoneService.protectedAt(this.controller.getWorld(), target)
+            && canUseRepairBuilder(this.controller.getWorld().getBlockState(target))) {
+            builder.buildSingleCell("farm terrain repair", this.cell, target);
+            this.submitted = true;
+            attempts = Math.max(attempts, 1);
+         }
+         return null;
+      }
+
+      @Override
+      protected void onStop(Task next) {
+         if (this.controller.getBaritone().getBuilderProcess() instanceof BuilderProcess builder && builder.ownsSchematic(this.cell)) {
+            builder.onLostControl();
+         }
+         if (this.policy) {
+            this.controller.getBehaviour().pop();
+            this.policy = false;
+         }
+      }
+
+      @Override
+      protected boolean isEqual(Task other) {
+         return this == other;
+      }
+
+      @Override
+      protected String toDebugString() {
+         return "Clear farm terrain at " + target.toShortString();
+      }
    }
 
    boolean requiresUnprotectedStanceSupport() {

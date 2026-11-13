@@ -285,7 +285,10 @@ public class MobDefenseChain extends SingleTaskChain {
          && !mod.getMLGBucketChain().isFalling(mod)
          && mod.getMLGBucketChain().doneMLG()
          && !mod.getMLGBucketChain().isChorusFruiting()) {
-         this.doForceField(mod);
+         var userTask = mod.getUserTaskChain().getCurrentTask();
+         boolean heroGuard = userTask instanceof com.player2.playerengine.tasks.entity.HeroTask hero && hero.canGuard(mod)
+            || userTask instanceof com.player2.playerengine.tasks.entity.PatrolTask patrol && patrol.canGuard(mod);
+         this.doForceField(mod, heroGuard);
          if (mod.getPlayer().getHealth() <= 10.0F && !hasShield(mod)) {
             if (StorageHelper.getNumberOfThrowawayBlocks(mod) > 0
                && !mod.getFoodChain().needsToEat()
@@ -302,6 +305,15 @@ public class MobDefenseChain extends SingleTaskChain {
                this.setTask(this.runAwayTask);
                return 65.0F;
             }
+         }
+
+         // The owner guard supplies its own threat selection and melee fallback.
+         // Fire, creeper retreat, projectile defense and emergency flight above keep priority.
+         if (heroGuard && !this.escapeDragonBreath(mod)) {
+            this.runAwayTask = null;
+            this.needsChangeOnAttack = false;
+            this.lockedOnEntity = null;
+            return 0.0F;
          }
 
          if (!this.isInDanger(mod)
@@ -477,7 +489,7 @@ public class MobDefenseChain extends SingleTaskChain {
       }
    }
 
-   private void doForceField(PlayerEngineController mod) {
+   private void doForceField(PlayerEngineController mod, boolean heroGuard) {
       this.killAura.tickStart();
       List<Entity> entities = mod.getEntityTracker().getCloseEntities();
 
@@ -486,7 +498,7 @@ public class MobDefenseChain extends SingleTaskChain {
             if (entity != mod.getPlayer()) {
                boolean shouldForce = false;
                if (!mod.getBehaviour().shouldExcludeFromForcefield(entity)) {
-                  if (entity instanceof Mob) {
+                  if (entity instanceof Mob && !heroGuard) {
                      if (!EntityHelper.isZombifiedPiglinFamily(entity)
                         && EntityHelper.isProbablyHostileToPlayer(mod, entity)
                         && LookHelper.seesPlayer(entity, mod.getPlayer(), 10.0)) {

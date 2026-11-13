@@ -159,6 +159,8 @@ public class PickupDroppedItemTask extends AbstractDoToClosestObjectTask<ItemEnt
 
    @Override
    protected Task onTick() {
+      Task inventoryRecovery=com.player2.playerengine.agentic.AutoInventoryCleanup.beforeResourceTick(this);
+      if(inventoryRecovery!=null)return inventoryRecovery;
       if (this.wanderTask.isActive() && !this.wanderTask.isFinished()) {
          this.setDebugState("Wandering.");
          return this.wanderTask;

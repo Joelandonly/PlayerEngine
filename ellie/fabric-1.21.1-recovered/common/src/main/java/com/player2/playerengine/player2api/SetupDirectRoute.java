@@ -1,6 +1,7 @@
 package com.player2.playerengine.player2api;
 import com.player2.playerengine.PlayerEngineController;
 import com.player2.playerengine.commands.base.CommandExecutor;
+import com.player2.playerengine.commands.base.CommandException;
 import com.player2.playerengine.nativecommands.NativeCommandText;
 import java.util.UUID;
 import com.player2.playerengine.supervisor.CoreGoalSupervisor;
@@ -15,9 +16,22 @@ public final class SetupDirectRoute {
   UUID user=message.authenticatedUserUuid();
   if(user==null||!data.isOwner(user)){logEvent("COMMAND_ROUTE_REJECTED","Unverified/non-owner exact request");return false;}
   PlayerEngineController controller=data.getMod();if(controller==null)return false;
+  return dispatchResolved(controller,user,resolved);
+ }
+ /** Entry point for a player authenticated by Minecraft's command dispatcher. */
+ public static boolean tryRoutePlayerCommand(PlayerEngineController controller,UUID user,String input){
+  if(user==null||controller.getOwner()==null||!controller.isOwner(user))return false;
+  String resolved=resolve(input);
+  return resolved!=null&&dispatchResolved(controller,user,resolved);
+ }
+ private static boolean dispatchResolved(PlayerEngineController controller,UUID user,String resolved){
   try {
    if(resolved.startsWith("__local_build__ "))resolved=NativeCommandText.localBuild(controller,resolved.substring("__local_build__ ".length()));
    String line=resolved;String id=line.split("\\s+",2)[0];
+   if(id.equals("level")) {
+    notifyUser(controller,line.equals("level")?controller.progression().status():"Usage: /ellie level");
+    return true;
+   }
    // OWNER_SAFEZONE_DIRECT: owner-authenticated native management, NEVER an LLM command.
    if(id.equals("safezone")) {
     String result=com.player2.playerengine.safezone.SafeZoneNativeCommand.execute(controller,user,line);
@@ -33,17 +47,24 @@ public final class SetupDirectRoute {
    if(executor==null||executor.get(id)==null){notifyUser(controller,"Command unavailable: "+id+". Nothing was started. Use setup, setup_farm, get, mine or a supported build_structure template.");logEvent("COMMAND_ROUTE_UNAVAILABLE",id);return true;}
    GoalLifecycle.Snapshot previous=CoreGoalSupervisor.snapshot(controller);
    logEvent("COMMAND_ROUTE","Exact owner request -> "+id+" (model selection bypassed)");
-   executor.execute(executor.getCommandPrefix()+line,
+   Runnable dispatch=()->executor.execute(executor.getCommandPrefix()+line,
     ()->{logEvent("COMMAND_DISPATCH",id+" accepted; awaiting native task result");notifyUser(controller,id+" accepted.");},
     ()->{String detail=outcomeText(id,id+" completed.",previous,CoreGoalSupervisor.snapshot(controller));logEvent("COMMAND_OUTCOME",detail);notifyUser(controller,detail);},
     note->{String detail=note!=null&&note.startsWith("[info-result]")?note.substring("[info-result]".length()):String.valueOf(note);detail=outcomeText(id,detail,previous,CoreGoalSupervisor.snapshot(controller));logEvent("COMMAND_OUTCOME",id+": "+detail);notifyUser(controller,detail);},
-    error->{logEvent("COMMAND_ROUTE_ERROR",id+": "+error.getMessage());notifyUser(controller,id+" failed: "+error.getMessage());});
+    error->{
+     if(error instanceof CommandException.Cancelled){logEvent("COMMAND_OUTCOME",id+": "+error.getMessage());notifyUser(controller,error.getMessage());}
+     else {logEvent("COMMAND_ROUTE_ERROR",id+": "+error.getMessage());notifyUser(controller,id+" failed: "+error.getMessage());}
+    });
+   if(id.equals("ellie_storage"))com.player2.playerengine.commands.EllieStorageCommand.asOwner(controller,dispatch);
+   else dispatch.run();
    return true;
   }catch(Exception|LinkageError error){logEvent("COMMAND_ROUTE_ERROR",error.getClass().getSimpleName()+": "+error.getMessage());notifyUser(controller,"Command could not start: "+error.getMessage());return true;}
  }
  private static String outcomeText(String id,String reported,GoalLifecycle.Snapshot before,GoalLifecycle.Snapshot after){
-  if(after!=null&&(before==null||after.generation()>before.generation())&&after.status()!=GoalLifecycle.Status.SUCCEEDED)
+  if(after!=null&&(before==null||after.generation()>before.generation())&&after.status()!=GoalLifecycle.Status.SUCCEEDED){
+   if(after.status()==GoalLifecycle.Status.CANCELLED)return id+" stopped.";
    return id+" ended with "+after.status()+": "+after.detail()+". Completion was not verified.";
+  }
   return reported;
  }
  private static void notifyUser(PlayerEngineController controller,String text){

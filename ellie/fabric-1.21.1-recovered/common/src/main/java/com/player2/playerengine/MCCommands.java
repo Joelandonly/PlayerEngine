@@ -162,6 +162,7 @@ public class MCCommands {
          }
       });
       LifecycleEvent.SERVER_STOPPING.register((ServerState)server -> {
+         com.player2.playerengine.tasks.movement.OwnerFollowTransfer.clear(server);
          if (server != null && server.isDedicatedServer()) {
             try {
                ConversationManager.QueueClearSummary summary = ConversationManager.clearPendingWork();

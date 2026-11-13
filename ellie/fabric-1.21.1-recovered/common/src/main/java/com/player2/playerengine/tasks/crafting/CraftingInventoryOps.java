@@ -7,8 +7,8 @@ import com.player2.playerengine.tasks.crafting.resolver.RecipeAccess;
 import com.player2.playerengine.tasks.crafting.resolver.RecipeAccessImpl;
 import com.player2.playerengine.util.ItemTarget;
 import com.player2.playerengine.util.RecipeTarget;
-import com.player2.playerengine.util.helpers.StorageHelper;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
@@ -21,32 +21,48 @@ public final class CraftingInventoryOps {
    }
 
    public static boolean hasMaterials(PlayerEngineController mod, RecipeTarget target) {
-      return StorageHelper.hasRecipeMaterialsOrTarget(mod, new RecipeTarget(target.getOutputItem(), target.getRecipe().outputCount(), target.getRecipe()));
+      return matchInputs(mod.getInventory().main, target.getRecipe().getSlots()) != null;
+   }
+
+   static List<ItemStack> matchInputs(List<ItemStack> carried, ItemTarget[] ingredients) {
+      List<ItemStack> available = carried.stream().map(ItemStack::copy).toList();
+      List<ItemStack> matched = new ArrayList<>(java.util.Collections.nCopies(ingredients.length, ItemStack.EMPTY));
+      Integer[] order = java.util.stream.IntStream.range(0, ingredients.length).boxed().toArray(Integer[]::new);
+      Arrays.sort(order, java.util.Comparator.comparingInt(i ->
+         ItemTarget.nullOrEmpty(ingredients[i]) ? 0 : ingredients[i].getMatches().length));
+      for (int index : order) {
+         ItemTarget ingredient = ingredients[index];
+         if (ItemTarget.nullOrEmpty(ingredient)) continue;
+         int count = ingredient.getTargetCount();
+         ItemStack first = ItemStack.EMPTY;
+         for (ItemStack stack : available) {
+            if (stack.isEmpty() || !ingredient.matches(stack.getItem())) continue;
+            if (first.isEmpty()) first = stack.copyWithCount(1);
+            if (!ItemStack.isSameItemSameComponents(first, stack)) continue;
+            int used = Math.min(count, stack.getCount());
+            stack.shrink(used);
+            count -= used;
+            if (count == 0) break;
+         }
+         if (count > 0) return null;
+         matched.set(index, first.copyWithCount(ingredient.getTargetCount()));
+      }
+      return matched;
    }
 
    public static boolean performSingleCraft(PlayerEngineController mod, RecipeTarget oneCraft) {
-      if (!hasMaterials(mod, oneCraft)) {
-         return false;
-      }
-
       LivingEntityInventory inventory = ((IInventoryProvider)mod.getEntity()).getLivingInventory();
-      List<ItemStack> slotContents = null;
-      if (oneCraft.hasMcRecipe()) {
-         int slotCount = oneCraft.getRecipe().getSlotCount();
-         slotContents = new ArrayList<>(slotCount);
-
-         for (ItemTarget ingredient : oneCraft.getRecipe().getSlots()) {
-            if (ingredient != null && !ingredient.isEmpty() && ingredient.getMatches().length > 0) {
-               slotContents.add(new ItemStack(ingredient.getMatches()[0], 1));
-            } else {
-               slotContents.add(ItemStack.EMPTY);
-            }
-         }
-      }
-
-      for (ItemTarget ingredient : oneCraft.getRecipe().getSlots()) {
-         if (ingredient != null && !ingredient.isEmpty()) {
-            inventory.remove(stack -> ingredient.matches(stack.getItem()), ingredient.getTargetCount(), inventory);
+      List<ItemStack> slotContents = matchInputs(inventory.main, oneCraft.getRecipe().getSlots());
+      if (slotContents == null) return false;
+      for (ItemStack ingredient : slotContents) {
+         if (ingredient.isEmpty()) continue;
+         int remaining = ingredient.getCount();
+         for (ItemStack stack : inventory.main) {
+            if (stack.isEmpty() || !ItemStack.isSameItemSameComponents(stack, ingredient)) continue;
+            int consumed = Math.min(remaining, stack.getCount());
+            stack.shrink(consumed);
+            remaining -= consumed;
+            if (remaining == 0) break;
          }
       }
 
@@ -59,7 +75,7 @@ public final class CraftingInventoryOps {
       }
 
       inventory.insertStack(result);
-      if (oneCraft.hasMcRecipe() && slotContents != null) {
+      if (oneCraft.hasMcRecipe()) {
          int width = oneCraft.getRecipe().getWidth();
          int height = oneCraft.getRecipe().getHeight();
 

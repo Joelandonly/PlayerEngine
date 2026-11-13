@@ -1,5 +1,6 @@
 package com.player2.playerengine.automaton.pathing.movement;
 
+import com.player2.playerengine.safezone.SafeZoneService;
 import com.player2.playerengine.automaton.api.IBaritone;
 import com.player2.playerengine.automaton.api.pathing.movement.IMovement;
 import com.player2.playerengine.automaton.api.pathing.movement.MovementStatus;
@@ -145,6 +146,10 @@ public abstract class Movement implements IMovement, MovementHelper {
          }
 
          if (!MovementHelper.canWalkThrough(this.ctx, blockPos)) {
+            if (SafeZoneService.protectedAt(this.ctx.world(), blockPos)) {
+               state.setStatus(MovementStatus.UNREACHABLE);
+               return true;
+            }
             somethingInTheWay = true;
             MovementHelper.switchToBestToolFor(this.ctx, BlockStateInterface.get(this.ctx, blockPos));
             Optional<Rotation> reachable = RotationUtils.reachable(this.ctx.entity(), blockPos, this.ctx.playerController().getBlockReachDistance());

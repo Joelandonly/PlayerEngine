@@ -62,15 +62,23 @@ public final class VillageSiteGuard {
             int sx=field(schematic,"sx").getInt(schematic),sz=field(schematic,"sz").getInt(schematic);
             if(sx<=0||sz<=0||sx>256||sz>256)return;
             int x=coordinate(origin,"method_10263","getX"),z=coordinate(origin,"method_10260","getZ");
-            synchronized(SITES){
+            register(job,controller,x,z,sx,sz);
+        }catch(ReflectiveOperationException|RuntimeException ex){warn("register",ex);}
+    }
+    public static void register(Object job,Object controller,int x,int z,int sx,int sz) {
+        try {
+            synchronized(SITES) {
                 List<Site> sites=SITES.computeIfAbsent(controller,key->new ArrayList<>());
                 sites.removeIf(Site::completed);
                 if(sites.stream().anyMatch(old->old.same(job,x,z,sx,sz)))return;
                 sites.removeIf(old->old.owner.get()==job);
                 sites.add(new Site(job,x,z,sx,sz));
             }
-            System.out.println("[EllieMaterial] protected build site x="+x+".."+(x+sx-1)+" z="+z+".."+(z+sz-1)+" (resource mining only)");
-        }catch(ReflectiveOperationException|RuntimeException ex){warn("register",ex);}
+        } catch(ReflectiveOperationException|RuntimeException ex) {
+            warn("register",ex);
+            return;
+        }
+        System.out.println("[EllieMaterial] protected build site x="+x+".."+(x+sx-1)+" z="+z+".."+(z+sz-1)+" (resource mining only)");
     }
     public static void clearForJob(Object job){if(job==null)return;
         synchronized(SITES){SITES.values().forEach(sites->sites.removeIf(s->s.owner.get()==job));
@@ -94,7 +102,7 @@ public final class VillageSiteGuard {
             ++site.avoided;
             long now=System.currentTimeMillis();
             if(now>=site.nextLogTime){synchronized(site){if(now>=site.nextLogTime){site.nextLogTime=now+30_000;
-                String detail="excluded mining target inside village x="+x+" z="+z+" footprint=["+site.minX+".."+site.maxX+","+site.minZ+".."+site.maxZ+"] avoided="+site.avoided;
+                String detail="excluded mining target inside construction site x="+x+" z="+z+" footprint=["+site.minX+".."+site.maxX+","+site.minZ+".."+site.maxZ+"] avoided="+site.avoided;
                 System.out.println("[EllieMaterial] "+detail);
                 com.player2.playerengine.observatory.ObservatoryTelemetry.event("PROTECTED_SOURCE_SKIP",detail);
             }}}

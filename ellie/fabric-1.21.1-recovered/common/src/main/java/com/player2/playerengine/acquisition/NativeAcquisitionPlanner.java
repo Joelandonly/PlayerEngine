@@ -9,6 +9,7 @@ import com.player2.playerengine.tasks.agentic.MineBlockTask;
 import com.player2.playerengine.tasks.base.Task;
 import com.player2.playerengine.tasks.crafting.CraftMacroTasks;
 import com.player2.playerengine.util.ItemTarget;
+import com.player2.playerengine.warehouse.WarehouseWithdrawal;
 import java.util.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -21,7 +22,7 @@ import net.minecraft.world.level.block.EntityBlock;
  */
 public final class NativeAcquisitionPlanner {
     private NativeAcquisitionPlanner() {}
-    public enum Route { ALREADY_HELD, CRAFT_RECIPE, NATIVE_CATALOGUE, VERIFIED_BLOCK_DROP, UNSUPPORTED }
+    public enum Route { ALREADY_HELD, WAREHOUSE_FIRST, CRAFT_RECIPE, NATIVE_CATALOGUE, VERIFIED_BLOCK_DROP, UNSUPPORTED }
     public record Decision(Route route, Task task, String reason) {
         public Optional<Task> optionalTask() {return Optional.ofNullable(task);}
         public boolean failClosed() {return route == Route.UNSUPPORTED;}
@@ -44,6 +45,20 @@ public final class NativeAcquisitionPlanner {
         int held=mod.getItemStorage().getItemCountInventoryOnly(item);
         if(held>=absoluteTarget) return new Decision(Route.ALREADY_HELD,null,"Already carried: "+held);
         ItemTarget target=new ItemTarget(item,absoluteTarget);
+        String exactId=id;
+        if(WarehouseWithdrawal.hasStock(mod,target)) {
+            return new Decision(Route.WAREHOUSE_FIRST,
+                new WarehouseFirstAcquisition(target,()->chooseNative(mod,exactId,target,reservations)),
+                "Authorized warehouse stock before crafting or gathering the remainder");
+        }
+        return chooseNative(mod,id,target,reservations);
+    }
+
+    private static Decision chooseNative(PlayerEngineController mod,String id,ItemTarget target,MaterialReservationService reservations) {
+        Item item=target.getMatches()[0];
+        int absoluteTarget=target.getTargetCount();
+        if(mod.getItemStorage().getItemCountInventoryOnly(item)>=absoluteTarget)
+            return new Decision(Route.ALREADY_HELD,null,"Inventory target already met");
         BlockKnowledge.Entry known=BlockKnowledge.byItem(id);
         boolean recipeBacked=ProjectMaterialPlanner.recipeBacked(id);
         // Authoritative live Minecraft recipe resolver comes before TaskCatalogue.

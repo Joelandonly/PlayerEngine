@@ -4,8 +4,9 @@ import com.player2.playerengine.PlayerEngineController;
 import com.player2.playerengine.agentic.elliegps.WaypointAutoRegistrar;
 import com.player2.playerengine.agentic.steps.SmeltStepFactory;
 import com.player2.playerengine.executor.RollbackPolicy;
-import com.player2.playerengine.executor.StepState;
-import com.player2.playerengine.executor.TaskStepExecutorAdapter;
+import com.player2.playerengine.progression.CompanionProgression;
+import com.player2.playerengine.supervisor.CoreGoalSupervisor;
+import com.player2.playerengine.supervisor.GoalLifecycle;
 import com.player2.playerengine.tasks.base.Task;
 import com.player2.playerengine.tasks.farming.FarmFeedback;
 import com.player2.playerengine.tasks.farming.FarmTaskOutcome;
@@ -30,6 +31,14 @@ public final class AgenticPlanExecutor {
 
    public static AgenticRunHandle start(
       AgenticGoalRequest request, AgenticPlan plan, PlayerEngineController controller, String planningSource, BiConsumer<Boolean, String> onTerminal
+   ) {
+      return startWithOutcome(request, plan, controller, planningSource,
+         onTerminal == null ? null : (status, message) -> onTerminal.accept(status == GoalLifecycle.Status.SUCCEEDED, message));
+   }
+
+   public static AgenticRunHandle startWithOutcome(
+      AgenticGoalRequest request, AgenticPlan plan, PlayerEngineController controller, String planningSource,
+      BiConsumer<GoalLifecycle.Status, String> onTerminal
    ) {
       String runId = UUID.randomUUID().toString().substring(0, 8);
       AgenticRunRegistry.AgenticRunState state = new AgenticRunRegistry.AgenticRunState(runId, plan.goalSummary(), planningSource);
@@ -58,13 +67,13 @@ public final class AgenticPlanExecutor {
       }
    }
 
-   private static void runStep(int index, AgenticPlan plan, PlayerEngineController mod, AgenticExecutionContext context, BiConsumer<Boolean, String> onTerminal) {
+   private static void runStep(int index, AgenticPlan plan, PlayerEngineController mod, AgenticExecutionContext context, BiConsumer<GoalLifecycle.Status, String> onTerminal) {
       if (index >= plan.steps().size()) {
          String summary = AgenticDegradationSummary.forModel(context.runState());
          context.runState().terminal("succeeded", "Plan complete.");
          LOGGER.info("[Agentic] run {} succeeded", context.runState().toSnapshot().runId());
          context.memory().clearMaterialReservations();
-         finishOnServer(mod, onTerminal, true, summary);
+         finishOnServer(mod, context, onTerminal, GoalLifecycle.Status.SUCCEEDED, summary);
       } else {
          AgenticStepSpec step = plan.steps().get(index);
          context.runState().setActiveStep(index, step.kind());
@@ -75,16 +84,25 @@ public final class AgenticPlanExecutor {
             context.runState().terminal("failed", message);
             LOGGER.warn("[Agentic] unknown step kind {}", step.kind());
             context.memory().clearMaterialReservations();
-            finishOnServer(mod, onTerminal, false, message);
+            finishOnServer(mod, context, onTerminal, GoalLifecycle.Status.FAILED, message);
          } else {
             Task task = taskOpt.get();
+            task.trackProgression(true);
             mod.runUserTaskTracked(step.id(), step.kind(), task, RollbackPolicy.NONE, () -> {
-               boolean succeeded = false;
-               if (mod.getStepExecutorAdapter() instanceof TaskStepExecutorAdapter adapter) {
-                  succeeded = adapter.getLastCompletedExecution().map(e -> e.getState() == StepState.SUCCEEDED).orElse(false);
+               // The supervisor calls back only for the current, terminal goal generation.
+               GoalLifecycle.Snapshot receipt = CoreGoalSupervisor.snapshot(mod);
+               GoalLifecycle.Status status = receipt == null ? GoalLifecycle.Status.FAILED : receipt.status();
+               if (status == GoalLifecycle.Status.CANCELLED) {
+                  String message = "Agentic goal stopped during " + step.kind() + ".";
+                  context.runState().terminal("cancelled", message);
+                  context.memory().clearMaterialReservations();
+                  finishOnServer(mod, context, onTerminal, status, message);
+                  return;
                }
 
-               if (succeeded) {
+               if (status == GoalLifecycle.Status.SUCCEEDED) {
+                  var reward = CompanionProgression.successfulReward(task);
+                  if (reward != null) context.progressionRewards.add(reward);
                   if (task instanceof SetupFarmTask farmTask) {
                      FarmTaskOutcome outcome = farmTask.outcome();
                      String modelFeedback = FarmFeedback.setupModel(outcome);
@@ -108,7 +126,8 @@ public final class AgenticPlanExecutor {
 
                   runStep(index + 1, plan, mod, context, onTerminal);
                } else {
-                  String reason = context.runState().progressForKind(step.kind());
+                  String reason = receipt == null ? "" : receipt.detail().replaceFirst("^\\[[^\\]]+\\]\\s*", "");
+                  if (reason.isBlank()) reason = context.runState().progressForKind(step.kind());
                   String message;
                   if (task instanceof SetupFarmTask farmTask) {
                      FarmTaskOutcome outcome = farmTask.outcome();
@@ -127,21 +146,26 @@ public final class AgenticPlanExecutor {
                      mod.reportAgenticProgress(message, true);
                   }
 
-                  context.runState().terminal("failed", message);
+                  context.runState().terminal(status == GoalLifecycle.Status.BLOCKED ? "blocked" : "failed", message);
                   LOGGER.warn("[Agentic] step {} failed: {}", step.kind(), message);
                   context.memory().clearMaterialReservations();
-                  finishOnServer(mod, onTerminal, false, message);
+                  finishOnServer(mod, context, onTerminal, status, message);
                }
             });
          }
       }
    }
 
-   private static void finishOnServer(PlayerEngineController mod, BiConsumer<Boolean, String> onTerminal, boolean success, String message) {
+   private static void finishOnServer(PlayerEngineController mod, AgenticExecutionContext context,
+      BiConsumer<GoalLifecycle.Status, String> onTerminal, GoalLifecycle.Status status, String message) {
+      UUID botUuid = mod.getEntity().getUUID();
       Runnable wrapped = () -> {
-         AgenticRunRegistry.clear(mod.getEntity().getUUID());
+         if (status == GoalLifecycle.Status.SUCCEEDED && AgenticRunRegistry.get(botUuid).orElse(null) == context.runState()) {
+            mod.progression().award(context.progressionRewards, "Completed plan");
+         }
+         AgenticRunRegistry.clear(botUuid, context.runState());
          if (onTerminal != null) {
-            onTerminal.accept(success, message);
+            onTerminal.accept(status, message);
          }
       };
       if (mod.getPlayer().getServer() != null) {

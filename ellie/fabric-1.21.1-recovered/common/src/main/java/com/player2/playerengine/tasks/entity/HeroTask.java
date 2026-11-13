@@ -4,22 +4,18 @@ import com.player2.playerengine.PlayerEngineController;
 import com.player2.playerengine.tasks.base.Task;
 import com.player2.playerengine.tasks.movement.GetToEntityTask;
 import com.player2.playerengine.util.Debug;
-import com.player2.playerengine.util.helpers.EntityHelper;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.monster.Monster;
-import net.minecraft.world.entity.monster.Slime;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.AABB;
 
 /**
  * Protect the NPC's owner. Targets are selected using the owner's location,
  * never the bot's location or only a mob class. No global combat behavior changes.
  */
 public class HeroTask extends Task {
-   private static final double HERO_DEFENSE_RADIUS = 16.0;
    private static final double OWNER_REJOIN_RADIUS = 6.0;
    private static final double OWNER_FOLLOW_DISTANCE = 3.0;
 
+   private final HeroTechniques techniques = new HeroTechniques();
    private boolean savedAllowBreak;
    private int lastTargetId = -1;
 
@@ -34,25 +30,19 @@ public class HeroTask extends Task {
    protected Task onTick() {
       PlayerEngineController mod = this.controller;
       Player owner = mod.getOwner();
-      if (owner == null || !owner.isAlive() || owner.level() != mod.getWorld()) {
+      if (!canGuard(mod)) {
+         this.techniques.cancel();
          this.clearTarget();
          this.setDebugState("Owner not available in this dimension; guarding in place.");
          return null;
       }
 
-      // Scan around the human owner, not around Ellie. This also finds targets
-      // near the owner which may lie outside Ellie's cached entity tracker.
-      AABB ownerArea = owner.getBoundingBox().inflate(HERO_DEFENSE_RADIUS);
-      Entity selected = null;
-      for (Monster monster : mod.getWorld().getEntitiesOfClass(Monster.class, ownerArea)) {
-         selected = closerOwnerThreat(mod, owner, selected, monster);
+      var threats = HeroTechniques.threats(mod, owner);
+      if (this.techniques.tick(mod, owner, threats)) {
+         this.setDebugState("Hero technique: " + this.techniques.currentTitle());
+         return null;
       }
-      for (Slime slime : mod.getWorld().getEntitiesOfClass(Slime.class, ownerArea)) {
-         selected = closerOwnerThreat(mod, owner, selected, slime);
-      }
-
-      // Pass the exact entity to combat; passing only its Java class was the
-      // original reason the downstream task attacked the wrong monster.
+      Mob selected = threats.stream().filter(mod.getEntityTracker()::isEntityReachable).findFirst().orElse(null);
       if (selected != null) {
          if (this.lastTargetId != selected.getId()) {
             Debug.logInternal("[HeroOwnerTarget] id=" + selected.getId()
@@ -75,23 +65,9 @@ public class HeroTask extends Task {
       return null;
    }
 
-   private Entity closerOwnerThreat(PlayerEngineController mod, Player owner, Entity current, Entity candidate) {
-      if (candidate == null || !candidate.isAlive()
-         || EntityHelper.isZombifiedPiglinFamily(candidate)
-         || !mod.getEntityTracker().isEntityReachable(candidate)) {
-         return current;
-      }
-      double candidateDistance = candidate.distanceToSqr(owner);
-      if (candidateDistance > HERO_DEFENSE_RADIUS * HERO_DEFENSE_RADIUS) {
-         return current;
-      }
-      if (current == null) {
-         return candidate;
-      }
-      double currentDistance = current.distanceToSqr(owner);
-      return candidateDistance < currentDistance
-         || candidateDistance == currentDistance && candidate.getId() < current.getId()
-         ? candidate : current;
+   public boolean canGuard(PlayerEngineController mod) {
+      Player owner = mod.getOwner();
+      return owner != null && owner.isAlive() && owner.level() == mod.getWorld();
    }
 
    private void clearTarget() {
@@ -103,6 +79,7 @@ public class HeroTask extends Task {
 
    @Override
    protected void onStop(Task interruptTask) {
+      this.techniques.cancel();
       this.controller.getBaritoneSettings().allowBreak.set(this.savedAllowBreak);
       this.clearTarget();
    }

@@ -1,10 +1,17 @@
 package com.player2.playerengine.schematic;
 
 import com.player2.playerengine.automaton.api.entity.LivingEntityPlacementContext;
+import com.player2.playerengine.automaton.process.BuilderProcess;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.core.Direction;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.BlockState;
 import java.lang.reflect.*;
 import java.lang.ref.WeakReference;
@@ -17,6 +24,11 @@ public final class SchematicBuildSupport {
     private static final String CONTEXT="com.player2.playerengine.automaton.api.entity.LivingEntityPlacementContext";
     private static final Map<Object,WeakReference<Object>> ENTITIES=Collections.synchronizedMap(new WeakHashMap<>());
     private SchematicBuildSupport(){}
+    /** A physical chest placement that needs the same orientation checks as imports. */
+    public interface OrientedChest {
+        /** The existing half the new chest must join, or null for the first half. */
+        BlockPos partner();
+    }
     private record Layer(int width,int length,Map<Long,Object> desired,Map<Long,Object> finals,Map<Long,State> specs) implements InvocationHandler {
         public Object invoke(Object proxy,Method method,Object[] a)throws Throwable {
             return switch(method.getName()){
@@ -43,7 +55,8 @@ public final class SchematicBuildSupport {
         return Proxy.newProxyInstance(api.getClassLoader(),new Class<?>[]{api},new Layer(width,length,Map.copyOf(desired),Map.copyOf(finals),Map.copyOf(specs)));
     }
     private static boolean ours(Object schematic){return schematic!=null&&Proxy.isProxyClass(schematic.getClass())&&Proxy.getInvocationHandler(schematic) instanceof Layer;}
-    public static boolean active(Object builder){try{return ours(get(builder,"schematic"))||ours(get(builder,"realSchematic"));}catch(Exception e){return false;}}
+    public static boolean imported(Object builder){try{return ours(get(builder,"schematic"))||ours(get(builder,"realSchematic"));}catch(Exception e){return false;}}
+    public static boolean active(Object builder){try{return get(builder,"realSchematic") instanceof OrientedChest||imported(builder);}catch(Exception e){return false;}}
     public static void bindEntity(Object entity,Object builder){ENTITIES.put(entity,new WeakReference<>(builder));}
     public static boolean sameIgnoringChestJoin(Object a,Object b)throws Exception {
         if(!call(a,"method_26204").equals(call(b,"method_26204")))return false;
@@ -51,13 +64,36 @@ public final class SchematicBuildSupport {
     }
     /** -1 retains every legacy builder rule; imported builds require the intended properties. */
     public static int valid(Object builder,Object current,Object desired){
-        if(!active(builder))return -1;
-        try{
-            if(desired==null||Objects.equals(current,desired))return 1;
-            if(current==null)return 0;
-            String block=String.valueOf(call(desired,"method_26204"));
-            return block.endsWith(":chest}")&&sameIgnoringChestJoin(current,desired)?1:0;
-        }catch(Exception e){return 0;}
+        if(!imported(builder))return -1;
+        return desired == null || matchesImportedPlacement((BlockState) current, (BlockState) desired) ? 1 : 0;
+    }
+    public static boolean matchesImportedPlacement(BlockState actual, BlockState target) {
+        if (actual == null) return false;
+        if (!target.is(Blocks.CHEST) && !target.is(Blocks.TRAPPED_CHEST)) return actual.equals(target);
+        if (!actual.is(target.getBlock())) return false;
+        ChestType join = actual.getValue(ChestBlock.TYPE);
+        return actual.setValue(ChestBlock.TYPE, target.getValue(ChestBlock.TYPE)).equals(target)
+            && (join == target.getValue(ChestBlock.TYPE) || join == ChestType.SINGLE);
+    }
+
+    public static BlockState importedTarget(LivingEntity entity, BlockPos pos) {
+        WeakReference<Object> ref = ENTITIES.get(entity);
+        if (ref != null && ref.get() instanceof BuilderProcess builder && imported(builder)) {
+            return builder.placementTarget(pos);
+        }
+        return null;
+    }
+
+    public static boolean plannedChest(BlockState target, Block itemBlock) {
+        return target != null && target.is(itemBlock) && (itemBlock == Blocks.CHEST || itemBlock == Blocks.TRAPPED_CHEST);
+    }
+
+    /** Check the exact chest orientation and join only for a ray-traced placement, not a hotbar probe. */
+    public static boolean matchesChestPlacement(BlockState actual,BlockState target){
+        return actual.is(Blocks.CHEST)&&target.is(Blocks.CHEST)
+            &&actual.getValue(ChestBlock.FACING)==target.getValue(ChestBlock.FACING)
+            &&actual.getValue(ChestBlock.TYPE)==target.getValue(ChestBlock.TYPE)
+            &&actual.getValue(BlockStateProperties.WATERLOGGED).equals(target.getValue(BlockStateProperties.WATERLOGGED));
     }
     /**
      * Source-level 1.21.1 placement prediction, retaining the imported-schematic
@@ -100,7 +136,12 @@ public final class SchematicBuildSupport {
 
     public static Direction horizontal(BlockPlaceContext placement) {
         LivingEntity entity = placementEntity(placement);
-        return entity == null ? Direction.NORTH : entity.getDirection();
+        if (entity == null) return Direction.NORTH;
+        if (placement.getPlayer() == null && placement.getItemInHand().getItem() instanceof BlockItem item) {
+            BlockState target = importedTarget(entity, placement.getClickedPos());
+            if (plannedChest(target, item.getBlock())) return target.getValue(ChestBlock.FACING).getOpposite();
+        }
+        return entity.getDirection();
     }
 
     public static float rotation(BlockPlaceContext placement) {

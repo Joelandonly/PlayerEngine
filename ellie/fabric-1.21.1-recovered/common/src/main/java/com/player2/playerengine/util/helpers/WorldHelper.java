@@ -1,6 +1,7 @@
 package com.player2.playerengine.util.helpers;
 
 import com.player2.playerengine.PlayerEngineController;
+import com.player2.playerengine.safezone.SafeZoneService;
 import com.player2.playerengine.automaton.pathing.movement.CalculationContext;
 import com.player2.playerengine.automaton.pathing.movement.MovementHelper;
 import com.player2.playerengine.automaton.process.MineProcess;
@@ -196,6 +197,7 @@ public interface WorldHelper {
    }
 
    static boolean canBreak(PlayerEngineController controller, BlockPos pos) {
+      if (SafeZoneService.protectedAt(controller.getWorld(), pos)) return false;
       boolean prevInteractionPaused = controller.getExtraBaritoneSettings().isInteractionPaused();
       controller.getExtraBaritoneSettings().setInteractionPaused(false);
       boolean canBreak = controller.getWorld().getBlockState(pos).getDestroySpeed(controller.getWorld(), pos) >= 0.0F

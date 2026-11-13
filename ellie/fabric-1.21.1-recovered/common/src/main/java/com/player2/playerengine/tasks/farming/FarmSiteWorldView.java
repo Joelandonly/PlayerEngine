@@ -4,6 +4,7 @@ import com.player2.playerengine.agentic.elliegps.EllieGPSStore;
 import com.player2.playerengine.agentic.elliegps.FarmWaypointData;
 import com.player2.playerengine.agentic.elliegps.WaypointRecord;
 import com.player2.playerengine.structureprotection.PlayerPlacedBlockStore;
+import com.player2.playerengine.safezone.SafeZoneService;
 import java.util.Objects;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.biome.Biome;
@@ -28,6 +29,10 @@ public interface FarmSiteWorldView {
    FarmSiteWorldView.CellObservation observe(BlockPos var1);
 
    FarmSiteWorldView.WorldObservation observeWorld(BlockPos var1);
+
+   default boolean isConstructionProtected(BlockPos position) {
+      return false;
+   }
 
    static FarmSiteWorldView live(ServerLevel level) {
       return new FarmSiteWorldView.ServerWorldView(level, PlayerPlacedBlockStore.get());
@@ -276,6 +281,11 @@ public interface FarmSiteWorldView {
          } else {
             return unavailable(loaded, inBuildHeight, withinBorder);
          }
+      }
+
+      @Override
+      public boolean isConstructionProtected(BlockPos position) {
+         return SafeZoneService.protectedAt(this.level, position);
       }
 
       @Override

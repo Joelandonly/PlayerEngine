@@ -46,7 +46,7 @@ public final class ChunkTicketWatchdog {
   sessions.entrySet().removeIf(e->uuid.equals(e.getValue().uuid));
  }
  public static synchronized void stopped(Object controller){
-  try{UUID uuid=(UUID)call(call(controller,"getEntity"),"method_5667");release(uuid);stoppedOwners.add(uuid);((Collection<?>)field(field(controller,"chunkLoader"),"chunks")).clear();}
+  try{if(Boolean.TRUE.equals(call(controller,"isParkedAcrossDimensions")))return;UUID uuid=(UUID)call(call(controller,"getEntity"),"method_5667");release(uuid);stoppedOwners.add(uuid);((Collection<?>)field(field(controller,"chunkLoader"),"chunks")).clear();}
   catch(Exception|LinkageError e){warn(controller,0,"controller stop",e);}
  }
  public static synchronized void reset(Object tracker){
@@ -86,7 +86,9 @@ public final class ChunkTicketWatchdog {
    Object entity=call(controller,"getEntity"),tracker=field(controller,"chunkLoader");
    if(entity==null||tracker==null){releaseSession(controller);return 0;}
    UUID identity=(UUID)call(entity,"method_5667");
-   if(!Boolean.TRUE.equals(call(entity,"method_5805"))||Boolean.TRUE.equals(call(entity,"method_31481"))||!Boolean.TRUE.equals(call(call(controller,"getTaskRunner"),"isActive"))){release(identity);stoppedOwners.add(identity);((Collection<?>)field(tracker,"chunks")).clear();return 0;}
+   boolean running=Boolean.TRUE.equals(call(call(controller,"getTaskRunner"),"isActive"));
+   boolean parked=!running&&Boolean.TRUE.equals(call(controller,"isParkedAcrossDimensions"));
+   if(!Boolean.TRUE.equals(call(entity,"method_5805"))||Boolean.TRUE.equals(call(entity,"method_31481"))||!running&&!parked){release(identity);stoppedOwners.add(identity);((Collection<?>)field(tracker,"chunks")).clear();return 0;}
    stoppedOwners.remove(identity);
    Object world=call(entity,"method_37908");UUID uuid=(UUID)call(entity,"method_5667");if(world==null){releaseSession(controller);return 0;}
    Session s=sessions.get(controller);
@@ -94,7 +96,7 @@ public final class ChunkTicketWatchdog {
    if(s==null){s=new Session();s.world=world;s.uuid=uuid;s.tracker=new WeakReference<>(tracker);sessions.put(controller,s);}
    double px=((Number)call(entity,"method_23317")).doubleValue(),pz=((Number)call(entity,"method_23321")).doubleValue();
    if(!Double.isFinite(px)||!Double.isFinite(pz)||Math.abs(px)>30000000||Math.abs(pz)>30000000)throw new IllegalStateException("NPC coordinates out of world bounds");
-   Set<Long> desired=footprint(px,pz);
+   Set<Long> desired=parked?Set.of(key((int)Math.floor(px/16),(int)Math.floor(pz/16))):footprint(px,pz);
    // Release old footprint before acquiring new cells: never accumulate teleport trails.
    Map<Long,Claim> claims=worlds.get(world);
    if(claims!=null)for(long p:new ArrayList<>(claims.keySet()))if(claims.get(p).owners.contains(uuid)&&!desired.contains(p))unload(world,uuid,x(p),z(p));

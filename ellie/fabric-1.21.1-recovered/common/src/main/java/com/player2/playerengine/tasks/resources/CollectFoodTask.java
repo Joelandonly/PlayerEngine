@@ -2,6 +2,7 @@ package com.player2.playerengine.tasks.resources;
 
 import com.player2.playerengine.PlayerEngineController;
 import com.player2.playerengine.TaskCatalogue;
+import com.player2.playerengine.safezone.SafeZoneService;
 import com.player2.playerengine.multiversion.item.ItemVer;
 import com.player2.playerengine.reliability.FoodAcquisition;
 import com.player2.playerengine.reliability.ProductionHandoff;
@@ -143,7 +144,7 @@ public class CollectFoodTask extends Task implements SurvivalInterruptTask, Trac
          }
       }
 
-      if (this.controller.getBlockScanner().anyFound(Blocks.HAY_BLOCK)) {
+      if (this.controller.getBlockScanner().anyFound(this::canHarvest, Blocks.HAY_BLOCK)) {
          this.setDebugState("Collecting hay bales");
          this.currentResourceTask = new MineAndCollectTask(
             new ItemTarget(Items.HAY_BLOCK, 9999), new Block[]{Blocks.HAY_BLOCK}, MiningRequirement.HAND
@@ -152,7 +153,7 @@ public class CollectFoodTask extends Task implements SurvivalInterruptTask, Trac
       }
 
       for (CollectFoodTask.CropTarget crop : CROPS) {
-         if (this.controller.getBlockScanner().anyFound(pos -> isCropMature(this.controller, pos, crop.cropBlock), crop.cropBlock)) {
+         if (this.controller.getBlockScanner().anyFound(pos -> this.canHarvest(pos) && isCropMature(this.controller, pos, crop.cropBlock), crop.cropBlock)) {
             this.setDebugState("Harvesting " + crop.cropItem.getDescription().getString());
             this.currentResourceTask = new CollectCropTask(new ItemTarget(crop.cropItem, 9999), new Block[]{crop.cropBlock}, crop.cropItem);
             return this.currentResourceTask;
@@ -165,7 +166,7 @@ public class CollectFoodTask extends Task implements SurvivalInterruptTask, Trac
          Item rawFood = Arrays.stream(COOKABLE_FOODS).filter(c -> c.mobToKill == bestEntityToKill.getClass()).findFirst().get().getRaw();
          this.currentResourceTask = new KillAndLootTask(bestEntityToKill.getClass(), new ItemTarget(rawFood, FoodAcquisition.nextRawCount(rawFood, this)));
          return this.currentResourceTask;
-      } else if (this.controller.getBlockScanner().anyFound(Blocks.SWEET_BERRY_BUSH)) {
+      } else if (this.controller.getBlockScanner().anyFound(this::canHarvest, Blocks.SWEET_BERRY_BUSH)) {
          this.setDebugState("Collecting sweet berries");
          this.currentResourceTask = new MineAndCollectTask(
             new ItemTarget(Items.SWEET_BERRIES, 9999), new Block[]{Blocks.SWEET_BERRY_BUSH}, MiningRequirement.HAND
@@ -239,6 +240,10 @@ public class CollectFoodTask extends Task implements SurvivalInterruptTask, Trac
             controller.getBlockScanner().requestBlockUnreachable(pos, 0);
          }
       }
+   }
+
+   private boolean canHarvest(BlockPos pos) {
+      return !SafeZoneService.protectedAt(this.controller.getWorld(), pos);
    }
 
    private static boolean isCropMature(PlayerEngineController controller, BlockPos pos, Block block) {

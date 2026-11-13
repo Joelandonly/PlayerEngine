@@ -36,6 +36,7 @@ import com.player2.playerengine.navigation.NavStallRecovery;
 import com.player2.playerengine.observatory.ChunkTicketWatchdog;
 import com.player2.playerengine.observatory.DistanceDiagnostics;
 import com.player2.playerengine.player2api.AIPersistantData;
+import com.player2.playerengine.player2api.AgentConversationData;
 import com.player2.playerengine.player2api.AgentSideEffects;
 import com.player2.playerengine.player2api.AiConversationFeedback;
 import com.player2.playerengine.player2api.Character;
@@ -63,12 +64,10 @@ import com.player2.playerengine.util.time.TimerGame;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import net.minecraft.world.entity.LivingEntity;
@@ -84,6 +83,7 @@ import org.apache.logging.log4j.Logger;
 
 public class PlayerEngineController {
    private final IBaritone baritone;
+   private final AgentConversationData conversationData = new AgentConversationData(this);
    private AIPersistantData aiPersistantData;
    private Player2APIService player2apiService;
    private final IEntityContext ctx;
@@ -188,15 +188,25 @@ public class PlayerEngineController {
          }
       );
       Playground.IDLE_TEST_INIT_FUNCTION(this);
-      ConversationManager.getOrCreateEventQueueData(this);
       this.aiPersistantData = new AIPersistantData(this, character);
       this.player2apiService = new Player2APIService(this, player2GameId);
-      staticAPIServices.put(this.getEntity().getUUID(), this.player2apiService);
-      staticControllers.put(this.getEntity().getUUID(), this);
       this.chunkLoader = new ChunkLoadingTracker(this);
+      if (!this.getEntity().level().isClientSide()) this.registerGlobalController();
+   }
+
+   private void registerGlobalController() {
+      UUID uuid = this.getEntity().getUUID();
+      PlayerEngineController previous = staticControllers.put(uuid, this);
+      staticAPIServices.put(uuid, this.player2apiService);
+      if (previous != null && previous != this) {
+         AgenticRunRegistry.clear(uuid);
+         com.player2.playerengine.observatory.ObservatoryTelemetry.event("COMPANION_CONTROLLER_REBOUND", uuid + " -> " + this.getWorld().dimension().location());
+      }
+      ConversationManager.registerController(this);
    }
 
    public void serverTick() {
+      this.progression.tick();
       DistanceDiagnostics.onControllerTick(this);
       StorageIntelligence.heartbeat(this);
       this.observeSettingsTaskBoundary();
@@ -210,7 +220,7 @@ public class PlayerEngineController {
       this.inputControls.onTickPost();
       this.baritone.serverTick();
       this.player2apiService.trySendHeartbeat();
-      this.chunkLoader.tick();
+      if (this.taskRunner.isActive()) this.chunkLoader.tick();
       NavStallRecovery.onTick(this);
    }
 
@@ -218,37 +228,40 @@ public class PlayerEngineController {
       DistanceDiagnostics.onServerTick(server);
       TimerGame.incrementServerTick();
       ConversationManager.injectOnTick(server);
+      if (server != null) com.player2.playerengine.tasks.movement.OwnerFollowTransfer.tick(server);
       if (server != null && server.getTickCount() % 200 == 0) {
          pruneStaleControllers(server);
       }
    }
 
    public void unregisterFromGlobalRegistry() {
-      unregisterFromGlobalRegistry(this.getEntity().getUUID());
+      this.unregisterIfCurrent(this.getEntity().getUUID());
    }
 
    public static void unregisterFromGlobalRegistry(UUID entityUuid) {
-      ChunkTicketWatchdog.release(entityUuid);
       if (entityUuid != null) {
-         staticControllers.remove(entityUuid);
-         staticAPIServices.remove(entityUuid);
-         AgenticRunRegistry.clear(entityUuid);
+         PlayerEngineController controller = staticControllers.get(entityUuid);
+         if (controller != null) controller.unregisterIfCurrent(entityUuid);
       }
+   }
+
+   private boolean unregisterIfCurrent(UUID uuid) {
+      // Vanilla may create the destination controller before removing the source entity.
+      if (!staticControllers.remove(uuid, this)) return false;
+      staticAPIServices.remove(uuid, this.player2apiService);
+      ConversationManager.unregisterController(this);
+      ChunkTicketWatchdog.release(uuid);
+      AgenticRunRegistry.clear(uuid);
+      return true;
    }
 
    public static int pruneStaleControllers(MinecraftServer server) {
       if (server != null && !staticControllers.isEmpty()) {
          int removed = 0;
-         Iterator<Entry<UUID, PlayerEngineController>> it = staticControllers.entrySet().iterator();
-
-         while (it.hasNext()) {
-            Entry<UUID, PlayerEngineController> entry = it.next();
+         for (var entry : staticControllers.entrySet()) {
             UUID uuid = entry.getKey();
             PlayerEngineController controller = entry.getValue();
-            if (!isControllerEntityActive(server, controller, uuid)) {
-               it.remove();
-               staticAPIServices.remove(uuid);
-               AgenticRunRegistry.clear(uuid);
+            if (!isControllerEntityActive(server, controller, uuid) && controller.unregisterIfCurrent(uuid)) {
                removed++;
             }
          }
@@ -300,7 +313,12 @@ public class PlayerEngineController {
    }
 
    public void stop(StopReason trackedStepCancelReason) {
-      ChunkTicketWatchdog.stopped(this);
+      if (staticControllers.get(this.getEntity().getUUID()) == this) {
+         if (trackedStepCancelReason == StopReason.CANCELLED_OPERATOR) {
+            com.player2.playerengine.tasks.movement.OwnerFollowTransfer.cancel(this);
+         }
+         ChunkTicketWatchdog.stopped(this);
+      }
       this.stepExecutorAdapter.armPendingChainCancel(trackedStepCancelReason);
       this.getUserTaskChain().cancel(this);
       if (this.taskRunner.getCurrentTaskChain() != null) {
@@ -313,8 +331,9 @@ public class PlayerEngineController {
    }
 
    public void stopWithRespawnNotification(ServerPlayer ownerPlayer) {
+      PlayerEngineController current = staticControllers.get(this.getEntity().getUUID());
       boolean active = this.hasActiveNonIdleUserTask() || AgenticRunRegistry.get(this.getEntity().getUUID()).isPresent();
-      if (active) {
+      if (active && (current == null || current == this)) {
          AiConversationFeedback.enqueueInfo(
             this, "You were despawned while a task was running. The task has been cancelled and will not resume. Do not claim the task completed or succeeded."
          );
@@ -824,6 +843,11 @@ public class PlayerEngineController {
       return this.owner;
    }
 
+   public boolean isParkedAcrossDimensions() {
+      if (!(this.owner instanceof ServerPlayer player) || player.getServer() == null) return false;
+      return player.getServer().getPlayerList().getPlayer(player.getUUID()) == player && player.level() != this.getWorld();
+   }
+
    public void setOwner(Player owner) {
       this.owner = owner;
       if (this.aiPersistantData != null) {
@@ -840,8 +864,19 @@ public class PlayerEngineController {
       return this.aiPersistantData;
    }
 
+   private final com.player2.playerengine.progression.CompanionProgression progression =
+      new com.player2.playerengine.progression.CompanionProgression(this);
+
+   public com.player2.playerengine.progression.CompanionProgression progression() {
+      return this.progression;
+   }
+
    public Player2APIService getPlayer2APIService() {
       return this.player2apiService;
+   }
+
+   public AgentConversationData getConversationData() {
+      return this.conversationData;
    }
 
    public String getOwnerUsername() {

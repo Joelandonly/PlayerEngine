@@ -105,6 +105,10 @@ public final class FarmFeedback {
    }
 
    static String setupFailureReasonForModel(FarmTaskOutcome outcome) {
+      if (outcome != null && outcome.reason() == FarmTaskReason.TYPE_CONFLICT) {
+         return "another EllieGPS waypoint type already uses this center";
+      }
+
       if (outcome != null && outcome.reason() == FarmTaskReason.RESOURCE_RETURN_FAILED) {
          return "resource acquisition succeeded, but return to the selected surface site failed";
       }
@@ -123,11 +127,11 @@ public final class FarmFeedback {
 
       if (outcome != null && isExactSiteReason(outcome.reason())) {
          return switch (outcome.reason()) {
-            case EXACT_SITE_UNSAFE_SUPPORT -> "the footprint lacks safe solid support beneath at least one plot cell";
+            case EXACT_SITE_UNSAFE_SUPPORT -> "a support column is obstructed or has no dry, safe ground within the foundation depth";
             case EXACT_SITE_UNSAFE_OBSTRUCTION -> "the footprint contains a block entity, unbreakable block, or falling-block hazard";
             case EXACT_SITE_FLUID_CONFLICT -> "the footprint contains fluid outside the permitted center water cell";
             case EXACT_SITE_CROP_CONFLICT -> "the footprint contains a crop outside a supported farmland planting cell";
-            case EXACT_SITE_REPAIR_LIMIT_EXCEEDED -> "the footprint needs repairs in more than 16 surface columns";
+            case EXACT_SITE_REPAIR_LIMIT_EXCEEDED -> "the planned repair exceeds the farm construction budget";
             case EXACT_SITE_NO_SAFE_STANCE -> "the footprint has no safe farm-level stance for the required work";
             case EXACT_SITE_FREEZE_RISK -> "the center water would freeze at this exact site";
             default -> "the requested footprint failed an exact-site safety gate";

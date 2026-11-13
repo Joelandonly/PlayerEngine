@@ -127,7 +127,7 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
         if(desired.water())return true; // fluid work is explicitly deferred until the solid structure exists
         if(finalMatch(current,desired)||(desired.waterlogged()&&finalMatch(current,dryFinal(desired))))return true;
         Object base=resolved(desired.placementState());
-        if(desired.id().equals("minecraft:chest"))return SchematicBuildSupport.sameIgnoringChestJoin(current,base);
+        if(desired.id().equals("minecraft:chest")||desired.id().equals("minecraft:trapped_chest"))return SchematicBuildSupport.matchesImportedPlacement((net.minecraft.world.level.block.state.BlockState) current, (net.minecraft.world.level.block.state.BlockState) base);
         return current.equals(base);
     }
     private int missingItems(Object current,State desired)throws Exception {
@@ -322,7 +322,7 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
         }
         ownedSchematic=SchematicBuildSupport.section(plan.width,plan.length,desired,finals,specs);
         SchematicBuildSupport.bindEntity(call(controller,"getEntity"),builder);
-        call(builder,"build","Ellie schematic "+plan.filename+" layer "+y,ownedSchematic,position(origin.add(0,y,0)));
+        call(builder,"buildFixedSection","Ellie schematic "+plan.filename+" layer "+y,ownedSchematic,position(origin.add(0,y,0)));
     }
     public void pauseBuilder()throws Exception {
         if(ownedSchematic==null)return;Object builder=call(call(controller,"getBaritone"),"getBuilderProcess");
@@ -331,7 +331,7 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
     }
     public boolean builderActive()throws Exception {
         if(ownedSchematic==null)return false;Object builder=call(call(controller,"getBaritone"),"getBuilderProcess");
-        return (get(builder,"schematic")==ownedSchematic||get(builder,"realSchematic")==ownedSchematic)&&Boolean.TRUE.equals(call(builder,"isActive"));
+        return (get(builder,"schematic")==ownedSchematic||get(builder,"realSchematic")==ownedSchematic)&&Boolean.TRUE.equals(call(builder,"isActive"))&&!Boolean.TRUE.equals(call(builder,"isPaused"));
     }
     public Task postAction(Cell cell)throws Exception {
         State desired=cell.state();Pos p=absolute(cell.pos());

@@ -787,14 +787,11 @@ public class BuildStructureTask extends Task implements TransientlyResumableTask
 
                if (!this.prepAxeChecked) {
                   this.prepAxeChecked = true;
-                  Item[] var7 = TaskCatalogue.getItemMatches("wooden_axe");
-                  if (var7 != null && var7.length > 0 && var7[0] != null) {
-                     Item var10 = var7[0];
-                     if (var1.getItemStorage().getItemCountInventoryOnly(var10) > 0) {
-                        ObservatoryTelemetry.event("AXE_UPGRADE", "Already has a wooden axe");
-                     } else if (TaskCatalogue.taskExists(var10) && this.startPreparation(var1, var10, 1, "axe")) {
-                        return (Task)WaterBridgeCoordinator.beforeGatherReturn(this.prepTask, this, var1);
-                     }
+                  var axe = com.player2.playerengine.tasks.construction.ConstructionTools.AXE;
+                  if (axe.available(var1)) {
+                     ObservatoryTelemetry.event("AXE_UPGRADE", "Already has an axe");
+                  } else if (TaskCatalogue.taskExists(axe.starter()) && this.startPreparation(var1, axe.starter(), 1, "axe")) {
+                     return (Task)WaterBridgeCoordinator.beforeGatherReturn(this.prepTask, this, var1);
                   } else {
                      ObservatoryTelemetry.event("AXE_UPGRADE", "No axe recipe registered; continuing without optional tool");
                   }

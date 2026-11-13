@@ -16,14 +16,21 @@ public final class InventorySpace {
  public static Snapshot inspect(Object controller){return inspect(controller,true);}
  private static Snapshot inspect(Object controller,boolean includeTracker){
   try{
+   if(controller instanceof com.player2.playerengine.PlayerEngineController mod){
+    var inventory=mod.getInventory();
+    if(inventory==null || inventory.main.isEmpty())return new Snapshot(0,0,-1,-1);
+    int total=inventory.main.size();
+    int occupied=0;for(var stack:inventory.main)if(!stack.isEmpty())occupied++;
+    return new Snapshot(total,occupied,total-occupied,-1);
+   }
    Object entity=call(controller,"getEntity"),inv=call(entity,"getLivingInventory");
    if(inv==null)return new Snapshot(0,0,-1,-1);
    Object list=inv.getClass().getField("main").get(inv);
-   if(!(list instanceof List<?> stacks) || stacks.size()!=36)return new Snapshot(0,0,-1,-1);
+   if(!(list instanceof List<?> stacks) || stacks.isEmpty())return new Snapshot(0,0,-1,-1);
    int occupied=0;
    for(Object s:stacks){if(s==null || !Boolean.TRUE.equals(call(s,"method_7960")))occupied++;}
    int tracker=-1;
-   try{if(!includeTracker)return new Snapshot(36,occupied,36-occupied,-1);Object storage=call(controller,"getItemStorage");Object result=call(storage,"hasEmptyInventorySlot");tracker=Boolean.TRUE.equals(result)?1:0;}
+   try{if(!includeTracker)return new Snapshot(stacks.size(),occupied,stacks.size()-occupied,-1);Object storage=call(controller,"getItemStorage");Object result=call(storage,"hasEmptyInventorySlot");tracker=Boolean.TRUE.equals(result)?1:0;}
    catch(Exception ignored){} // tracker may be unavailable during NPC lifecycle changes
    return new Snapshot(stacks.size(),occupied,stacks.size()-occupied,tracker);
   }catch(Exception | LinkageError ignored){return new Snapshot(0,0,-1,-1);}

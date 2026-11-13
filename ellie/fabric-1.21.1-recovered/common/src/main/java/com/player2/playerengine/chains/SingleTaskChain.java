@@ -34,6 +34,7 @@ public abstract class SingleTaskChain extends TaskChain {
             if (!this.mainTask.isFinished() && !this.mainTask.stopped()) {
                this.mainTask.tick(this);
             } else if (this.mainTask.isFinished() && !this.mainTask.stopped()) {
+               this.onTaskSucceeded(this.mod, this.mainTask);
                this.mainTask.stop(null);
                this.onTaskFinish(this.mod);
             } else {
@@ -96,6 +97,9 @@ public abstract class SingleTaskChain extends TaskChain {
    }
 
    protected abstract void onTaskFinish(PlayerEngineController var1);
+
+   protected void onTaskSucceeded(PlayerEngineController mod, Task task) {
+   }
 
    @Override
    public void onInterrupt(TaskChain other) {

@@ -9,13 +9,14 @@ import com.player2.playerengine.commands.base.Command;
 import com.player2.playerengine.commands.base.CommandException;
 import com.player2.playerengine.commands.base.GoalText;
 import com.player2.playerengine.commands.base.RestOfLineArg;
+import com.player2.playerengine.supervisor.GoalLifecycle;
 import java.util.UUID;
 
 public class AgenticCommand extends Command {
    public AgenticCommand() throws CommandException {
       super(
          "agentic",
-         "Run a local bounded pickup/storage plan. Supported goals: collect loose drops, find/prepare chest storage, deposit and label. No model planning.",
+         "Run a supported local goal, such as get <item> <count>, collecting loose drops, or chest storage and labeling.",
          new RestOfLineArg("goal")
       );
    }
@@ -37,9 +38,11 @@ public class AgenticCommand extends Command {
             this.finishWithError(base + detail);
          } else {
             mod.log("Agentic plan: " + outcome.validation().sanitizedPlan().goalSummary() + " (source=" + outcome.planningSource() + ")");
-            AgenticPlanExecutor.start(request, outcome.validation().sanitizedPlan(), mod, outcome.planningSource(), (success, message) -> {
-               if (success) {
+            AgenticPlanExecutor.startWithOutcome(request, outcome.validation().sanitizedPlan(), mod, outcome.planningSource(), (status, message) -> {
+               if (status == GoalLifecycle.Status.SUCCEEDED) {
                   this.finishWithNote(message);
+               } else if (status == GoalLifecycle.Status.CANCELLED) {
+                  this.finishWithCancellation(message);
                } else {
                   this.finishWithError(message != null && !message.isBlank() ? message : "Agentic goal could not be completed.");
                }

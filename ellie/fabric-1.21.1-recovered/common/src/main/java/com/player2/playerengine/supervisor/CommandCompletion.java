@@ -1,8 +1,10 @@
 package com.player2.playerengine.supervisor;
 
+import com.player2.playerengine.commands.base.Command;
 import com.player2.playerengine.commands.base.CommandException;
 import com.player2.playerengine.executor.StepExecution;
 import com.player2.playerengine.executor.StepState;
+import com.player2.playerengine.executor.StopReason;
 import com.player2.playerengine.tasks.base.Task;
 import com.player2.playerengine.tasks.base.TrackedTaskOutcomeProvider;
 import java.lang.ref.WeakReference;
@@ -121,7 +123,12 @@ public final class CommandCompletion {
         String reason = failure(receipt.execution, receipt.task.get());
         if (reason == null) return false;
         try {
-            invokeFinish(command,"finishWithError",reason,true);
+            if (command instanceof Command nativeCommand && receipt.execution.getState() == StepState.FAILED
+                    && receipt.execution.getLastLogEntry().endsWith(" " + StopReason.CANCELLED_OPERATOR.name())) {
+                invokeFinish(command, "finishWithCancellation", nativeCommand.getName() + " stopped.", true);
+            } else {
+                invokeFinish(command, "finishWithError", reason, true);
+            }
             return true;
         } catch (ReflectiveOperationException failure) {
             throw new IllegalStateException("Cannot report unsuccessful command receipt", failure);

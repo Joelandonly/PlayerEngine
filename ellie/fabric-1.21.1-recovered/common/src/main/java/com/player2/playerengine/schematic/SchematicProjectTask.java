@@ -327,6 +327,9 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
     public boolean isFinished(){return terminal;}
     public boolean isTerminal(){return terminal;}
     public boolean isSuccessful(){return terminal&&successful;}
+    public String progressionProject(){
+        return build && plan != null ? "schematic/" + controller.getWorld().dimension().location() + "/" + origin.key() + "/" + plan.sha256 : null;
+    }
     public String controlledReason(){return reason;}
     protected void onStop(Task next){if(environment!=null)environment.close();if(!terminal){terminal=true;reason="BLOCKED_SCHEMATIC_INTERRUPTED: project stopped; deposited stock and placed blocks remain";event("SCHEMATIC_INTERRUPTED",reason);}}
     protected boolean isEqual(Task other){return other instanceof SchematicProjectTask t&&filename.equals(t.filename)&&origin.equals(t.origin)&&build==t.build;}

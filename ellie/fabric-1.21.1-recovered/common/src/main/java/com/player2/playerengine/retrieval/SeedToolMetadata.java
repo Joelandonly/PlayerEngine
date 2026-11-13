@@ -245,7 +245,7 @@ public final class SeedToolMetadata {
             "attack",
             "attack",
             "Attack a nearby player or mob by name or type.",
-            "Use when the NPC should engage in combat with a specific named target. Provide the player username or mob type. Optionally specify a kill count. Use 'hero' instead to clear ALL nearby hostile mobs at once.",
+            "Use when the NPC should engage in combat with a specific named target. Provide the player username or mob type. Optionally specify a kill count. Use 'hero' for an ongoing owner guard with special combat techniques.",
             list("attack zombie", "attack Creeper", "attack Steve", "attack skeleton 5"),
             list(
                "fight",
@@ -569,8 +569,8 @@ public final class SeedToolMetadata {
             "hero",
             "hero",
             "Actively hunt and kill hostile mobs within a short distance (about 16 blocks) of the companion's current position.",
-            "Use when the owner wants the NPC to clear hostiles in the immediate area around the companion, without specifying a single target. It will move to and fight nearby mobs. Unlike 'attack' which targets one named mob or player, 'hero' clears ALL nearby hostiles at once. For a passive 'just wait here, do nothing' stance use 'idle'; for 'stay near me and fight off hostiles that come' use 'set_follow_mode DEFENDER'.",
-            list("hero"),
+            "Guard the owner against nearby hostile mobs with twelve animated combat techniques. The guard stays active until turned off or replaced by a new task. Use hero off to exit or hero status to check.",
+            list("hero", "hero off", "hero status"),
             list(
                "clear mobs",
                "kill all mobs",

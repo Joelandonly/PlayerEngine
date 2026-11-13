@@ -19,7 +19,13 @@ public final class StorageIntelligence {
  private static final Map<Object,Object> setupChests=Collections.synchronizedMap(new WeakHashMap<>());
  public static void setupChest(Object controller,Object pos){if(pos==null)setupChests.remove(controller);else setupChests.put(controller,pos);}
  public static boolean allowedSetupStorage(Object controller,Object pos){
-  if(com.player2.playerengine.agentic.InventoryCleanupStorage.isProjectStorage((com.player2.playerengine.PlayerEngineController)controller,(net.minecraft.core.BlockPos)pos))return false;Object allowed=setupChests.get(controller);if(allowed==null)return true;
+  if(com.player2.playerengine.agentic.InventoryCleanupStorage.isProjectStorage((com.player2.playerengine.PlayerEngineController)controller,(net.minecraft.core.BlockPos)pos))return false;Object allowed=setupChests.get(controller);if(allowed==null){
+   var mod=(com.player2.playerengine.PlayerEngineController)controller;var target=(net.minecraft.core.BlockPos)pos;
+   try {var saved=com.player2.playerengine.warehouse.WarehouseManager.ledger(mod);
+    if(saved.exists())return com.player2.playerengine.warehouse.WarehouseManager.authorized(mod,saved,target);
+   }catch(java.io.IOException unavailable){}
+   return InventoryCleanupStorage.destination(mod).filter(target::equals).isPresent();
+  }
   try{return Arrays.equals(coords(allowed),coords(pos));}catch(Exception invalid){return false;}
  }
  /** Fresh verified stock only; passive sightings never count as supplies. */
@@ -90,10 +96,6 @@ public final class StorageIntelligence {
 
  /** Injected into ResourceTask.onTick. Native collection remains the fallback/owner. */
  public static Task choose(Object root,Task nativeTask){
-  if(root instanceof com.player2.playerengine.tasks.ResourceTask task){
-   Task cleanup=AutoInventoryCleanup.choose(task,nativeTask);
-   if(cleanup!=nativeTask)return cleanup;
-  }
   Task choice=preferStoredResource(root);return choice==null?nativeTask:choice;
  }
  public static Task preferStoredResource(Object root){

@@ -1,5 +1,6 @@
 package com.player2.playerengine.automaton.utils;
 
+import com.player2.playerengine.safezone.SafeZoneService;
 import com.player2.playerengine.automaton.api.entity.LivingEntityHungerManager;
 import com.player2.playerengine.automaton.api.utils.IEntityContext;
 import java.util.Objects;
@@ -35,12 +36,19 @@ public final class BlockBreakHelper {
       boolean isBlockTrace = trace != null && trace.getType() == Type.BLOCK;
       if (isLeftClick && isBlockTrace) {
          BlockPos pos = ((BlockHitResult)trace).getBlockPos();
+         if (SafeZoneService.protectedAt(this.ctx.world(), pos)
+            || this.ctx.baritone().getBuilderProcess() instanceof com.player2.playerengine.automaton.process.BuilderProcess builder
+               && !builder.permitsFootprintEdit(pos, this.ctx.world().getBlockState(pos), null)) {
+            this.stopBreakingBlock();
+            return;
+         }
          if (!Objects.equals(this.lastPos, pos)) {
             this.ctx.playerController().clickBlock(pos, ((BlockHitResult)trace).getDirection());
             this.ctx.entity().swing(InteractionHand.MAIN_HAND);
          }
 
-         if (this.ctx.playerController().onPlayerDamageBlock(pos, ((BlockHitResult)trace).getDirection())) {
+         boolean mining = this.ctx.playerController().onPlayerDamageBlock(pos, ((BlockHitResult)trace).getDirection());
+         if (mining) {
             this.ctx.entity().swing(InteractionHand.MAIN_HAND);
             if (this.ctx.world().isEmptyBlock(pos)) {
                LivingEntityHungerManager hm = this.ctx.hungerManager();
@@ -51,7 +59,8 @@ public final class BlockBreakHelper {
          }
 
          this.ctx.playerController().setHittingBlock(false);
-         this.lastPos = pos;
+         // A cancelled or rejected break needs a new START even if the cursor never left this block.
+         this.lastPos = mining ? pos : null;
       } else if (this.lastPos != null) {
          this.stopBreakingBlock();
          this.lastPos = null;

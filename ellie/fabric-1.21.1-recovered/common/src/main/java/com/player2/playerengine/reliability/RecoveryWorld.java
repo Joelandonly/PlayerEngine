@@ -1,5 +1,8 @@
 package com.player2.playerengine.reliability;
+import com.player2.playerengine.safezone.SafeZoneService;
 import com.player2.playerengine.tasks.base.Task;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 import com.player2.playerengine.tasks.construction.build_structure.VillageSiteGuard;
 import java.lang.reflect.*;import java.util.*;
 import static com.player2.playerengine.nativecommands.NativeAccess.*;
@@ -64,6 +67,7 @@ final class RecoveryWorld {
  }
  boolean safeClear(Cell p,Cell target)throws Exception{
   if(p==null||p.equals(target)||!within(p)||fluid(p)||call(world,"method_8321",pos(p))!=null)return false;
+  if(SafeZoneService.protectedAt((Level)world,new BlockPos(p.x,p.y,p.z)))return false;
   double[] at=position();if(p.y<Math.floor(at[1])||Math.pow(p.x+.5-at[0],2)+Math.pow(p.y+.5-(at[1]+1.4),2)+Math.pow(p.z+.5-at[2],2)>9)return false;
   if(!VillageSiteGuard.allowResourceMining(controller,pos(p)))return false;
   Object store=callStatic(P+"structureprotection.PlayerPlacedBlockStore","get");if(Boolean.TRUE.equals(call(store,"contains",dimension(),pos(p)))||Boolean.TRUE.equals(call(store,"contains",dimension(),pos(p.offset(0,1,0)))))return false;

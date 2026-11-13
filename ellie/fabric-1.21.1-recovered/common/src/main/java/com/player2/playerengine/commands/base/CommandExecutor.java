@@ -147,6 +147,11 @@ public class CommandExecutor {
 
          String target = resolveName(command);
          if (this.commandSheet.containsKey(target)) {
+            // Management calls can overlap the tracked task. Give each call its own callbacks.
+            if (target.equals("ellie_storage")) return new com.player2.playerengine.commands.EllieStorageCommand();
+            if (target.equals("patrol")) return new com.player2.playerengine.commands.PatrolCommand();
+            if (target.equals("netherbridge")) return new com.player2.playerengine.commands.NetherBridgeCommand();
+            if (target.equals("hero")) return new com.player2.playerengine.commands.HeroCommand();
             return this.commandSheet.get(target);
          }
 

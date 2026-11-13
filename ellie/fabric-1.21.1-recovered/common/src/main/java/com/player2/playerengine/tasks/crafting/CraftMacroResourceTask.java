@@ -22,6 +22,7 @@ import com.player2.playerengine.util.helpers.ItemHelper;
 import com.player2.playerengine.util.helpers.LookHelper;
 import com.player2.playerengine.util.helpers.MaterialAvailability;
 import com.player2.playerengine.util.time.TimerGame;
+import com.player2.playerengine.warehouse.WarehouseWithdrawal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -77,6 +78,7 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
    private boolean adoptedForeignTable;
    private final Item pinnedOutputItem;
    private String creationNote;
+   private final WarehouseWithdrawal warehouse = new WarehouseWithdrawal();
    private boolean ellieCollectHandoffGranted;
    private int ellieCollectHandoffCount;
 
@@ -106,6 +108,7 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
    @Override
    protected void onResourceStart(PlayerEngineController mod) {
       this.phase = CraftMacroPhase.PLAN;
+      this.delayActive = false;
       this.tableApproachStallTicks = 0;
       this.adoptedForeignTable = false;
       this.replan(mod);
@@ -135,12 +138,16 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
          return null;
       }
 
+      Task withdrawal = this.warehouse.pending(mod);
+      if (withdrawal != null) return withdrawal;
+
       switch (this.phase) {
          case PLAN:
             this.replan(mod);
-            if (this.resolveNow(mod)) {
-               return null;
-            }
+            boolean blocked = this.resolveNow(mod);
+            Task stored = this.withdrawCraftInputs(mod);
+            if (stored != null) return stored;
+            if (blocked) return null;
 
             if (this.lastResult.status() == ResolverResult.Status.READY) {
                this.phase = CraftMacroPhase.DONE;
@@ -319,7 +326,11 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
                return null;
             }
 
-            RecipeTarget tableRecipe = this.plan.finalTableRecipe();
+            RecipeTarget tableRecipe = this.resolvedSteps().stream()
+               .filter(step -> step.kind() == CraftMacroStepKind.CRAFT_OUTPUT_IN_TABLE && !this.inventoryStepSatisfied(mod, step))
+               .map(CraftMacroStep::recipeTarget)
+               .findFirst()
+               .orElse(this.plan.finalTableRecipe());
             if (tableRecipe == null) {
                this.phase = CraftMacroPhase.VERIFY_OUTPUT;
                return null;
@@ -335,7 +346,15 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
                return null;
             }
 
-            if (!CraftingInventoryOps.hasMaterials(mod, tableRecipe)) {
+            RecipeTarget single = new RecipeTarget(
+               tableRecipe.getOutputItem(),
+               tableRecipe.getRecipe().outputCount(),
+               tableRecipe.getRecipe(),
+               tableRecipe.getMcRecipe(),
+               tableRecipe.getMcResultStack(),
+               tableRecipe.getRegistries()
+            );
+            if (!CraftingInventoryOps.hasMaterials(mod, single)) {
                this.setDebugState("Missing ingredients for the table craft of " + this.outputName() + "; recovering");
                this.beginIngredientRecovery(mod);
                return null;
@@ -366,16 +385,11 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
 
             this.delayActive = false;
             this.lookAtTable(mod);
-            RecipeTarget single = new RecipeTarget(
-               tableRecipe.getOutputItem(),
-               tableRecipe.getRecipe().outputCount(),
-               tableRecipe.getRecipe(),
-               tableRecipe.getMcRecipe(),
-               tableRecipe.getMcResultStack(),
-               tableRecipe.getRegistries()
-            );
             if (CraftingInventoryOps.performSingleCraft(mod, single)) {
                this.tableCraftsRemaining--;
+               // A table recipe can produce a component (e.g. a chest for hoppers).
+               // Refresh the resolved sequence after its live inventory changes.
+               if (tableRecipe.getOutputItem() != this.plan.outputItem()) this.beginIngredientRecovery(mod);
             } else {
                this.beginIngredientRecovery(mod);
             }
@@ -414,9 +428,10 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
    }
 
    private Task tickCollectMissingMaterials(PlayerEngineController mod) {
-      if (this.resolveNow(mod)) {
-         return null;
-      }
+      boolean blocked = this.resolveNow(mod);
+      Task stored = this.withdrawCraftInputs(mod);
+      if (stored != null) return stored;
+      if (blocked) return null;
 
       List<ItemTarget> externals = this.resolvedExternals();
       String toolReason = this.dispatchedGatherToolFailureReason();
@@ -963,6 +978,8 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
          this.inventoryStepIndex++;
       }
 
+      // The waiting recipe can disappear after a replan or become satisfied by a withdrawal.
+      this.delayActive = false;
       return null;
    }
 
@@ -1062,6 +1079,26 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
       }
    }
 
+   private Task withdrawCraftInputs(PlayerEngineController mod) {
+      if (this.failureReason != null) return null;
+      List<ItemTarget> components = new ArrayList<>();
+      List<CraftMacroStep> steps = this.resolvedSteps();
+      // Look for finished components before their own ingredients.
+      for (int i = steps.size() - 1; i >= 0; i--) {
+         CraftMacroStep step = steps.get(i);
+         RecipeTarget recipe = step.recipeTarget();
+         if (recipe.getOutputItem().equals(this.plan.outputItem())) continue;
+         Item[] matches = step.outputMatches();
+         components.add(new ItemTarget(matches == null || matches.length == 0
+            ? new Item[]{recipe.getOutputItem()} : matches, recipe.getTargetCount()));
+      }
+      for (ItemTarget target : this.resolvedExternals()) {
+         int held = mod.getItemStorage().getItemCountInventoryOnly(target.getMatches());
+         components.add(new ItemTarget(target, held + target.getTargetCount()));
+      }
+      return this.warehouse.next(mod, components);
+   }
+
    private String meaningfulReason(ResolverResult result) {
       return result != null && result.failureReason() != null && !result.failureReason().isBlank()
          ? result.failureReason()
@@ -1091,6 +1128,7 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
 
    @Override
    protected void onResourceStop(PlayerEngineController mod, Task interruptTask) {
+      this.warehouse.close();
       this.craftingTablePos = null;
       this.pendingTablePlaceTask = null;
       this.tablePlacedByTask = false;
@@ -1115,6 +1153,17 @@ public class CraftMacroResourceTask extends ResourceTask implements DescribesPro
 
    public CraftMacroPhase getPhase() {
       return this.phase;
+   }
+
+   public boolean keepsIngredient(Item item) {
+      return this.plan.externalMaterials().stream().anyMatch(target -> target.matches(item))
+         || this.plan.steps().stream().anyMatch(step -> recipeUses(step.recipeTarget(), item))
+         || recipeUses(this.plan.finalTableRecipe(), item);
+   }
+
+   private static boolean recipeUses(RecipeTarget recipe, Item item) {
+      return recipe != null && recipe.getRecipe() != null
+         && java.util.Arrays.stream(recipe.getRecipe().getSlots()).anyMatch(target -> target.matches(item));
    }
 
    public String getFailureReason() {

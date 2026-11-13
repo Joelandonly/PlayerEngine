@@ -3,6 +3,7 @@ package com.player2.playerengine.automaton.api.entity;
 import com.mojang.logging.LogUtils;
 import com.player2.playerengine.automaton.api.utils.IBucketAccessor;
 import com.player2.playerengine.reliability.NpcItemUse;
+import com.player2.playerengine.schematic.SchematicBuildSupport;
 import com.player2.playerengine.util.EnchantmentUtils;
 import java.util.Objects;
 import net.minecraft.world.InteractionHand;
@@ -142,7 +143,8 @@ public class LivingEntityInteractionManager {
          this.mining=false;this.failedToMine=false;this.blockBreakingProgress=-1;
          return;
       }
-      if (this.livingEntity.getEyePosition().distanceToSqr(Vec3.atCenterOf(pos)) > Mth.square(6.0)) {
+      double maxBreakDistance = 6.0 + com.player2.playerengine.progression.CompanionProgression.extraBlockReach(this.livingEntity);
+      if (this.livingEntity.getEyePosition().distanceToSqr(Vec3.atCenterOf(pos)) > Mth.square(maxBreakDistance)) {
          this.debugLogging(pos, false, i, "too far");
       } else if (pos.getY() >= worldHeight) {
          this.debugLogging(pos, false, i, "too high");
@@ -256,7 +258,7 @@ public class LivingEntityInteractionManager {
          f /= 5.0F;
       }
 
-      return f;
+      return f * (float) com.player2.playerengine.progression.CompanionProgression.miningMultiplier(entity);
    }
 
    public void finishMining(BlockPos pos, int i, String reason) {
@@ -281,6 +283,9 @@ public class LivingEntityInteractionManager {
       boolean bl = this.world.removeBlock(pos, false);
       if (bl) {
          block.destroy(this.world, pos, blockState);
+         if (!this.isCreative() && !blockState.isAir()) {
+            com.player2.playerengine.progression.CompanionProgression.blockChanged(this.livingEntity, pos, false);
+         }
       }
 
       if (this.isCreative()) {
@@ -437,7 +442,20 @@ public class LivingEntityInteractionManager {
       }
 
       boolean bl = !player.getMainHandItem().isEmpty() || !player.getOffhandItem().isEmpty();
-      boolean bl2 = this.shouldCancelInteraction() && bl;
+      Player vanillaPlayer = player instanceof Player p ? p : null;
+      BlockPlaceContext placement = new BlockPlaceContext(new UseOnContext(world, vanillaPlayer, hand, stack, hitResult) {});
+      BlockPos exactPlace = placement.getClickedPos();
+      BlockItem blockItem = stack.getItem() instanceof BlockItem item ? item : null;
+      BlockState planned = vanillaPlayer == null && blockItem != null
+         ? SchematicBuildSupport.importedTarget(player, exactPlace) : null;
+      if (vanillaPlayer == null && blockItem != null) {
+         var controller = com.player2.playerengine.PlayerEngineController.staticControllers.get(player.getUUID());
+         if (controller != null && controller.getEntity() == player
+            && controller.getBaritone().getBuilderProcess() instanceof com.player2.playerengine.automaton.process.BuilderProcess builder
+            && !builder.permitsFootprintEdit(exactPlace, world.getBlockState(exactPlace), blockItem.getBlock())) return InteractionResult.FAIL;
+      }
+      boolean plannedChest = blockItem != null && SchematicBuildSupport.plannedChest(planned, blockItem.getBlock());
+      boolean bl2 = planned != null && !planned.isAir() || this.shouldCancelInteraction() && bl;
       ItemStack itemStack = stack.copy();
       if (!bl2) {
          ItemInteractionResult itemResult = ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
@@ -463,7 +481,6 @@ public class LivingEntityInteractionManager {
 
       if (!stack.isEmpty()) {
          final LivingEntity placer = player;
-         final Player vanillaPlayer = player instanceof Player p ? p : null;
          UseOnContext itemUsageContext = new UseOnContext(player.level(), vanillaPlayer, hand, player.getItemInHand(hand), hitResult) {
             public Direction getHorizontalDirection() {
                return vanillaPlayer != null ? super.getHorizontalDirection() : Direction.fromYRot(placer.getYRot());
@@ -474,14 +491,15 @@ public class LivingEntityInteractionManager {
             }
 
             public boolean isSecondaryUseActive() {
-               return placer.isShiftKeyDown();
+               return !plannedChest && placer.isShiftKeyDown();
             }
          };
          // OWNER_SAFEZONE_PLACE: block all item changes to claimed blocks, including
          // scaffold and builder BlockItem uses; vanilla chest/door use ran above.
-         BlockPos exactPlace = new BlockPlaceContext(itemUsageContext).getClickedPos();
          if(SafeZoneService.deny(world,blockPos,"interact-item") ||
             SafeZoneService.deny(world,exactPlace,"place"))return InteractionResult.FAIL;
+         BlockState beforePlacement = !this.isCreative() && stack.getItem() instanceof net.minecraft.world.item.BlockItem
+            ? world.getBlockState(exactPlace) : null;
          boolean trackLivingForPlacement = vanillaPlayer == null;
          if (trackLivingForPlacement) {
             LivingEntityPlacementContext.push(player);
@@ -489,6 +507,13 @@ public class LivingEntityInteractionManager {
 
          InteractionResult actionResult2;
          try {
+            if (planned != null && !planned.isAir()) {
+               BlockPlaceContext actualContext = new BlockPlaceContext(itemUsageContext);
+               BlockState predicted = blockItem.getBlock().getStateForPlacement(actualContext);
+               if (!actualContext.canPlace() || !SchematicBuildSupport.matchesImportedPlacement(predicted, planned)) {
+                  return InteractionResult.FAIL;
+               }
+            }
             if (this.isCreative()) {
                int i = stack.getCount();
                actionResult2 = (InteractionResult)NpcItemUse.use(stack, itemUsageContext);
@@ -499,6 +524,13 @@ public class LivingEntityInteractionManager {
          } finally {
             if (trackLivingForPlacement) {
                LivingEntityPlacementContext.pop();
+            }
+         }
+
+         if (beforePlacement != null && actionResult2.consumesAction()) {
+            BlockState placed = world.getBlockState(exactPlace);
+            if (!placed.isAir() && placed != beforePlacement) {
+               com.player2.playerengine.progression.CompanionProgression.blockChanged(player, exactPlace, true);
             }
          }
 

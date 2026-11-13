@@ -113,6 +113,13 @@ public class UserTaskChain extends SingleTaskChain {
       }
    }
 
+   @Override
+   protected void onTaskSucceeded(PlayerEngineController mod, Task task) {
+      if (this.runtimeMode == RuntimeMode.LIVE && !this.runningIdleTask && !task.progressionTracked()) {
+         mod.progression().award(com.player2.playerengine.progression.CompanionProgression.successfulReward(task));
+      }
+   }
+
    public void cancel(PlayerEngineController mod) {
       Task abandonedTask = this.suspendedTask;
       Runnable abandonedOnFinish = this.suspendedOnFinish;
@@ -225,8 +232,8 @@ public class UserTaskChain extends SingleTaskChain {
    }
 
    private void runTaskInternal(PlayerEngineController mod, Task task, Runnable onFinish, boolean forceReplace) {
+      task.controller = mod;
       if (this.firingReplacedTerminal && !this.resumingSuspended) {
-         task.controller = mod;
          task.reset();
          task.stop(null);
          Runnable rejectedOnFinish = once(onFinish);
@@ -339,6 +346,7 @@ public class UserTaskChain extends SingleTaskChain {
          }
 
          this.taskStopwatch.begin();
+         if (!this.resumingSuspended && this.mainTask != task) task.beginProgressionAttempt();
          if (installAsTransientOverlay) {
             this.replaceTaskAfterTransientSuspend(task);
          } else if (!forceReplace && replacedGestureTask == null) {

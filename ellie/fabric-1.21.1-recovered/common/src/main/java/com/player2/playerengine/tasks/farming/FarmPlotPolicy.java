@@ -17,7 +17,7 @@ public final class FarmPlotPolicy {
    public static final int MAX_REPAIR_RESOURCE_TRIPS = 2;
    public static final int MAX_INITIAL_CLEAR_ACTIONS = 260;
    public static final int MAX_CLEAR_ACTIONS = 1040;
-   public static final int MAX_FILL_ACTIONS = 64;
+   public static final int MAX_FILL_ACTIONS = FarmPlotRepairPlan.MAX_DIRT_ACTIONS * 4;
    public static final int MAX_TILL_ACTIONS = 320;
    public static final int WHOLE_SETUP_TICKS = 12000;
    public static final int SITE_SELECTION_TICKS = 200;

@@ -86,7 +86,6 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
    private FarmPlotRepairPlan repairPlan;
    private int repairBreakIndex;
    private int repairFillIndex;
-   private int repairMutationPasses;
    private int repairResourceTrips;
    private int requiredRepairDirt;
    private FarmRepairToolPlan requiredRepairTools;
@@ -157,7 +156,6 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
          this.fillTotal = 0;
          this.tillTotal = 0;
          this.resourceTicks = 0;
-         this.repairMutationPasses = 0;
          this.repairResourceTrips = 0;
          this.requiredRepairDirt = 0;
          this.requiredRepairTools = null;
@@ -888,7 +886,7 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
          case SELECTED:
             this.sitePlan = Objects.requireNonNull(result.selectedPlan(), "selectedPlan");
             if (withinCumulativeMutationBudget(this.cleared, this.sitePlan.clearActions().size(), 1040)
-               && withinCumulativeMutationBudget(this.filled, this.sitePlan.fillActions().size(), 64)
+               && withinCumulativeMutationBudget(this.filled, this.sitePlan.fillActions().size(), FarmPlotPolicy.MAX_FILL_ACTIONS)
                && withinCumulativeMutationBudget(this.tilled, this.sitePlan.tillActions().size(), 320)) {
                this.clearTotal = this.cleared + this.sitePlan.clearActions().size();
                this.fillTotal = this.filled + this.sitePlan.fillActions().size();
@@ -1226,6 +1224,26 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
          }
 
          this.resourceReturnMode = SetupFarmTask.ResourceReturnMode.FINALIZE_FAILURE;
+      }
+
+      if (this.resourcePurpose == SetupFarmTask.ResourcePurpose.REPAIR_PREFLIGHT
+         && this.resourceReturnMode == SetupFarmTask.ResourceReturnMode.CONTINUE_SETUP) {
+         BlockPos center = this.sitePlan.center().above();
+         BlockPos feet = this.controller.getBaritone().getEntityContext().feetPos();
+         if (this.siteChunksLoaded() && feet.distSqr(center) <= 64) {
+            if (this.getSub() != null) return null;
+            this.finishResourceReturn();
+            return null;
+         }
+         if (this.resourceReturnTicks > 600) {
+            this.resourceReturnStatus = FarmReturnStatus.TIMED_OUT;
+            this.finishResourceReturn();
+            return null;
+         }
+         if (this.resourceReturnChild == null) {
+            this.resourceReturnChild = new com.player2.playerengine.tasks.movement.GetWithinRangeOfBlockTask(center, 8);
+         }
+         return this.resourceReturnChild;
       }
 
       if (this.resourceReturnStance == null) {
@@ -1773,7 +1791,7 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
                this.watchdog.markProgress();
                return null;
             }
-         } else if (this.mutationChild instanceof PlaceFarmDirtTask child) {
+         } else if (this.mutationChild instanceof BuildFarmDirtCellTask child) {
             if (!child.isFinished()) {
                if (this.watchdog.mutationStalled()) {
                   this.fail(FarmTaskReason.INTERACTION_DENIED);
@@ -1782,7 +1800,7 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
                   return child;
                }
             } else if (!child.isSuccessful()) {
-               if (child.reason() == FarmTaskReason.MANIFEST_DRIFT && child.attempts() == 0) {
+               if (child.reason() == FarmTaskReason.MANIFEST_DRIFT && !child.hasIssuedMutation()) {
                   this.mutationChild = null;
                   this.repairPlan = null;
                   this.watchdog.markProgress();
@@ -1834,7 +1852,8 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
             this.repairBreakIndex = 0;
             this.repairFillIndex = 0;
             this.clearTotal = Math.max(this.clearTotal, this.cleared + this.repairPlan.clearActions().size());
-            this.fillTotal = Math.max(this.fillTotal, this.filled + this.repairPlan.fillActions().size());
+            this.fillTotal = Math.max(this.fillTotal, this.filled + this.repairPlan.requiredDirt());
+            this.watchdog.allowConstructionWork(this.clearTotal + this.fillTotal + this.repairPlan.tillActions().size());
             FarmRepairToolPlan toolPlan = this.repairPlan.toolPlan();
             if (toolPlan.hasUnsatisfiedCustom(this.controller.getInventory())) {
                this.fail(FarmTaskReason.REPAIR_TOOL_UNAVAILABLE);
@@ -1842,15 +1861,16 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
             }
 
             boolean toolsMissing = !toolPlan.isSatisfied(this.controller.getInventory());
-            boolean dirtMissing = this.count(Items.DIRT) < this.repairPlan.requiredDirt();
+            int dirtBatch = Math.min(this.repairPlan.requiredDirt(), Items.DIRT.getDefaultInstance().getMaxStackSize());
+            boolean dirtMissing = dirtBatch > 0 && this.count(Items.DIRT) == 0;
             if (toolsMissing || dirtMissing) {
-               if (this.repairResourceTrips >= 2) {
-                  this.fail(toolsMissing ? FarmTaskReason.REPAIR_TOOL_UNAVAILABLE : FarmTaskReason.DIRT_UNAVAILABLE);
+               if (toolsMissing && this.repairResourceTrips >= 2) {
+                  this.fail(FarmTaskReason.REPAIR_TOOL_UNAVAILABLE);
                   return null;
                }
 
-               this.repairResourceTrips++;
-               this.requiredRepairDirt = this.repairPlan.requiredDirt();
+               if (toolsMissing) this.repairResourceTrips++;
+               this.requiredRepairDirt = dirtMissing ? dirtBatch : 0;
                this.requiredRepairTools = toolPlan;
                this.repairToolCheckpoint = new FarmRepairToolAcquisitionTask.Checkpoint();
                this.repairPlan = null;
@@ -1862,7 +1882,7 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
                return null;
             }
 
-            boolean needsMutations = !this.repairPlan.clearActions().isEmpty() || !this.repairPlan.fillActions().isEmpty();
+            boolean needsMutations = !this.repairPlan.clearActions().isEmpty() || this.repairPlan.requiredDirt() > 0;
             if (!needsMutations) {
                this.activeTillTargets = this.repairPlan.tillActions().stream().map(FarmPlotRepairPlan.TillAction::target).toList();
                this.tillPlanReady = true;
@@ -1890,12 +1910,6 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
                return null;
             }
 
-            if (this.repairMutationPasses >= 3) {
-               this.fail(FarmTaskReason.MANIFEST_DRIFT);
-               return null;
-            }
-
-            this.repairMutationPasses++;
          }
 
          List<FarmPlotRepairPlan.ClearAction> breaks = this.repairPlan.clearActions();
@@ -1904,10 +1918,11 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
             FarmPlotRepairPlan.ClearAction action = breaks.get(this.repairBreakIndex);
             BlockState state = this.controller.getWorld().getBlockState(action.target());
             if (!state.isAir()) {
-               if (action.expectedStateFingerprint().equals(stateFingerprint(state)) && this.isLiveOpenMutationStance(action.stance())) {
-                  this.mutationChild = VerifiedBreakBlockTask.forFarmRepair(
+               if (action.expectedStateFingerprint().equals(stateFingerprint(state))) {
+                  VerifiedBreakBlockTask child = VerifiedBreakBlockTask.forFarmRepair(
                      action.target(), action.stance(), action.expectedStateFingerprint(), action.breakToolRequirement()
                   );
+                  this.mutationChild = this.isLiveOpenMutationStance(action.stance()) ? child : child.useBuilderFromStart();
                   this.watchdog.markProgress();
                   return this.mutationChild;
                }
@@ -1934,18 +1949,15 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
             throw new IllegalStateException("repair clear loop exited before completion");
          }
 
-         List<FarmPlotRepairPlan.FillAction> fills = this.repairPlan.fillActions();
-
-         while (this.repairFillIndex < fills.size()) {
-            FarmPlotRepairPlan.FillAction action = fills.get(this.repairFillIndex);
-            BlockState state = this.controller.getWorld().getBlockState(action.target());
-            if (!state.is(Blocks.DIRT) && !state.is(Blocks.GRASS_BLOCK) && !state.is(Blocks.FARMLAND)) {
-               if (state.isAir() && action.expectedStateFingerprint().equals(stateFingerprint(state)) && this.isLiveOpenMutationStance(action.stance())) {
-                  this.mutationChild = PlaceFarmDirtTask.forFarmRepair(action.target(), action.stance());
+         while (this.repairFillIndex < this.repairPlan.requiredDirt()) {
+            BlockPos target = this.repairPlan.dirtPlacement(this.repairFillIndex);
+            BlockState state = this.controller.getWorld().getBlockState(target);
+            if (!state.is(Blocks.DIRT)) {
+               if (state.isAir() && this.count(Items.DIRT) > 0) {
+                  this.mutationChild = new BuildFarmDirtCellTask(target, this.worldView);
                   this.watchdog.markProgress();
                   return this.mutationChild;
                }
-
                this.repairPlan = null;
                this.watchdog.markProgress();
                return null;
@@ -2326,7 +2338,7 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
    }
 
    private boolean incrementFilled() {
-      if (!withinCumulativeMutationBudget(this.filled, 1, 64)) {
+      if (!withinCumulativeMutationBudget(this.filled, 1, FarmPlotPolicy.MAX_FILL_ACTIONS)) {
          this.fail(FarmTaskReason.INTERNAL_CONTRACT_FAILURE);
          return false;
       } else {
@@ -2436,6 +2448,13 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
    private void protectSiteForAcquisition() {
       if (!this.acquisitionProtectionPushed) {
          Set<BlockPos> frozen = new HashSet<>(this.sitePlan.snapshot().positions());
+         if (this.preparedFarmHandle != null) {
+            for (BlockPos surface : FarmPlotGeometry.allCells(this.sitePlan.center())) {
+               for (int depth = 1; depth <= com.player2.playerengine.tasks.construction.GroundedFoundation.MAX_DEPTH + 1; depth++) {
+                  frozen.add(surface.below(depth));
+               }
+            }
+         }
          this.controller.getBehaviour().push();
          this.acquisitionProtectionPushed = true;
          this.controller.getBehaviour().avoidBlockBreaking(frozen::contains);
@@ -2672,8 +2691,8 @@ public final class SetupFarmTask extends Task implements TrackedTaskOutcomeProvi
          } else {
             this.cleared++;
          }
-      } else if (child instanceof PlaceFarmDirtTask) {
-         if (!withinCumulativeMutationBudget(this.filled, 1, 64)) {
+      } else if (child instanceof PlaceFarmDirtTask || child instanceof BuildFarmDirtCellTask) {
+         if (!withinCumulativeMutationBudget(this.filled, 1, FarmPlotPolicy.MAX_FILL_ACTIONS)) {
             result = FarmTaskReason.INTERNAL_CONTRACT_FAILURE;
          } else {
             this.filled++;

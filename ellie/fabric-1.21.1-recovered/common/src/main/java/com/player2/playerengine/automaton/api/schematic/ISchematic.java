@@ -24,6 +24,18 @@ public interface ISchematic {
 
    BlockState desiredState(int var1, int var2, int var3, BlockState var4, List<BlockState> var5);
 
+   default boolean placeFromBelow() {
+      return false;
+   }
+
+   default boolean restrictEditsToFootprint() {
+      return false;
+   }
+
+   default int minimumPlacementStanceY(int targetY) {
+      return targetY - 2;
+   }
+
    default void reset() {
    }
 

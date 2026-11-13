@@ -97,52 +97,76 @@ public class TaskStepExecutorAdapter implements IStepExecutorAdapter {
          return exec;
       } else {
          exec.transitionTo(StepState.RUNNING, "submitted_to_chain");
-         this.mod
-            .getUserTaskChain()
-            .runTaskReplacing(
-               this.mod,
-               task,
-               () -> {
-                  if (exec.isTerminal()) {
-                     this.finishCompletion(exec, completion);
-                  } else {
-                     String pending = this.pendingFinishReason;
-                     this.pendingFinishReason = null;
-                     if (pending != null) {
-                        exec.transitionTo(StepState.FAILED, pending);
-                     } else {
-                        TaskStepExecutorAdapter.TerminalDecision decision = mapTerminalOutcome(task);
-                        exec.transitionTo(decision.state(), decision.detail());
-                        if (decision.state() == StepState.FAILED && rollbackPolicy != RollbackPolicy.NONE) {
-                           this.handleRollbackStub(exec, rollbackPolicy);
-                        }
-                     }
-
-                     this.lastCompletedExecution = exec;
-                     boolean typedTerminalFailure = task instanceof TrackedTaskOutcomeProvider typed && typed.isTerminal() && !typed.isSuccessful();
-                     if (exec.getState() == StepState.FAILED && !typedTerminalFailure) {
-                        String lastEntry = exec.getLastLogEntry();
-                        if (lastEntry.contains(StopReason.FOLLOWED_TARGET_GONE.name())) {
-                           if (this.mod.getOwner() instanceof ServerPlayer sp) {
-                              sp.sendSystemMessage(Component.translatable("message.playerengine.follow.target_lost"));
-                           }
-                        } else if (!lastEntry.contains("CANCELLED_")) {
-                           String msg = "[PlayerEngine] Step '" + exec.getStepKind() + "' stopped unexpectedly — " + lastEntry;
-                           this.mod.log(msg);
-                           if (this.mod.getOwner() instanceof ServerPlayer sp) {
-                              sp.sendSystemMessage(
-                                 Component.translatable("message.playerengine.executor.step_stopped_unexpectedly", new Object[]{exec.getStepKind(), lastEntry})
-                                    .withStyle(ChatFormatting.RED)
-                              );
-                           }
-                        }
-                     }
-
-                     this.finishCompletion(exec, completion);
+         Runnable taskFinished = () -> {
+            if (exec.isTerminal()) {
+               this.finishCompletion(exec, completion);
+            } else {
+               String pending = this.pendingFinishReason;
+               this.pendingFinishReason = null;
+               if (pending != null) {
+                  exec.transitionTo(StepState.FAILED, pending);
+               } else {
+                  TaskStepExecutorAdapter.TerminalDecision decision = mapTerminalOutcome(task);
+                  exec.transitionTo(decision.state(), decision.detail());
+                  if (decision.state() == StepState.FAILED && rollbackPolicy != RollbackPolicy.NONE) {
+                     this.handleRollbackStub(exec, rollbackPolicy);
                   }
                }
-            );
-         Task retainedByChain = this.mod.getUserTaskChain().getCurrentTask();
+
+               this.lastCompletedExecution = exec;
+               boolean typedTerminalFailure = task instanceof TrackedTaskOutcomeProvider typed && typed.isTerminal() && !typed.isSuccessful();
+               if (exec.getState() == StepState.FAILED && !typedTerminalFailure) {
+                  String lastEntry = exec.getLastLogEntry();
+                  if (lastEntry.contains(StopReason.FOLLOWED_TARGET_GONE.name())) {
+                     if (this.mod.getOwner() instanceof ServerPlayer sp) {
+                        sp.sendSystemMessage(Component.translatable("message.playerengine.follow.target_lost"));
+                     }
+                  } else if (!lastEntry.contains("CANCELLED_")) {
+                     String msg = "[PlayerEngine] Step '" + exec.getStepKind() + "' stopped unexpectedly — " + lastEntry;
+                     this.mod.log(msg);
+                     if (this.mod.getOwner() instanceof ServerPlayer sp) {
+                        sp.sendSystemMessage(
+                           Component.translatable("message.playerengine.executor.step_stopped_unexpectedly", new Object[]{exec.getStepKind(), lastEntry})
+                              .withStyle(ChatFormatting.RED)
+                        );
+                     }
+                  }
+               }
+
+               this.finishCompletion(exec, completion);
+            }
+         };
+         var chain = this.mod.getUserTaskChain();
+         try {
+            chain.runTaskReplacing(this.mod, task, taskFinished);
+         } catch (RuntimeException failure) {
+            if (!exec.isTerminal()) {
+               exec.transitionTo(StepState.FAILED, StopReason.FATAL.name() + ":task_install_failed");
+            }
+            this.completionTracker.discard(exec);
+            if (this.activeExecution == exec) {
+               this.activeExecution = null;
+               this.activeTask = null;
+               this.pendingFinishReason = null;
+               this.lastCompletedExecution = exec;
+               if (chain.getCurrentTask() == task) {
+                  try {
+                     chain.cancel(this.mod);
+                  } catch (RuntimeException cleanupFailure) {
+                     if (cleanupFailure != failure) failure.addSuppressed(cleanupFailure);
+                  }
+               }
+            }
+            if (supersededCompletion != null) {
+               try {
+                  supersededCompletion.run();
+               } catch (RuntimeException callbackFailure) {
+                  if (callbackFailure != failure) failure.addSuppressed(callbackFailure);
+               }
+            }
+            throw failure;
+         }
+         Task retainedByChain = chain.getCurrentTask();
          TaskStepExecutorAdapter.RetentionDecision retention = retentionDecision(task, retainedByChain, exec.isTerminal());
          if (retention == TaskStepExecutorAdapter.RetentionDecision.DISPLACED) {
             exec.transitionTo(StepState.FAILED, StopReason.CANCELLED_SUPERSEDED.name() + ":displaced_during_install");
@@ -326,12 +350,15 @@ public class TaskStepExecutorAdapter implements IStepExecutorAdapter {
       }
 
       void finish(Object token, Runnable completion) {
+         this.discard(token);
+         Objects.requireNonNull(completion, "completion").run();
+      }
+
+      void discard(Object token) {
          if (this.activeToken == token) {
             this.activeToken = null;
             this.activeCompletion = null;
          }
-
-         Objects.requireNonNull(completion, "completion").run();
       }
 
       boolean isActive(Object token) {

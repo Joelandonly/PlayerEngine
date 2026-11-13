@@ -107,10 +107,23 @@ public class ConversationManager {
    }
 
    public static AgentConversationData getOrCreateEventQueueData(PlayerEngineController mod) {
-      return queueData.computeIfAbsent(mod.getPlayer().getUUID(), k -> {
-         LOGGER.info("EventQueueManager/getOrCreateEventQueueData: creating new queue data for entId={}", mod.getPlayer().getStringUUID());
-         return new AgentConversationData(mod);
-      });
+      return mod.getConversationData();
+   }
+
+   public static void registerController(PlayerEngineController mod) {
+      UUID uuid = mod.getEntity().getUUID();
+      AgentConversationData data = mod.getConversationData();
+      AgentConversationData previous = queueData.put(uuid, data);
+      if (previous != null && previous != data) {
+         data.setEnabled(previous.isEnabled());
+         previous.resetForClear();
+      }
+   }
+
+   public static void unregisterController(PlayerEngineController mod) {
+      AgentConversationData data = mod.getConversationData();
+      queueData.remove(mod.getEntity().getUUID(), data);
+      data.resetForClear();
    }
 
    private static Stream<AgentConversationData> filterQueueData(Predicate<AgentConversationData> pred) {
@@ -416,7 +429,7 @@ public class ConversationManager {
    public static void injectOnTick(MinecraftServer server) {
       queueData.forEach((k, v) -> {
          if (v.getMod().getPlayer().getServer() != server) {
-            despwnCompanion(k);
+            queueData.remove(k, v);
          }
       });
       Consumer<Event.CharacterMessage> onCharacterEvent = data -> AgentSideEffects.onEntityMessage(server, data);
@@ -456,7 +469,8 @@ public class ConversationManager {
    }
 
    public static void despwnCompanion(UUID id) {
-      queueData.remove(id);
+      // Player2's entity removal hook also calls this UUID-only method after unregistering its controller.
+      queueData.computeIfPresent(id, (uuid, data) -> PlayerEngineController.staticControllers.get(uuid) == data.getMod() ? data : null);
    }
 
    public static Collection<AgentConversationData> getDataByOwner(UUID ownerId) {

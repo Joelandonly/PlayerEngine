@@ -30,13 +30,11 @@ public class CollectBlazeRodsTask extends ResourceTask {
    private static final double SPAWNER_BLAZE_RADIUS = 32.0;
    private static final double TOO_LITTLE_HEALTH_BLAZE = 10.0;
    private static final int TOO_MANY_BLAZES = 5;
-   private final int count;
    private final Task searcher = new SearchChunkForBlockTask(Blocks.NETHER_BRICKS);
    private BlockPos foundBlazeSpawner = null;
 
    public CollectBlazeRodsTask(int count) {
       super(Items.BLAZE_ROD, count);
-      this.count = count;
    }
 
    private static boolean isHoveringAboveLavaOrTooHigh(PlayerEngineController mod, Entity entity) {
@@ -140,7 +138,7 @@ public class CollectBlazeRodsTask extends ResourceTask {
 
    @Override
    protected String toDebugStringName() {
-      return "Collect blaze rods - " + this.controller.getItemStorage().getItemCount(Items.BLAZE_ROD) + "/" + this.count;
+      return "Collect blaze rods";
    }
 
    @Override

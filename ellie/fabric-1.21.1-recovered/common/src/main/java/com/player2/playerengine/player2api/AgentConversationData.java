@@ -1393,6 +1393,10 @@ public class AgentConversationData {
       this.enabled = enabled;
    }
 
+   public boolean isEnabled() {
+      return this.enabled;
+   }
+
    public Character getCharacter() {
       return this.mod.getAIPersistantData().getCharacter();
    }

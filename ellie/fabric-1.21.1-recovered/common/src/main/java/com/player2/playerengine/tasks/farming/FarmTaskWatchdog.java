@@ -4,12 +4,14 @@ import java.util.Objects;
 
 public final class FarmTaskWatchdog {
    private int wholeTicks;
+   private int wholeLimit = FarmPlotPolicy.WHOLE_SETUP_TICKS;
    private int phaseTicks;
    private int noProgressTicks;
    private FarmTaskPhase phase = FarmTaskPhase.PRECHECK;
 
    public void reset() {
       this.wholeTicks = 0;
+      this.wholeLimit = FarmPlotPolicy.WHOLE_SETUP_TICKS;
       this.restartFromCheckpoint();
    }
 
@@ -52,7 +54,11 @@ public final class FarmTaskWatchdog {
    }
 
    public boolean wholeSetupExpired() {
-      return this.wholeTicks >= 12000;
+      return this.wholeTicks >= this.wholeLimit;
+   }
+
+   public void allowConstructionWork(int edits) {
+      this.wholeLimit = Math.max(this.wholeLimit, FarmPlotPolicy.WHOLE_SETUP_TICKS + 60 * edits);
    }
 
    public boolean phaseExpired(int limit) {

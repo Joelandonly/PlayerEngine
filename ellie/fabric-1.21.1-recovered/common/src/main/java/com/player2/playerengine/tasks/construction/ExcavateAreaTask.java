@@ -249,6 +249,11 @@ public final class ExcavateAreaTask extends Task implements TrackedTaskOutcomePr
 
       try {
          this.worldCheck();
+         Task inventoryRecovery=com.player2.playerengine.agentic.AutoInventoryCleanup.beforeResourceTick(this);
+         if(inventoryRecovery!=null){
+            if(this.building){this.stopOwnedBuilder();this.transientSuspended=true;this.reconcileTransientResume(false);}
+            return inventoryRecovery;
+         }
          if (this.transientSuspended) {
             boolean retained = this.building
                && this.builder != null

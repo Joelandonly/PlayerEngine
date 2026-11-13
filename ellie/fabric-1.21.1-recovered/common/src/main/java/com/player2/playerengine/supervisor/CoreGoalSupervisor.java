@@ -39,6 +39,7 @@ public final class CoreGoalSupervisor {
                 event("CORE_GOAL_SUPERSEDED", "old_generation=" + previous.generation() + " new=" + kind);
             }
             com.player2.playerengine.reliability.SharedTargetRecovery.begin(task);
+            task.trackProgression(task.progressionDeferred());
             GoalLifecycle.Snapshot started = slot.lifecycle.begin(commandId, kind);
             checkpoint(slot, started);
             event("CORE_GOAL_SUBMIT", "generation=" + started.generation() + " kind=" + kind);
@@ -61,6 +62,9 @@ public final class CoreGoalSupervisor {
                     checkpoint(slot, terminal);
                     event("CORE_GOAL_TERMINAL", "generation=" + terminal.generation()
                             + " status=" + terminal.status() + " detail=" + terminal.detail());
+                    if (terminal.status() == GoalLifecycle.Status.SUCCEEDED && !task.progressionDeferred()) {
+                        controller.progression().award(com.player2.playerengine.progression.CompanionProgression.successfulReward(task));
+                    }
                     CommandCompletion.completed(execution);
                     // Stale goals must not schedule more work after ownership has changed.
                     if (onComplete != null && slot.lifecycle.current().generation()==started.generation()) onComplete.run();

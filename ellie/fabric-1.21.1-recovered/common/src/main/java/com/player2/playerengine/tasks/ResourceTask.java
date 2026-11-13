@@ -40,6 +40,8 @@ public abstract class ResourceTask extends Task implements ITaskCanForce {
    protected boolean allowContainers = false;
    protected String failureReason = null;
    private Object ellieStorageSession;
+   private final com.player2.playerengine.warehouse.WarehouseWithdrawal warehouseOutput =
+      new com.player2.playerengine.warehouse.WarehouseWithdrawal();
 
    public ResourceTask(ItemTarget... itemTargets) {
       this.itemTargets = itemTargets;
@@ -52,12 +54,12 @@ public abstract class ResourceTask extends Task implements ITaskCanForce {
 
    @Override
    public boolean isFinished() {
-      return StorageHelper.itemTargetsMet(this.controller, this.itemTargets);
+      return this.controller != null && StorageHelper.itemTargetsMet(this.controller, this.itemTargets);
    }
 
    @Override
    public boolean shouldForce(Task interruptingCandidate) {
-      if (StorageHelper.itemTargetsMet(this.controller, this.itemTargets) && !this.isFinished()) {
+      if (this.controller != null && StorageHelper.itemTargetsMet(this.controller, this.itemTargets) && !this.isFinished()) {
          ItemStack cursorStack = this.controller.getSlotHandler().getCursorStack();
          return Arrays.stream(this.itemTargets).anyMatch(target -> target.matches(cursorStack.getItem()));
       } else {
@@ -76,9 +78,13 @@ public abstract class ResourceTask extends Task implements ITaskCanForce {
    @Override
    protected Task onTick() {
       PlayerEngineController mod = this.controller;
+      Task inventoryRecovery = com.player2.playerengine.agentic.AutoInventoryCleanup.beforeResourceTick(this);
+      if (inventoryRecovery != null) return inventoryRecovery;
       if (this.isFinished()) {
          return StorageIntelligence.choose(this, null);
       }
+      Task withdrawal = this.warehouseOutput.next(mod, Arrays.asList(this.itemTargets));
+      if (withdrawal != null) return withdrawal;
 
       if (!this.shouldAvoidPickingUp(mod) && mod.getEntityTracker().itemDropped(this.itemTargets)) {
          if (PickupDroppedItemTask.isIsGettingPickaxeFirst(mod)) {
@@ -202,6 +208,7 @@ public abstract class ResourceTask extends Task implements ITaskCanForce {
 
    @Override
    protected void onStop(Task interruptTask) {
+      this.warehouseOutput.close();
       this.controller.getBehaviour().pop();
       this.onResourceStop(this.controller, interruptTask);
    }

@@ -29,6 +29,7 @@ public final class GatherLooseItemsTask extends Task implements DescribesProgres
    private int gatheredItems;
    private int skippedUnreachable;
    private long startMs;
+   private long inventoryRecoveryStartedMs=-1L;
    private long settleStartMs = -1L;
    private PickupDroppedItemTask pickupChild;
    private ItemEntity currentTarget;
@@ -75,6 +76,17 @@ public final class GatherLooseItemsTask extends Task implements DescribesProgres
 
    @Override
    protected Task onTick() {
+      if(inventoryRecoveryStartedMs<0)detectGatheredFromInventory();
+      Task inventoryRecovery=com.player2.playerengine.agentic.AutoInventoryCleanup.beforeResourceTick(this);
+      if(inventoryRecovery!=null){
+         if(inventoryRecoveryStartedMs<0)inventoryRecoveryStartedMs=System.currentTimeMillis();
+         return inventoryRecovery;
+      }
+      if(inventoryRecoveryStartedMs>=0){
+         long elapsed=System.currentTimeMillis()-inventoryRecoveryStartedMs;
+         this.startMs+=elapsed;if(this.settleStartMs>=0)this.settleStartMs+=elapsed;
+         this.inventoryBaselineCount=countInventoryItems(this.controller);inventoryRecoveryStartedMs=-1L;
+      }
       if (this.finished) {
          return null;
       }

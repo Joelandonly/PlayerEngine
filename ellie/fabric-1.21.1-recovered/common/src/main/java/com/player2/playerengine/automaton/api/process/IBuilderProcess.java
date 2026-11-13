@@ -11,6 +11,10 @@ import net.minecraft.world.level.block.state.BlockState;
 public interface IBuilderProcess extends IBaritoneProcess {
    void build(String var1, ISchematic var2, Vec3i var3);
 
+   default void buildSingleCell(String name, ISchematic schematic, BlockPos origin) {
+      this.build(name, schematic, origin);
+   }
+
    boolean build(String var1, File var2, Vec3i var3);
 
    default boolean build(String schematicFile, BlockPos origin) {

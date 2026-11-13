@@ -51,10 +51,18 @@ public abstract class Command {
    }
 
    protected void finishWithError(String message) {
+      this.finishException(new CommandException(message));
+   }
+
+   protected void finishWithCancellation(String message) {
+      this.finishException(new CommandException.Cancelled(message));
+   }
+
+   private void finishException(CommandException exception) {
       if (!this.ended) {
          this.ended = true;
          if (this.onError != null) {
-            this.onError.accept(new CommandException(message));
+            this.onError.accept(exception);
          } else if (this.onFinish != null) {
             this.onFinish.run();
          }

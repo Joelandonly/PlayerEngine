@@ -219,7 +219,7 @@ public final class SharedTargetRecovery {
  private static Cell target(Object task)throws Exception{
   String kind=task.getClass().getSimpleName();
   if(!List.of("DestroyBlockTask","GetCloseToBlockTask","GetWithinRangeOfBlockTask","GetToBlockTask","PlaceBlockTask","PlaceItemBlockAtPosTask","CraftMacroResourceTask","CraftInTableTask").contains(kind))return null;
-  if(kind.equals("CraftMacroResourceTask")){String phase=String.valueOf(get(task,"phase"));if(!phase.contains("TABLE")&&!phase.equals("CRAFT_3X3_OUTPUT"))return null;}
+  if(kind.equals("CraftMacroResourceTask")&&!String.valueOf(get(task,"phase")).equals("MOVE_TO_TABLE"))return null;
   String field=switch(kind){case "DestroyBlockTask"->"pos";case "GetWithinRangeOfBlockTask"->"blockPos";case "GetCloseToBlockTask"->"toApproach";case "GetToBlockTask"->"position";case "PlaceBlockTask"->"target";case "PlaceItemBlockAtPosTask"->"placePos";default->"craftingTablePos";};
   Object p=get(task,field);if(p!=null)return RecoveryWorld.cell(p);
   return null;

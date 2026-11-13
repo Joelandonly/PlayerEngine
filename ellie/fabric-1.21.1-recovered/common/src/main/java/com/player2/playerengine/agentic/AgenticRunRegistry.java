@@ -31,6 +31,10 @@ public final class AgenticRunRegistry {
       }
    }
 
+   static void clear(UUID botUuid, AgenticRunState completed) {
+      RUNS.remove(botUuid, completed);
+   }
+
    public static final class AgenticRunState {
       private final String runId;
       private final String goalSummary;

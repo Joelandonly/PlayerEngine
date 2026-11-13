@@ -10,6 +10,7 @@ import com.player2.playerengine.tasks.construction.PutOutFireTask;
 import com.player2.playerengine.tasks.movement.EnterNetherPortalTask;
 import com.player2.playerengine.tasks.movement.EscapeFromLavaTask;
 import com.player2.playerengine.tasks.movement.GetToBlockTask;
+import com.player2.playerengine.tasks.movement.RunAwayFromPositionTask;
 import com.player2.playerengine.tasks.movement.SafeRandomShimmyTask;
 import com.player2.playerengine.util.ItemTarget;
 import com.player2.playerengine.util.helpers.LookHelper;
@@ -29,6 +30,7 @@ public class WorldSurvivalChain extends SingleTaskChain {
    private final TimerGame portalStuckTimer = new TimerGame(5.0);
    private boolean wasAvoidingDrowning;
    private BlockPos extinguishWaterPosition;
+   private RunAwayFromPositionTask secondWindRetreat;
 
    public WorldSurvivalChain(TaskRunner runner) {
       super(runner);
@@ -51,6 +53,22 @@ public class WorldSurvivalChain extends SingleTaskChain {
          return 100.0F;
       }
 
+      BlockPos danger = mod.progression().retreatFrom();
+      if (danger != null) {
+         if (this.secondWindRetreat == null) {
+            this.secondWindRetreat = new RunAwayFromPositionTask(10.0, danger, mod.getEntity().blockPosition());
+         }
+         if (this.secondWindRetreat.controller == null || !this.secondWindRetreat.isFinished()) {
+            this.setTask(this.secondWindRetreat);
+            return 99.0F;
+         }
+         mod.progression().finishRetreat();
+      }
+      if (this.secondWindRetreat != null) {
+         this.secondWindRetreat = null;
+         if (this.mainTask instanceof RunAwayFromPositionTask) this.setTask(null);
+      }
+
       if (this.isInFire(mod)) {
          this.setTask(new DoToClosestBlockTask(PutOutFireTask::new, Blocks.FIRE, Blocks.SOUL_FIRE));
          return 100.0F;
@@ -59,7 +77,7 @@ public class WorldSurvivalChain extends SingleTaskChain {
       if (mod.getModSettings().shouldExtinguishSelfWithWater()) {
          if ((!(this.mainTask instanceof EscapeFromLavaTask) || !this.isCurrentlyRunning(mod))
             && mod.getPlayer().isOnFire()
-            && !mod.getPlayer().hasEffect(MobEffects.FIRE_RESISTANCE)
+            && !mod.getPlayer().hasEffect(MobEffects.FIRE_RESISTANCE) && !mod.progression().immuneToFire()
             && !mod.getWorld().dimensionType().ultraWarm()) {
             if (mod.getItemStorage().hasItem(Items.WATER_BUCKET)) {
                BlockPos targetWaterPos = mod.getPlayer().blockPosition();
@@ -131,12 +149,12 @@ public class WorldSurvivalChain extends SingleTaskChain {
          this.wasInLavaTimer.reset();
          return true;
       } else {
-         return mod.getPlayer().isOnFire() && !this.wasInLavaTimer.elapsed();
+         return mod.getPlayer().isOnFire() && !mod.progression().immuneToFire() && !this.wasInLavaTimer.elapsed();
       }
    }
 
    private boolean isInFire(PlayerEngineController mod) {
-      if (mod.getPlayer().isOnFire() && !mod.getPlayer().hasEffect(MobEffects.FIRE_RESISTANCE)) {
+      if (mod.getPlayer().isOnFire() && !mod.getPlayer().hasEffect(MobEffects.FIRE_RESISTANCE) && !mod.progression().immuneToFire()) {
          for (BlockPos pos : WorldHelper.getBlocksTouchingPlayer(this.controller.getPlayer())) {
             Block b = mod.getWorld().getBlockState(pos).getBlock();
             if (b instanceof BaseFireBlock) {

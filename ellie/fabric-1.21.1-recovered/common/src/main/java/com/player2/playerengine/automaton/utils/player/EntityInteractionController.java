@@ -92,6 +92,7 @@ public class EntityInteractionController implements IInteractionController {
 
    @Override
    public double getBlockReachDistance() {
-      return com.player2.playerengine.tasks.construction.WaterFillTask.hasExtendedReach(this.player.getUUID()) ? 6.0 : 4.5;
+      double reach = 4.5 + com.player2.playerengine.progression.CompanionProgression.extraBlockReach(this.player);
+      return com.player2.playerengine.tasks.construction.WaterFillTask.hasExtendedReach(this.player.getUUID()) ? Math.max(6.0, reach) : reach;
    }
 }

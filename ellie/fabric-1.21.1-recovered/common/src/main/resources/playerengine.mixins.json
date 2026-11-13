@@ -7,10 +7,14 @@
     "maxShiftBy": 2,
     "defaultRequire": 1
   },
-  "client": [],
+  "client": [
+    "client.EntityNameTagMixin",
+    "client.LivingEntityNameTagMixin"
+  ],
   "mixins": [
     "ClientBlockBreakMixin",
     "ClientConnectionAccessor",
+    "CompanionKillLootMixin",
     "EntityAnimationSwungMixin",
     "LivingEntityMixin",
     "MixinAbstractFurnaceBlockEntity",

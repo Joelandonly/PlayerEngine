@@ -40,7 +40,8 @@ public final class FarmSitePlan {
       this.center = immutable(center, "center");
       this.explicit = explicit;
       this.waterRequired = waterRequired;
-      if (grassColumns >= 0 && grassColumns <= 81 && existingFarmland >= 0 && existingFarmland <= 80 && repairColumns >= 0 && repairColumns <= 16) {
+      if (grassColumns >= 0 && grassColumns <= 81 && existingFarmland >= 0 && existingFarmland <= 80
+         && repairColumns >= 0 && repairColumns <= FarmPlotRepairPlan.MAX_COLUMNS) {
          this.grassColumns = grassColumns;
          this.existingFarmland = existingFarmland;
          this.repairColumns = repairColumns;

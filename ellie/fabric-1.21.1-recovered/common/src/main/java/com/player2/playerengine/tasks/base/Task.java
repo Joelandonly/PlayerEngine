@@ -2,6 +2,7 @@ package com.player2.playerengine.tasks.base;
 
 import com.player2.playerengine.PlayerEngineController;
 import com.player2.playerengine.observatory.ObservatoryTelemetry;
+import com.player2.playerengine.progression.TaskWork;
 import com.player2.playerengine.reliability.SharedTargetRecovery;
 import com.player2.playerengine.tasks.movement.TimeoutWanderTask;
 import com.player2.playerengine.util.Debug;
@@ -20,6 +21,41 @@ public abstract class Task {
    private boolean assigned = false;
    private boolean transientlySuspended = false;
    private Task sharedRecoveryAction;
+   private boolean progressionStarted;
+   private boolean progressionTracked;
+   private boolean progressionDeferred;
+   private TaskWork progressionWork;
+
+   public void trackProgression(boolean deferred) {
+      this.progressionTracked = true;
+      this.progressionDeferred = deferred;
+   }
+
+   public boolean progressionTracked() {
+      return this.progressionTracked;
+   }
+
+   public boolean progressionDeferred() {
+      return this.progressionDeferred;
+   }
+
+   public void beginProgressionAttempt() {
+      this.progressionStarted = false;
+      this.progressionWork = null;
+   }
+
+   public TaskWork progressionWork() {
+      if (this.progressionWork == null) this.progressionWork = new TaskWork();
+      return this.progressionWork;
+   }
+
+   public TaskWork takeProgressionWork() {
+      if (!this.progressionStarted) return null;
+      this.progressionStarted = false;
+      TaskWork work = this.progressionWork();
+      this.progressionWork = null;
+      return work;
+   }
 
    public void tick(TaskChain parentChain) {
       this.controller = parentChain.controller;
@@ -30,6 +66,7 @@ public abstract class Task {
             Debug.logInternal("Task START: " + this);
             this.active = true;
             this.assigned = false;
+            this.progressionStarted = true;
             this.onStart();
             this.first = false;
             this.stopped = false;
@@ -82,6 +119,7 @@ public abstract class Task {
          this.ellieStopInProgress = true;
 
          try {
+            com.player2.playerengine.agentic.AutoInventoryCleanup.cancel(this);
             SharedTargetRecovery.stopped(this);
             if ((this.active || this.assigned) && !this.stopped) {
                Debug.logInternal("Task STOP: " + this + ", interrupted by " + interruptTask);
