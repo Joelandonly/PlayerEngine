@@ -3,6 +3,7 @@ package com.player2.playerengine.agentic;
 import com.player2.playerengine.observatory.ObservatoryTelemetry;
 import java.lang.reflect.*;
 import java.util.*;
+import net.minecraft.world.item.ItemStack;
 /** Independent read-only check of the NPC's actual main inventory slots.
  * Never treats missing/unavailable inventory data as a full inventory.
  */
@@ -14,6 +15,16 @@ public final class InventorySpace {
  }
  private static Object call(Object obj,String method) throws Exception{return obj==null?null:obj.getClass().getMethod(method).invoke(obj);}
  public static Snapshot inspect(Object controller){return inspect(controller,true);}
+ public static int emptySlotsFor(List<ItemStack> main, ItemStack incoming, int count, int inventoryStackLimit) {
+  int stackLimit = Math.min(incoming.getMaxStackSize(), inventoryStackLimit);
+  for (ItemStack stack : main) {
+   if (!stack.isEmpty() && ItemStack.isSameItemSameComponents(stack, incoming)) {
+    count -= Math.max(0, stackLimit - stack.getCount());
+    if (count <= 0) return 0;
+   }
+  }
+  return Math.ceilDiv(Math.max(0, count), stackLimit);
+ }
  private static Snapshot inspect(Object controller,boolean includeTracker){
   try{
    if(controller instanceof com.player2.playerengine.PlayerEngineController mod){

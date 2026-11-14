@@ -58,6 +58,12 @@ public final class SchematicBuildSupport {
     public static boolean imported(Object builder){try{return ours(get(builder,"schematic"))||ours(get(builder,"realSchematic"));}catch(Exception e){return false;}}
     public static boolean active(Object builder){try{return get(builder,"realSchematic") instanceof OrientedChest||imported(builder);}catch(Exception e){return false;}}
     public static void bindEntity(Object entity,Object builder){ENTITIES.put(entity,new WeakReference<>(builder));}
+    public static boolean clearPlacementStance(BlockPos feet, BlockPos target, java.util.function.Predicate<BlockPos> unfinished) {
+        BlockPos head = feet.above();
+        BlockPos floor = feet.below();
+        return !feet.equals(target) && !head.equals(target) && !floor.equals(target)
+            && !unfinished.test(feet) && !unfinished.test(head) && !unfinished.test(floor);
+    }
     public static boolean sameIgnoringChestJoin(Object a,Object b)throws Exception {
         if(!call(a,"method_26204").equals(call(b,"method_26204")))return false;
         Map<String,String> x=new HashMap<>(SchematicWorld.properties(a)),y=new HashMap<>(SchematicWorld.properties(b));x.remove("type");y.remove("type");return x.equals(y);

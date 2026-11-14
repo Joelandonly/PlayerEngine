@@ -220,6 +220,27 @@ public class WarehouseTests{
  partial.inventory.main.set(0,new ItemStack(unrelated,1));check(AutoInventoryCleanup.beforeResourceTick(batchRoot)==null,"one new occupied slot after a batch does not send Ellie back");
  var merge=create("merge-headroom",36);chest(merge,0,false);merge.inventory.main.set(0,new ItemStack(WOOD,63));var mergeRoot=root(merge);mergeRoot.targets=new ItemTarget[]{new ItemTarget(WOOD,64)};
  check(AutoInventoryCleanup.beforeResourceTick(mergeRoot)==null,"remaining output fits a partial stack even with zero empty slots");
+ check(InventorySpace.emptySlotsFor(merge.inventory.main,WOOD.getDefaultInstance(),1,64)==0
+     && InventorySpace.emptySlotsFor(merge.inventory.main,WOOD.getDefaultInstance(),2,64)==1,
+     "schematic batch counts only slots beyond matching stack headroom");
+ merge.inventory.main.get(0).components="custom";
+ check(InventorySpace.emptySlotsFor(merge.inventory.main,WOOD.getDefaultInstance(),1,64)==1,
+     "schematic batch does not count incompatible stacks as merge room");
+ var projectMod=create("explicit-schematic-space",35);var projectDepot=chest(projectMod,0,false);
+ for(int i=1;i<35;i++)projectMod.inventory.main.set(i,new ItemStack(STONE,64));
+ var project=new com.player2.playerengine.schematic.SchematicProjectTask();project.controller=projectMod;
+ check(AutoInventoryCleanup.makeRoom(project,1).transfer()==null,"schematic with one available slot skips warehouse cleanup for a one-slot batch");
+ Task unload=AutoInventoryCleanup.makeRoom(project,2).transfer();
+ check(unload instanceof BoundedContainerTransferTask,"explicit schematic demand starts warehouse cleanup with no resource child");
+ for(int i=0;i<120&&unload!=null;i++){
+   projectMod.world.time++;unload.step(projectMod);unload=AutoInventoryCleanup.continuePending(project);
+ }
+ check(unload==null&&InventorySpace.inspect(projectMod).free()==2
+     && projectMod.world.containers.get(projectDepot).countItem(DIRT)==64
+     && projectMod.world.containers.get(projectDepot).countItem(STONE)==0,
+     "schematic resumes with the requested space and retains project supplies");
+ check(AutoInventoryCleanup.makeRoom(project,3).blockedReason().contains("No unreserved surplus"),
+     "schematic gets a specific capacity blocker when only protected supplies remain");
  var room=create("reserve-room",25);chest(room,0,false);var roomLedger=WarehouseManager.ledger(room);roomLedger.set("reserve",12);roomLedger.save();
  check(AutoInventoryCleanup.beforeResourceTick(root(room))==null,"one-slot output does not trigger a trip with eleven free slots and reserve twelve");
  var pickaxe=create("pickaxe",36);chest(pickaxe,0,false);var craft=root(pickaxe);craft.targets=new ItemTarget[]{new ItemTarget(new Item("minecraft:stone_pickaxe"))};check(advance(craft,120)==null&&InventorySpace.inspect(pickaxe).free()>=4,"replacement-pickaxe resource request recovers full inventory before crafting");

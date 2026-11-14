@@ -4,6 +4,7 @@ import com.player2.playerengine.automaton.Baritone;
 import com.player2.playerengine.automaton.api.entity.IInventoryProvider;
 import com.player2.playerengine.automaton.api.entity.LivingEntityInventory;
 import com.player2.playerengine.automaton.utils.ToolSet;
+import com.player2.playerengine.schematic.SchematicBuildSupport;
 import java.util.ArrayList;
 import java.util.OptionalInt;
 import java.util.Random;
@@ -34,8 +35,9 @@ public final class InventoryBehavior extends Behavior {
    @Override
    public void onTickServer() {
       if (this.baritone.settings().allowInventory.get() && this.ctx.entity() instanceof IInventoryProvider player) {
-         if (this.firstValidThrowaway(player.getLivingInventory()) >= 9) {
-            this.swapWithHotBar(this.firstValidThrowaway(player.getLivingInventory()), 8, player.getLivingInventory());
+         int throwaway = this.firstValidThrowaway(player.getLivingInventory());
+         if (throwaway >= 9) {
+            this.swapWithHotBar(throwaway, 8, player.getLivingInventory());
          }
 
          int pick = this.bestToolAgainst(Blocks.STONE, PickaxeItem.class);
@@ -90,9 +92,10 @@ public final class InventoryBehavior extends Behavior {
 
    private int firstValidThrowaway(LivingEntityInventory inventory) {
       NonNullList<ItemStack> invy = inventory.main;
+      boolean imported = SchematicBuildSupport.imported(this.baritone.getBuilderProcess());
 
       for (int i = 0; i < invy.size(); i++) {
-         if (this.baritone.settings().acceptableThrowawayItems.get().contains(((ItemStack)invy.get(i)).getItem())) {
+         if (this.isNavigationBlock(invy.get(i), imported)) {
             return i;
          }
       }
@@ -122,10 +125,17 @@ public final class InventoryBehavior extends Behavior {
    }
 
    public boolean hasGenericThrowaway() {
-      return this.throwaway(false, stack -> this.baritone.settings().acceptableThrowawayItems.get().contains(stack.getItem()));
+      boolean imported = SchematicBuildSupport.imported(this.baritone.getBuilderProcess());
+      return this.throwaway(false, stack -> this.isNavigationBlock(stack, imported));
+   }
+
+   private boolean isNavigationBlock(ItemStack stack, boolean imported) {
+      return !stack.isEmpty() && (this.baritone.settings().acceptableThrowawayItems.get().contains(stack.getItem())
+         || imported && ItemStack.isSameItemSameComponents(stack, Blocks.COBBLESTONE.asItem().getDefaultInstance()));
    }
 
    public boolean selectThrowawayForLocation(boolean select, int x, int y, int z) {
+      boolean imported = SchematicBuildSupport.imported(this.baritone.getBuilderProcess());
       BlockState maybe = this.baritone.getBuilderProcess().placeAt(x, y, z, this.baritone.bsi.get0(x, y, z));
       if (maybe != null
          && this.throwaway(
@@ -163,7 +173,7 @@ public final class InventoryBehavior extends Behavior {
                   select, stack -> stack.getItem() instanceof BlockItem && ((BlockItem)stack.getItem()).getBlock().equals(maybe.getBlock())
                )
             ? true
-            : this.throwaway(select, stack -> this.baritone.settings().acceptableThrowawayItems.get().contains(stack.getItem()));
+            : this.throwaway(select, stack -> this.isNavigationBlock(stack, imported));
       }
    }
 

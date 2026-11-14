@@ -67,6 +67,15 @@ public final class AutoInventoryCleanup {
         Session session = SESSIONS.get(root);
         return session == null || session.transfer == null ? null : choose(root, null);
     }
+    public record RoomRequest(Task transfer, String blockedReason) {}
+
+    /** Gives callers with a known incoming batch precedence over the inferred producer demand. */
+    public static RoomRequest makeRoom(Task root, int minimumFree) {
+        Task next = choose(root, null, minimumFree);
+        if (next instanceof BoundedContainerTransferTask) return new RoomRequest(next, "");
+        Session session = SESSIONS.get(root);
+        return new RoomRequest(null, session == null ? "" : session.lastPressureReason);
+    }
     public static void cancel(Task root) {
         Session session=SESSIONS.remove(root);
         if(session!=null && session.transfer!=null)session.transfer.stop();
@@ -80,6 +89,10 @@ public final class AutoInventoryCleanup {
         });
     }
     public static Task choose(Task root, Task normalAction) {
+        return choose(root, normalAction, 0);
+    }
+
+    private static Task choose(Task root, Task normalAction, int minimumFree) {
         PlayerEngineController mod=root.controller;
         if(mod==null || mod.getWorld()==null || mod.getEntity()==null)return normalAction;
         String dimension=WarehouseManager.dimension(mod);
@@ -122,6 +135,7 @@ public final class AutoInventoryCleanup {
         if(!session.recovering&&transferringWithin(root))return normalAction;
         reserve=Math.max(1,Math.min(reserve,snapshot.total()));
         int needed=session.recovering?session.targetFree
+            :minimumFree>0?minimumFree
             :snapshot.free()>=reserve?reserve:Math.min(reserve,remainingOutputSlots(root,snapshot.total()));
         if(!WarehousePolicy.needsRecovery(snapshot.free(),needed) || root.isFinished()) {
             if(session.recovering)ObservatoryTelemetry.event("INVENTORY_RECOVERY_COMPLETED","task="+root.getClass().getSimpleName()+" free="+snapshot.free()+" original goal resuming");
@@ -129,9 +143,9 @@ public final class AutoInventoryCleanup {
         }
         if(session.nextAttempt>now)return snapshot.free()==0?session.waiting:normalAction;
         if(!session.recovering){
-            if(snapshot.free()>0&&session.deferredAtFree>=0&&snapshot.free()>=session.deferredAtFree)return normalAction;
+            if(minimumFree==0&&snapshot.free()>0&&session.deferredAtFree>=0&&snapshot.free()>=session.deferredAtFree)return normalAction;
             session.recovering=true;
-            session.targetFree=Math.min(snapshot.total(),needed+reserve);
+            session.targetFree=minimumFree>0?needed:Math.min(snapshot.total(),needed+reserve);
             ObservatoryTelemetry.event("INVENTORY_RECOVERY_STARTED","task="+root.getClass().getSimpleName()
                 +" "+snapshot.summary()+" taskSlots="+needed+" targetFree="+session.targetFree);
         }

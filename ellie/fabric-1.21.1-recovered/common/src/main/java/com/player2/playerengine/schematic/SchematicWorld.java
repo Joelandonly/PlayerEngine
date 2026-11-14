@@ -1,6 +1,7 @@
 package com.player2.playerengine.schematic;
 
 import com.player2.playerengine.PlayerEngineController;
+import com.player2.playerengine.agentic.InventorySpace;
 import com.player2.playerengine.tasks.base.*;
 import com.player2.playerengine.tasks.setup.CoreGoalJournal;
 import com.player2.playerengine.tasks.setup.SetupBuildZone;
@@ -245,6 +246,12 @@ public final class SchematicWorld implements SchematicProjectTask.Environment {
     public int maxStack(String id)throws Exception {int max=((Number)call(call(item(id),"method_7854"),"method_7914")).intValue();if(max<1)throw new IllegalStateException("Unknown stack limit: "+id);return max;}
     public Map<String,Integer> inventory()throws Exception {Map<String,Integer> result=new TreeMap<>();for(var e:FoodAcquisition.inventory(controller).entrySet())result.merge(idOfItem(e.getKey()),e.getValue(),Math::addExact);return result;}
     public int freeSlots()throws Exception {var snapshot=com.player2.playerengine.agentic.InventorySpace.inspect(controller);if(!snapshot.known())throw new IllegalStateException("Actual main inventory slots unavailable");return snapshot.free();}
+    public int emptySlotsFor(String id,int count) {
+        var key=net.minecraft.resources.ResourceLocation.parse(id);
+        var item=net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(key).orElseThrow();
+        var inventory=controller.getInventory();
+        return InventorySpace.emptySlotsFor(inventory.main,item.getDefaultInstance(),count,inventory.getMaxStackSize());
+    }
     public Task acquire(String id,int target)throws Exception {
         var reservations=new com.player2.playerengine.agentic.MaterialReservationService();
         Map<String,Integer> held=inventory();

@@ -1,5 +1,6 @@
 package com.player2.playerengine.schematic;
 
+import com.player2.playerengine.agentic.AutoInventoryCleanup;
 import com.player2.playerengine.tasks.base.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -33,6 +34,7 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
         int maxStack(String item)throws Exception;
         Map<String,Integer> inventory()throws Exception;
         int freeSlots()throws Exception;
+        default int emptySlotsFor(String item,int count)throws Exception {return ceil(count,maxStack(item));}
         boolean atDepot()throws Exception;
         Task travelToDepot()throws Exception;
         Task acquire(String item,int absoluteTarget)throws Exception;
@@ -68,6 +70,7 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
     private int importTicks,allTicks,layerIndex,buildIdle,stockRechecks,placementAlternatives,preparedRepairs;
     private int bestBase,bestFinal;
     private boolean checkingPrepared,sectionBaseline,fluids;
+    private boolean accessStockLoaded;
     private int settling,fluidIndex;
     private List<Cell> fluidTargets=List.of();
     private String reason="Not started",phase="IMPORT";
@@ -101,6 +104,8 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
                 event("SCHEMATIC_PROGRESS","objective="+(build?"build":"prepare")+" file="+filename+" phase="+phase+" layer="+layerIndex+"/"+plan.layers.size()+" inventory="+environment.inventory()+" emptyMain="+environment.freeSlots()+" subtask="+getTaskTree()+" noPlacement="+buildIdle+" failure="+reason);
             }
             if(action!=null)return pollAction();
+            Task pendingCleanup=AutoInventoryCleanup.continuePending(this);
+            if(pendingCleanup!=null)return pendingCleanup;
             if(!preflightDone){
                 phase="PREFLIGHT";if(!environment.atDepot())return travel();if(!environment.preflight())return null;
                 required=Map.copyOf(environment.requirements());preflightDone=true;
@@ -114,8 +119,6 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
 
     private Task prepare()throws Exception {
         phase="PREPARE";
-        Task pendingCleanup=com.player2.playerengine.agentic.AutoInventoryCleanup.continuePending(this);
-        if(pendingCleanup!=null)return pendingCleanup;
         List<Pos> positions=environment.depotPositions();
         if(positions.isEmpty()){if(!environment.atDepot())return travel();environment.allocateDepot(-1);return null;}
         for(int i=0;i<positions.size();i++)if(!environment.depotPresent(i)){
@@ -154,11 +157,6 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
         for(var need:bill.orderedEntries()){
             String id=need.getKey();int missing=need.getValue()-stored.getOrDefault(id,0);
             if(missing<=0)continue;
-            if(environment.freeSlots()<4){
-                Task clean=com.player2.playerengine.agentic.AutoInventoryCleanup.choose(this,null);
-                if(clean!=null){event("SCHEMATIC_INVENTORY_CLEANUP","Pausing acquisition to unload verified surplus into separately designated general storage");return clean;}
-                return block("INVENTORY_CAPACITY","Need four free main slots; no safe surplus or separately designated general storage available. Project depot chests are forbidden as cleanup destinations");
-            }
             int batch=Math.min(missing,Math.min(64,environment.maxStack(id)));
             return acquire(id,Math.addExact(held.getOrDefault(id,0),batch));
         }
@@ -231,13 +229,21 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
             return finalAction(section.post.getFirst());
         }
         Map<String,Integer> held=environment.inventory();
+        if(!accessStockLoaded&&plan.layers.size()>2){
+            if(!environment.atDepot())return travel();
+            List<Depot> depots=inspectDepots();
+            String access="minecraft:cobblestone";
+            int count=Math.min(Math.max(0,environment.maxStack(access)-held.getOrDefault(access,0)),
+                    verifiedStock.getOrDefault(access,0));
+            if(count>0)return transfer(depots,access,count,false,held);
+            accessStockLoaded=true;
+        }
         for(var need:section.materials.entrySet())if(held.getOrDefault(need.getKey(),0)<Math.min(need.getValue(),environment.maxStack(need.getKey()))){
             environment.pauseBuilder();
             if(!environment.atDepot())return travel();
             List<Depot> depots=inspectDepots();Map<String,Integer> stored=verifiedStock;
             int missing=Math.min(need.getValue(),environment.maxStack(need.getKey()))-held.getOrDefault(need.getKey(),0);
             if(stored.getOrDefault(need.getKey(),0)>0){
-                if(environment.freeSlots()<2)return block("INVENTORY_CAPACITY","Construction supplies need two actual free carrying slots");
                 return transfer(depots,need.getKey(),Math.min(missing,stored.get(need.getKey())),false,held);
             }
             if(++preparedRepairs>64)return block("SUPPLY_CHANGED","Repeatedly lost prepared construction stock");
@@ -251,7 +257,6 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
         String needed=cell.state().source()||cell.state().waterlogged()?"minecraft:water_bucket":cell.state().doubleSlab()?cell.state().id():null;
         Map<String,Integer> held=environment.inventory();
         if(needed!=null&&held.getOrDefault(needed,0)<1){
-            if(environment.freeSlots()<2)return block("INVENTORY_CAPACITY","No verified room for final placement supplies");
             if(!environment.atDepot())return travel();List<Depot> stock=inspectDepots();
             if(total(stock).getOrDefault(needed,0)>0)return transfer(stock,needed,1,false,held);
             return acquire(needed,1);
@@ -259,14 +264,37 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
         Action next=new Action(Kind.POST,environment.postAction(cell));next.cell=cell;return begin(next);
     }
 
-    private Task acquire(String item,int target)throws Exception {environment.pauseBuilder();Action next=new Action(Kind.ACQUIRE,environment.acquire(item,target));next.item=item;next.target=target;return begin(next);}
+    private Task acquire(String item,int target)throws Exception {
+        environment.pauseBuilder();
+        int incoming=Math.max(0,target-environment.inventory().getOrDefault(item,0));
+        int slots=environment.emptySlotsFor(item,incoming);
+        if(environment.freeSlots()<slots)return recoverInventory(item,incoming,slots);
+        Action next=new Action(Kind.ACQUIRE,environment.acquire(item,target));
+        next.item=item;next.target=target;return begin(next);
+    }
+
+    private Task recoverInventory(String item,int count,int slots)throws Exception {
+        var room=AutoInventoryCleanup.makeRoom(this,slots);
+        String demand="item="+item+" count="+count+" requiredEmptySlots="+slots;
+        if(room.transfer()!=null){
+            event("SCHEMATIC_INVENTORY_CLEANUP",demand+" free="+environment.freeSlots());
+            return room.transfer();
+        }
+        String detail=room.blockedReason().isEmpty()?"Inventory recovery unavailable":room.blockedReason();
+        return block("INVENTORY_CAPACITY",demand+" free="+environment.freeSlots()+". "+detail);
+    }
     private Task travel()throws Exception {environment.pauseBuilder();return begin(new Action(Kind.TRAVEL,environment.travelToDepot()));}
     private Task transfer(List<Depot> depots,String item,int count,boolean deposit,Map<String,Integer> held)throws Exception {
         int max=environment.maxStack(item);
         for(int i=0;i<depots.size();i++){
             int available=deposit?depots.get(i).room(item,max):depots.get(i).stock.getOrDefault(item,0);
             int amount=Math.min(count,Math.min(available,64));if(amount<=0)continue;
-            environment.pauseBuilder();Action next=new Action(deposit?Kind.DEPOSIT:Kind.WITHDRAW,environment.transfer(i,item,amount,deposit));
+            environment.pauseBuilder();
+            if(!deposit){
+                int slots=environment.emptySlotsFor(item,amount);
+                if(environment.freeSlots()<slots)return recoverInventory(item,amount,slots);
+            }
+            Action next=new Action(deposit?Kind.DEPOSIT:Kind.WITHDRAW,environment.transfer(i,item,amount,deposit));
             next.item=item;next.index=i;next.target=held.getOrDefault(item,0)+(deposit?-amount:amount);
             next.stockTarget=depots.get(i).stock.getOrDefault(item,0)+(deposit?amount:-amount);return begin(next);
         }
@@ -331,11 +359,11 @@ public final class SchematicProjectTask extends Task implements TrackedTaskOutco
         return build && plan != null ? "schematic/" + controller.getWorld().dimension().location() + "/" + origin.key() + "/" + plan.sha256 : null;
     }
     public String controlledReason(){return reason;}
-    protected void onStop(Task next){if(environment!=null)environment.close();if(!terminal){terminal=true;reason="BLOCKED_SCHEMATIC_INTERRUPTED: project stopped; deposited stock and placed blocks remain";event("SCHEMATIC_INTERRUPTED",reason);}}
+    protected void onStop(Task next){AutoInventoryCleanup.cancel(this);if(environment!=null)environment.close();if(!terminal){terminal=true;reason="BLOCKED_SCHEMATIC_INTERRUPTED: project stopped; deposited stock and placed blocks remain";event("SCHEMATIC_INTERRUPTED",reason);}}
     protected boolean isEqual(Task other){return other instanceof SchematicProjectTask t&&filename.equals(t.filename)&&origin.equals(t.origin)&&build==t.build;}
     protected String toDebugString(){return terminal?reason:"Schematic "+(build?"build ":"prepare ")+filename+" "+phase+" layer="+layerIndex+(materialStatus.isEmpty()?"":" "+materialStatus);}
     public boolean prepareForTransientResume(TaskSuspensionCause cause){return !terminal&&(cause==TaskSuspensionCause.GESTURE_OVERLAY||cause==TaskSuspensionCause.HIGHER_PRIORITY_CHAIN);}
-    public void afterChildrenStopped(){try{if(environment!=null)environment.pauseBuilder();action=null;}catch(Exception e){block("SUSPENSION",e.getMessage());}}
+    public void afterChildrenStopped(){try{AutoInventoryCleanup.cancel(this);if(environment!=null)environment.pauseBuilder();action=null;}catch(Exception e){block("SUSPENSION",e.getMessage());}}
     public void onTransientResumeAbandoned(){block("INTERRUPTION","Transient resume abandoned");}
     private static SchematicProjectTask activeProject(Object controller){
         try{Object root=get(call(controller,"getUserTaskChain"),"mainTask");return root instanceof SchematicProjectTask t&&!t.terminal?t:null;}catch(Exception|LinkageError e){return null;}

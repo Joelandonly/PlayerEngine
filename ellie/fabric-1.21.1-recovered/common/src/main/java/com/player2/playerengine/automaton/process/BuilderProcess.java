@@ -235,7 +235,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
       return state.getBlock() instanceof AirBlock ? null : state;
    }
 
-   private Optional<Tuple<BetterBlockPos, Rotation>> toBreakNearPlayer(BuilderProcess.BuilderCalculationContext bcc) {
+   private Optional<Tuple<BetterBlockPos, Rotation>> toBreakNearPlayer(BuilderProcess.BuilderCalculationContext bcc, boolean deferAirClearing) {
       BetterBlockPos center = this.ctx.feetPos();
       BetterBlockPos pathStart = this.baritone.getPathingBehavior().pathStart();
       int scanRadius = 5 + (int) com.player2.playerengine.progression.CompanionProgression.extraBlockReach(this.ctx.entity());
@@ -248,7 +248,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
                int z = center.z + dz;
                if ((dy != -1 || x != pathStart.x || z != pathStart.z) && !bcc.isSafeZone(x, y, z)) {
                   BlockState desired = bcc.getSchematic(x, y, z, bcc.bsi.get0(x, y, z));
-                  if (desired != null) {
+                  if (desired != null && (!deferAirClearing || !desired.isAir())) {
                      BlockState curr = bcc.bsi.get0(x, y, z);
                      if (!(curr.getBlock() instanceof AirBlock)
                         && curr.getBlock() != Blocks.WATER
@@ -517,7 +517,9 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
             this.trim();
          }
 
-         Optional<Tuple<BetterBlockPos, Rotation>> toBreak = this.toBreakNearPlayer(bcc);
+         // A footing in an air cell can still be needed to finish the rest of this layer.
+         boolean deferAirClearing = bcc.imported && this.incorrectPositions.stream().anyMatch(pos -> this.needsSolid(pos, bcc));
+         Optional<Tuple<BetterBlockPos, Rotation>> toBreak = this.toBreakNearPlayer(bcc, deferAirClearing);
          if (toBreak.isPresent() && isSafeToCancel && this.ctx.entity().onGround()) {
             Rotation rot = (Rotation)toBreak.get().getB();
             BetterBlockPos pos = (BetterBlockPos)toBreak.get().getA();
@@ -576,9 +578,9 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
                   }
                }
 
-               Goal goal = this.assemble(bcc, this.approxPlaceable.subList(0, 9));
+               Goal goal = this.assemble(bcc, this.approxPlaceable.subList(0, 9), false, calcFailed);
                if (goal == null) {
-                  goal = this.assemble(bcc, this.approxPlaceable, true);
+                  goal = this.assemble(bcc, this.approxPlaceable, true, calcFailed);
                   if (goal == null) {
                      if (!this.fixedCell && this.baritone.settings().skipFailedLayers.get()
                         && this.baritone.settings().buildInLayers.get()
@@ -684,11 +686,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
       }
    }
 
-   private Goal assemble(BuilderProcess.BuilderCalculationContext bcc, List<BlockState> approxPlaceable) {
-      return this.assemble(bcc, approxPlaceable, false);
-   }
-
-   private Goal assemble(BuilderProcess.BuilderCalculationContext bcc, List<BlockState> approxPlaceable, boolean logMissing) {
+   private Goal assemble(BuilderProcess.BuilderCalculationContext bcc, List<BlockState> approxPlaceable, boolean logMissing, boolean calcFailed) {
       List<BetterBlockPos> placeable = new ArrayList<>();
       List<BetterBlockPos> breakable = new ArrayList<>();
       List<BetterBlockPos> sourceLiquids = new ArrayList<>();
@@ -719,16 +717,17 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
       breakable.forEach(pos -> toBreak.add(this.breakGoal(pos, bcc)));
       List<Goal> toPlace = new ArrayList<>();
       if (SchematicBuildSupport.imported(this)) {
+         List<Goal> scaffold = new ArrayList<>();
          placeable.sort(java.util.Comparator.comparingDouble(pos -> pos.distSqr(this.ctx.feetPos())));
          for (BlockPos pos : placeable) {
             if (!placeable.contains(pos.below()) && !placeable.contains(pos.below(2))) {
-               Goal approach = this.importedPlacementGoal(pos, bcc);
+               Goal approach = this.importedPlacementGoal(pos, bcc, scaffold);
                if (approach != null) toPlace.add(approach);
                if (toPlace.size() >= 4) break;
             }
          }
-      }
-      if (toPlace.isEmpty()) {
+         if (toPlace.isEmpty() || calcFailed) toPlace.addAll(scaffold.stream().limit(4).toList());
+      } else {
          placeable.forEach(pos -> {
             if (!placeable.contains(pos.down()) && !placeable.contains(pos.down(2))) {
                toPlace.add(this.placementGoal(pos, bcc));
@@ -760,7 +759,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
    private Goal placementGoal(BlockPos pos, BuilderProcess.BuilderCalculationContext bcc) {
       BlockState at = this.ctx.world().getBlockState(pos);
       if (this.schematic.restrictEditsToFootprint() && at.canBeReplaced()) {
-         Goal reachable = this.importedPlacementGoal(pos, bcc);
+         Goal reachable = this.importedPlacementGoal(pos, bcc, null);
          // Keep the builder on the deck. A center lane can extend via native bridge movement.
          return reachable != null ? reachable : new GoalPlace(pos);
       }
@@ -791,7 +790,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
       return new BuilderProcess.GoalPlace(pos);
    }
 
-   private Goal importedPlacementGoal(BlockPos pos, BuilderProcess.BuilderCalculationContext bcc) {
+   private Goal importedPlacementGoal(BlockPos pos, BuilderProcess.BuilderCalculationContext bcc, List<Goal> scaffold) {
       BlockState desired = bcc.getSchematic(pos.getX(), pos.getY(), pos.getZ(), Blocks.AIR.defaultBlockState());
       if (desired == null) return null;
       List<Direction> supports = new ArrayList<>();
@@ -806,18 +805,36 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
             supports.add(support);
          }
       }
-      if (supports.isEmpty()) return null;
+      if (supports.isEmpty()) {
+         if (scaffold != null) {
+            // Give an isolated target a side to attach to. The normal pathfinder builds
+            // the footing by bridging or pillaring, using the carried access blocks.
+            for (Direction side : Direction.Plane.HORIZONTAL) {
+               BlockPos feet = pos.relative(side).above();
+               if (this.canUseScaffold(feet, bcc)) scaffold.add(new GoalBlock(feet));
+            }
+         }
+         return null;
+      }
 
       List<Goal> stances = new ArrayList<>();
       var world = this.ctx.world();
       double reach = this.ctx.playerController().getBlockReachDistance();
       double eyeHeight = RayTraceUtils.inferSneakingEyePosition(this.ctx.entity()).y - this.ctx.entity().getY();
       int minY = Math.max(-2, this.schematic.minimumPlacementStanceY(pos.getY()) - pos.getY());
-      int radius = this.schematic.restrictEditsToFootprint() ? (int)Math.ceil(reach) : 2;
+      int radius = (int)Math.ceil(reach);
       int maxY = Math.max(1, minY);
+      List<Goal> scaffoldStances = new ArrayList<>();
       for (BlockPos feet : BlockPos.betweenClosed(pos.offset(-radius, minY, -radius), pos.offset(radius, maxY, radius))) {
-         if (feet.equals(pos) || feet.above().equals(pos) || !world.getBlockState(feet).isAir()
-            || !world.getBlockState(feet.above()).isAir() || !world.getBlockState(feet.below()).isSolidRender(world, feet.below())) continue;
+         if (!world.hasChunkAt(feet) || !world.getBlockState(feet).isAir() || !world.getBlockState(feet.above()).isAir()) continue;
+         if (scaffold != null) {
+            if (!SchematicBuildSupport.clearPlacementStance(feet, pos, p -> this.needsSolid(p, bcc))) continue;
+         } else if (feet.equals(pos) || feet.above().equals(pos)) {
+            continue;
+         }
+         BlockPos floor = feet.below();
+         boolean supported = world.getBlockState(floor).isFaceSturdy(world, floor, Direction.UP);
+         if (!supported && (scaffold == null || !this.canUseScaffold(feet, bcc))) continue;
          Vec3 eye = Vec3.atBottomCenterOf(feet).add(0, eyeHeight, 0);
          for (Direction support : supports) {
             BlockPos against = pos.relative(support);
@@ -839,12 +856,32 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
                }
             }
             if (reachable) {
-               stances.add(new GoalBlock(feet));
+               (supported ? stances : scaffoldStances).add(new GoalBlock(feet));
                break;
             }
          }
       }
+      if (scaffold != null && !scaffoldStances.isEmpty()) {
+         scaffold.add(new GoalComposite(scaffoldStances.toArray(Goal[]::new)));
+      }
       return stances.isEmpty() ? null : new GoalComposite(stances.toArray(Goal[]::new));
+   }
+
+   private boolean needsSolid(BlockPos pos, BuilderProcess.BuilderCalculationContext bcc) {
+      BlockState current = bcc.get(pos);
+      BlockState desired = bcc.getSchematic(pos.getX(), pos.getY(), pos.getZ(), current);
+      return desired != null && !desired.isAir() && !this.valid(current, desired, false);
+   }
+
+   private boolean canUseScaffold(BlockPos feet, BuilderProcess.BuilderCalculationContext bcc) {
+      BlockPos floor = feet.below();
+      var world = this.ctx.world();
+      return bcc.hasThrowaway && world.hasChunkAt(feet)
+         && world.getBlockState(feet).isAir() && world.getBlockState(feet.above()).isAir()
+         && world.getBlockState(floor).isAir()
+         && !this.needsSolid(feet, bcc) && !this.needsSolid(feet.above(), bcc) && !this.needsSolid(floor, bcc)
+         && !bcc.isSafeZone(floor.getX(), floor.getY(), floor.getZ())
+         && !bcc.isProtected(floor.getX(), floor.getY(), floor.getZ());
    }
 
    private void addOverheadStance(List<Goal> goals, BlockPos feet) {
@@ -978,6 +1015,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
 
    public class BuilderCalculationContext extends CalculationContext {
       private final List<BlockState> placeable = BuilderProcess.this.approxPlaceable(9);
+      private final boolean imported;
       private final ISchematic schematic;
       private final int originX;
       private final int originY;
@@ -986,6 +1024,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
       public BuilderCalculationContext() {
          super(BuilderProcess.this.baritone, true);
          this.schematic = BuilderProcess.this.schematic;
+         this.imported = SchematicBuildSupport.imported(BuilderProcess.this);
          this.originX = BuilderProcess.this.origin.getX();
          this.originY = BuilderProcess.this.origin.getY();
          this.originZ = BuilderProcess.this.origin.getZ();
@@ -1008,11 +1047,13 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
       @Override
       public double costOfPlacingAt(int x, int y, int z, BlockState current) {
          if (this.isSafeZone(x, y, z)) return 1000000.0;
+         BlockState sch = this.getSchematic(x, y, z, current);
+         // Imported blocks go through the ray-traced placement pass. Navigation may
+         // scaffold in air, but cannot substitute a foothold for a blueprint block.
+         if (this.imported && sch != null && !sch.isAir()) return 1000000.0;
          if (this.isProtected(x, y, z)) {
             return this.protectedPlaceCost();
          }
-
-         BlockState sch = this.getSchematic(x, y, z, current);
          if (this.schematic.restrictEditsToFootprint()) {
             return sch != null && !sch.isAir() && sch != current && this.placeable.contains(sch) ? this.placeBlockCost : 1000000.0;
          }
